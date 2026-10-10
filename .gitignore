@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.output/
+.wrangler/
+.tanstack/
+.turbo/
+coverage/
+
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+
+# Convex local state
+.convex/

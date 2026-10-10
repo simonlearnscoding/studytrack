@@ -1,0 +1,9 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  esbuild: true
+  '@tailwindcss/oxide': true
+  core-js: false
+minimumReleaseAgeExclude:
+  - dotenv@18.0.7

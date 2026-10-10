@@ -1,0 +1,22 @@
+{
+  "name": "@studytrack/bot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@studytrack/backend": "workspace:*",
+    "convex": "^1.46.0",
+    "discord.js": "^14.27.0",
+    "dotenv": "^18.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.2"
+  }
+}
