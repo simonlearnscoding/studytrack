@@ -11,7 +11,10 @@ import { shadcn } from '@clerk/ui/themes'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
 import type { ConvexReactClient } from 'convex/react'
-import appCss from '~/styles/app.css?url'
+// Side-effect import (not `?url`): Start discovers the stylesheet from the
+// client build and links it per route. With `?url` the SSR build hashes the CSS
+// differently than the client build on Linux, so the SSR `<link>` 404s.
+import '~/styles/app.css'
 
 export const Route = createRootRouteWithContext<{ convexClient: ConvexReactClient }>()({
   head: () => ({
@@ -20,7 +23,6 @@ export const Route = createRootRouteWithContext<{ convexClient: ConvexReactClien
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'studytrack' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
 })
@@ -41,20 +43,28 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { isSignedIn } = useAuth()
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>
       <body>
-        <header className="flex items-center gap-4 border-b border-neutral-800 px-6 py-3">
-          <Link to="/" className="font-semibold">
-            studytrack
-          </Link>
-          <div className="ml-auto">
-            {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
+        <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+          <div className="flex h-14 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
+            <Link
+              to="/"
+              className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold tracking-tight"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 ring-1 ring-primary/30">
+                <span className="h-2 w-2 rounded-[3px] bg-primary" />
+              </span>
+              studytrack
+            </Link>
+            <div className="ml-auto">
+              {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
+            </div>
           </div>
         </header>
-        <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
+        <main className="w-full">{children}</main>
         <Scripts />
       </body>
     </html>

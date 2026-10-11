@@ -1,31 +1,13 @@
-import type { DashboardPartial, DashboardSession } from '@studytrack/backend/convex/sessions/types'
+import type { DashboardSession } from '@studytrack/backend/convex/sessions/types'
 import { formatDuration, partialDurationMs } from '@studytrack/backend/convex/sessions/util'
 import { cn } from '~/lib/utils'
+import { MODE_BAR, MODE_LABEL } from './mode-colors'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// One colour per mode for now. The four study modes already fill the slots the
-// quality tiers will use when we layer the cam+SS-is-best ranking on top; breaks
-// stay invisible so they read as gaps.
-const MODE_BAR: Record<DashboardPartial['mode'], string> = {
-  cameraAndScreenShare: 'bg-emerald-400',
-  screenShare: 'bg-violet-400',
-  camera: 'bg-sky-400',
-  voice: 'bg-neutral-500',
-  break: 'bg-transparent',
-}
-
-const MODE_LABEL: Record<DashboardPartial['mode'], string> = {
-  cameraAndScreenShare: 'Camera + screen',
-  screenShare: 'Screen share',
-  camera: 'Camera',
-  voice: 'Voice',
-  break: 'Break',
-}
-
 // The whole shared day as a fixed axis (midnight to midnight, server timezone) so
-// every member's bar lines up and short sessions stay comparable. A marker shows
-// how far into the day we are.
+// every member's bar lines up and its position reads as a real time of day. Faint
+// six-hour lines give the eye a scale; a marker shows how far into the day we are.
 export function MemberTimeline({
   sessions,
   dayStart,
@@ -42,7 +24,20 @@ export function MemberTimeline({
   const nowPct = clamp01((now - dayStart) / DAY_MS) * 100
 
   return (
-    <div className="relative h-3 w-full overflow-hidden rounded-full bg-neutral-800">
+    <div
+      className="relative h-3.5 w-full overflow-hidden rounded-full bg-secondary/80 ring-1 ring-inset ring-white/5"
+      role="img"
+      aria-label="Study timeline for today"
+    >
+      {[25, 50, 75].map((pct) => (
+        <div
+          key={pct}
+          className="absolute inset-y-0 w-px bg-foreground/10"
+          style={{ left: `${pct}%` }}
+          aria-hidden
+        />
+      ))}
+
       {partials.map((partial) => {
         if (partial.mode === 'break') return null
 
@@ -55,7 +50,10 @@ export function MemberTimeline({
           <div
             key={partial.id}
             title={`${MODE_LABEL[partial.mode]} · ${formatDuration(duration)}`}
-            className={cn('absolute inset-y-0', MODE_BAR[partial.mode])}
+            className={cn(
+              'absolute inset-y-[2px] min-w-[4px] rounded-full',
+              MODE_BAR[partial.mode]
+            )}
             style={{
               left: `${((start - dayStart) / DAY_MS) * 100}%`,
               width: `${((end - start) / DAY_MS) * 100}%`,
@@ -63,8 +61,9 @@ export function MemberTimeline({
           />
         )
       })}
+
       <div
-        className="absolute inset-y-0 w-px bg-neutral-400/70"
+        className="absolute inset-y-0 w-px bg-foreground/60"
         style={{ left: `${nowPct}%` }}
         aria-hidden
       />

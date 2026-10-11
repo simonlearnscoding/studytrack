@@ -3,13 +3,13 @@ import * as React from 'react'
 import { cn } from '~/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200',
-        outline: 'border border-neutral-700 hover:bg-neutral-800',
-        ghost: 'hover:bg-neutral-800',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        outline: 'border border-border text-foreground hover:bg-secondary',
+        ghost: 'text-foreground hover:bg-secondary',
       },
       size: {
         default: 'h-9 px-4 py-2',
