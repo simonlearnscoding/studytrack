@@ -21,3 +21,7 @@ docs/vault/.zennotes/
 
 # Editor
 .zed/
+
+# Python
+__pycache__/
+*.pyc
