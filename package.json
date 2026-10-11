@@ -13,6 +13,7 @@
     "dev:bot": "pnpm --filter @studytrack/bot dev",
     "build": "pnpm --filter @studytrack/web build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -10,6 +10,18 @@ export async function getGuildSettings(ctx: QueryCtx, guildId: string) {
     .unique()
 }
 
+// Sets which voice channels count as study channels for a server.
+export async function setStudyChannels(ctx: MutationCtx, args: SetStudyChannelsArgs) {
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) throw new Error('Not authenticated')
+  return await writeStudyChannels(ctx, args)
+}
+
+// No auth, so it can be run from the CLI/dashboard before the web UI exists.
+export async function adminSetStudyChannels(ctx: MutationCtx, args: SetStudyChannelsArgs) {
+  return await writeStudyChannels(ctx, args)
+}
+
 // Shared upsert; each caller decides whether the caller must be authenticated.
 async function writeStudyChannels(ctx: MutationCtx, { guildId, channelIds }: SetStudyChannelsArgs) {
   const existing = await ctx.db
@@ -26,16 +38,4 @@ async function writeStudyChannels(ctx: MutationCtx, { guildId, channelIds }: Set
     studyChannelIds: channelIds,
     updatedAt: Date.now(),
   })
-}
-
-// Sets which voice channels count as study channels for a server.
-export async function setStudyChannels(ctx: MutationCtx, args: SetStudyChannelsArgs) {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) throw new Error('Not authenticated')
-  return await writeStudyChannels(ctx, args)
-}
-
-// No auth, so it can be run from the CLI/dashboard before the web UI exists.
-export async function adminSetStudyChannels(ctx: MutationCtx, args: SetStudyChannelsArgs) {
-  return await writeStudyChannels(ctx, args)
 }

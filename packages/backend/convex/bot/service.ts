@@ -29,9 +29,10 @@ export async function recordVoiceEvent(
   return { ignored: 'no-op' }
 }
 
-type StudyTransition = { kind: 'enter'; channelId: string } | { kind: 'leave' } | { kind: 'none' }
+export type StudyTransition =
+  { kind: 'enter'; channelId: string } | { kind: 'leave' } | { kind: 'none' }
 
-function getStudyTransition(
+export function getStudyTransition(
   studyChannelIds: readonly string[],
   { fromChannelId, toChannelId }: Pick<RecordVoiceEventArgs, 'fromChannelId' | 'toChannelId'>
 ): StudyTransition {
