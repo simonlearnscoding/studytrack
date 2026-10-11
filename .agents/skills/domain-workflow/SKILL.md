@@ -38,14 +38,14 @@ packages/backend/convex/
     service.test.ts         # pure-logic tests; no Convex runtime needed
 ```
 
-| File | Holds | Never holds |
-|---|---|---|
-| `queries.ts` | `query({...})` exports: auth guard, index read, return | business decisions |
-| `mutations.ts` | `mutation({...})`: guard, load, call `service.ts`, write | the decision logic itself |
-| `internal.ts` | non-client functions (cron targets, cross-module helpers) | anything a client calls |
-| `service.ts` | pure functions of plain data — the "does this open or close?" rule | `ctx`, `_generated`, `v`, dates from `Date.now()` (pass `now` in) |
-| `validators.ts` | reused `v.object`/`v.union` + `type X = Infer<typeof x>` | tables (those live in `schema.ts`) |
-| `*.test.ts` | `convex-test` for functions, plain Vitest for `service.ts` | — |
+| File            | Holds                                                              | Never holds                                                       |
+| --------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `queries.ts`    | `query({...})` exports: auth guard, index read, return             | business decisions                                                |
+| `mutations.ts`  | `mutation({...})`: guard, load, call `service.ts`, write           | the decision logic itself                                         |
+| `internal.ts`   | non-client functions (cron targets, cross-module helpers)          | anything a client calls                                           |
+| `service.ts`    | pure functions of plain data — the "does this open or close?" rule | `ctx`, `_generated`, `v`, dates from `Date.now()` (pass `now` in) |
+| `validators.ts` | reused `v.object`/`v.union` + `type X = Infer<typeof x>`           | tables (those live in `schema.ts`)                                |
+| `*.test.ts`     | `convex-test` for functions, plain Vitest for `service.ts`         | —                                                                 |
 
 ### Why service.ts exists
 
@@ -63,7 +63,7 @@ export type VoiceAction = { type: 'open'; channelId: string } | { type: 'close' 
 export function resolveVoiceAction(
   studyChannelIds: readonly string[],
   from: string | null,
-  to: string | null,
+  to: string | null
 ): VoiceAction {
   const study = new Set(studyChannelIds)
   const was = from !== null && study.has(from)
@@ -141,7 +141,7 @@ export function useActiveSessions() {
 }
 ```
 
-The route loader prefetches through the *same* `convexQuery(...)` expression the
+The route loader prefetches through the _same_ `convexQuery(...)` expression the
 hook uses — one source, no key drift (`dashboard.tsx:13` and `:20` already do
 this; move the shared expression into the hook when you split).
 
