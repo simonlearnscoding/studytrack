@@ -77,6 +77,25 @@ export function resolveVoiceAction(
 `service.test.ts` covers every transition with no database; the mutation stays
 thin. Same idea as trikora's `service.ts` taking a mocked client.
 
+### Layout inside a file: export first, helpers below
+
+The file reads top-down as what it _does_, then how. The exported
+function(s) sit at the top; every helper — auth compare, DB getters, state
+resolution — sits **below the last export**, never above it. `bot/service.ts`
+is the reference: `recordVoiceEvent` first, then `getStudyTransition`,
+`getGuildSettings`, `closeActiveSessions`, `openSession`, `linkUser`,
+`safeEqual`, `assertBotSecret`.
+
+A "state" question (was the user in study? did they move in?) is its own
+helper returning a discriminated union, not inline booleans:
+
+```ts
+type StudyTransition = { kind: 'enter'; channelId: string } | { kind: 'leave' } | { kind: 'none' }
+```
+
+The union carries the payload the caller needs (`channelId`), so the branches
+that act on it narrow without a re-check.
+
 ### Guards, not middleware
 
 Convex has no middleware chain. The analogue of trikora's `withAuth` /
