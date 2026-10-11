@@ -1,135 +1,159 @@
 ---
 name: domain-workflow
-description: How this repo is split into domains, and how to keep files small and single-purpose. Covers Convex domain folders (queries / mutations / internal / service / validators / tests), pure decision logic in service.ts, the auth guards in lib/, the web hook facade over api.*, schema-derived types, and feature component folders. Use when adding or changing a Convex function, a read or write, a web feature, a custom hook, a type, or when a file is getting long and you are about to split it.
+description: How this repo is split into domains and kept testable — the Convex domain shape (thin `<domain>.ts` entry + `<domain>/service.ts` + `<domain>/types.ts`), pure ctx-free decision helpers, export-first file layout, state as a discriminated union, colocated tests (plain Vitest for pure logic, convex-test for I/O), the auth checks, the web hook facade over api.*, and schema-derived types. Use when adding or changing a Convex function, a read or write, a web feature, a custom hook, a type, a test, or when a file is getting long and you are about to split it.
 compatibility: opencode
 ---
 
 ## North star
 
 One concept per file, one responsibility per function. A file earns its
-existence, then earns its split — you do **not** pre-create five files for a
-domain that has one function. This is trikora-tanstack's `src/api/{domain}/`
-shape, translated to Convex: the framework changed, the seams did not.
+existence, then earns its split — you do **not** pre-create files for a domain
+that has one function. This is trikora-tanstack's `src/api/{domain}/` shape,
+translated to Convex: the framework changed, the seams did not.
 
 The four seams, in every layer:
 
-1. **Transport / wiring** — thin. Auth, load, delegate, persist. No decisions.
-2. **Logic** — pure functions. No `ctx`, no framework, no clock you can't pass in.
-3. **Shape / types** — validators (Convex) or interfaces (web), derived, never duplicated.
-4. **Tests** — colocated, sit next to the file they cover.
+1. **Transport / wiring** — thin. Guard, load, delegate, persist. No decisions.
+2. **Logic** — pure where it is a decision: no `ctx`, no framework, no clock you
+   can't pass in.
+3. **Shape / types** — validators (Convex) or view-model interfaces (web),
+   derived, never duplicated.
+4. **Tests** — colocated, next to the file they cover.
 
 ## Backend: a Convex domain
 
-A domain starts as one flat file and becomes a folder when it earns one. The
-generated API path is the directory path, so nesting is visible to callers:
-`convex/sessions/queries.ts` → `api.sessions.queries.*`.
+The shape the repo has settled on (see `bot/`, `sessions/`, `users/`,
+`guildSettings/`). Registered functions stay in a **root-level** file so the
+API path stays short: `convex/sessions.ts` → `api.sessions.listActive`.
 
 ```
 packages/backend/convex/
-  schema.ts                 # tables ONLY — all v.* validators for stored docs live here
-  lib/
-    auth.ts                 # requireUser(ctx) / requireBot(ctx, secret) — the shared guards
+  schema.ts                 # tables ONLY — all v.* for stored docs live here
+  sessions.ts               # registered fns (query / mutation / internalMutation) — thin
   sessions/
-    queries.ts              # public reads (query)
-    mutations.ts            # public writes (mutation) — thin orchestrators
-    internal.ts             # internalQuery / internalMutation for crons + other modules
-    service.ts              # PURE decision logic; no ctx, no Convex imports
-    validators.ts           # shared v.* for args/results + derived types
-    service.test.ts         # pure-logic tests; no Convex runtime needed
+    service.ts              # the work: ctx-taking I/O + pure, ctx-free decisions
+    types.ts                # arg validators for the entry file + Infer types
+    service.test.ts         # pure unit tests; no Convex runtime
+  sessions.test.ts          # convex-test integration tests (at convex/ root)
 ```
 
-| File            | Holds                                                              | Never holds                                                       |
-| --------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `queries.ts`    | `query({...})` exports: auth guard, index read, return             | business decisions                                                |
-| `mutations.ts`  | `mutation({...})`: guard, load, call `service.ts`, write           | the decision logic itself                                         |
-| `internal.ts`   | non-client functions (cron targets, cross-module helpers)          | anything a client calls                                           |
-| `service.ts`    | pure functions of plain data — the "does this open or close?" rule | `ctx`, `_generated`, `v`, dates from `Date.now()` (pass `now` in) |
-| `validators.ts` | reused `v.object`/`v.union` + `type X = Infer<typeof x>`           | tables (those live in `schema.ts`)                                |
-| `*.test.ts`     | `convex-test` for functions, plain Vitest for `service.ts`         | —                                                                 |
+| File                      | Holds                                                                         | Never holds                           |
+| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------- |
+| `<domain>.ts`             | `query` / `mutation` / `internalMutation` exports: auth, wire args, delegate  | business decisions, DB queries        |
+| `<domain>/service.ts`     | the I/O (takes `ctx`) and the decisions (pure helpers)                        | `v` validators (those are `types.ts`) |
+| `<domain>/types.ts`       | reused `v.object`/`v.union` args + `type X = Infer<typeof x>` + result unions | tables (those live in `schema.ts`)    |
+| `<domain>/*.test.ts`      | pure unit tests, no runtime                                                   | —                                     |
+| `<domain>.test.ts` (root) | `convex-test` integration tests                                               | —                                     |
 
-### Why service.ts exists
+Split further **only when earned**: pull a cron-only function into
+`internal.ts`, or split `queries.ts`/`mutations.ts` out of the entry file, once
+the entry file genuinely has two audiences. Until then, one entry file.
 
-This is the whole point of the pattern. `convex/bot.ts` already does the first
-half: a 12-line `mutation` that authenticates and delegates, with the payload
-validators in `bot/types.ts` and the handler in `bot/service.ts`. The remaining
-seam is to make that service **pure**: today `bot/service.ts:40` mixes the
-channel-set decision with database reads. Extract the decision into a plain
-function and let the service only persist its verdict.
+### service.ts: ctx at the I/O, purity at the decisions
+
+`service.ts` is allowed to take `ctx` — that is how it reads and writes. The
+**decision** inside it is a separate, pure helper with no `ctx`, exported so it
+can be unit-tested with no database:
 
 ```ts
-// convex/sessions/service.ts — pure, unit-testable, no Convex imports
-export type VoiceAction = { type: 'open'; channelId: string } | { type: 'close' } | { type: 'noop' }
+// convex/bot/service.ts — pure, no ctx, no Convex imports
+export type StudyTransition =
+  { kind: 'enter'; channelId: string } | { kind: 'leave' } | { kind: 'none' }
 
-export function resolveVoiceAction(
+export function getStudyTransition(
   studyChannelIds: readonly string[],
-  from: string | null,
-  to: string | null
-): VoiceAction {
+  { fromChannelId, toChannelId }: { fromChannelId: string | null; toChannelId: string | null }
+): StudyTransition {
   const study = new Set(studyChannelIds)
-  const was = from !== null && study.has(from)
-  const is = to !== null && study.has(to)
-  if (was && !is) return { type: 'close' }
-  if (!was && is && to) return { type: 'open', channelId: to }
-  return { type: 'noop' }
+  const wasInStudy = fromChannelId !== null && study.has(fromChannelId)
+  const isInStudy = toChannelId !== null && study.has(toChannelId)
+  if (wasInStudy && !isInStudy) return { kind: 'leave' }
+  if (!wasInStudy && isInStudy && toChannelId) return { kind: 'enter', channelId: toChannelId }
+  return { kind: 'none' }
 }
 ```
 
-`service.test.ts` covers every transition with no database; the mutation stays
-thin. Same idea as trikora's `service.ts` taking a mocked client.
+The I/O half (`getGuildSettings`, `closeActiveSessions`, `openSession`) takes
+`ctx` and is covered by a `convex-test` integration test instead. "No `ctx` in
+the logic" is the rule; "no `ctx` in the file" is not.
 
-### Layout inside a file: export first, helpers below
+### A "state" question is a union, not booleans
 
-The file reads top-down as what it _does_, then how. The exported
-function(s) sit at the top; every helper — auth compare, DB getters, state
-resolution — sits **below the last export**, never above it. `bot/service.ts`
-is the reference: `recordVoiceEvent` first, then `getStudyTransition`,
-`getGuildSettings`, `closeActiveSessions`, `openSession`, `linkUser`,
-`safeEqual`, `assertBotSecret`.
+Any "which case are we in?" question returns a discriminated union whose
+variants carry their payload (`enter` carries `channelId`), so callers narrow
+without a re-check. Use string-literal unions, never a TS `enum`
+(`verbatimModuleSyntax` + `isolatedModules` rule out `const enum`; the repo has
+no enums).
 
-A "state" question (was the user in study? did they move in?) is its own
-helper returning a discriminated union, not inline booleans:
+### Layout inside a file: exports first, helpers below
 
-```ts
-type StudyTransition = { kind: 'enter'; channelId: string } | { kind: 'leave' } | { kind: 'none' }
-```
+The file reads top-down as what it _does_, then how. The exported function(s)
+sit at the top; every helper — auth compare, DB getter, transition resolver —
+sits **below the last export**. `bot/service.ts` is the reference:
+`recordVoiceEvent` first, then `getStudyTransition`, `getGuildSettings`,
+`closeActiveSessions`, `openSession`, `linkUser`, `safeEqual`, `assertBotSecret`.
 
-The union carries the payload the caller needs (`channelId`), so the branches
-that act on it narrow without a re-check.
+### Auth checks
 
-### Guards, not middleware
-
-Convex has no middleware chain. The analogue of trikora's `withAuth` /
-`withRequireAuth` is one `lib/auth.ts`, imported by every domain:
-
-```ts
-// convex/lib/auth.ts
-export async function requireUser(ctx: QueryCtx | MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) throw new ConvexError({ code: 'unauthenticated' })
-  return identity
-}
-```
-
-Reads that should return empty rather than throw (`sessions.ts:6` returns `[]`)
-call `ctx.auth.getUserIdentity()` inline — that intent is different, keep it.
+Convex has no middleware. The auth check lives in the function that needs it:
+`ctx.auth.getUserIdentity()` at the top of the handler (or the service), never a
+user id passed in. Reads that should return empty rather than throw say so with
+an early `return []` / `return null`. Factor it into `convex/lib/auth.ts`
+(`requireUser(ctx)`, `requireBot(ctx, secret)`) only once two domains share it —
+do not create it speculatively.
 
 ### Convex-specific rules (do not translate away)
 
-- Function identity is the **file path**. Moving a function into a folder
-  renames `api.sessions.listActive` → `api.sessions.queries.listActive`; update
-  every caller in the same change.
-- `_generated/` is generated — never hand-edit, never hand-write an `api`
-  barrel (trikora's `src/api/index.ts` has no Convex equivalent; Convex
-  generates it).
-- Bounded reads: `.take(n)` / paginate, never `.collect()` unless the caller
-  asked for everything.
-- Time: `Date.now()` in mutations/actions; in a `service.ts` pure function, take
-  `now: number` as an argument.
+- Keep registered functions in the **root `<domain>.ts`**. Moving them into the
+  folder renames `api.sessions.listActive` → `api.sessions.queries.listActive`;
+  update every caller in the same change.
+- `_generated/` is generated — never hand-edit, never hand-write an `api` barrel
+  (trikora's `src/api/index.ts` has no Convex equivalent; Convex generates it).
+- Bounded reads: `.take(n)` / paginate; `.collect()` only when the caller asked
+  for everything.
+- Time: `Date.now()` in the I/O half; a pure decision takes `now: number`.
 
-## Frontend: a web feature
+## Testing
 
-`apps/web/src/routes/` holds **only** route files (TanStack file routes). UI and
-logic live in feature folders; the route stays thin.
+Stack: **Vitest + `convex-test` + `@edge-runtime/vm`**, per the repo's Convex
+guidelines. Two kinds, two homes:
+
+- **Pure unit test** — `convex/<domain>/service.test.ts`. Imports the exported
+  pure helper directly, feeds it plain data, asserts the union. No `ctx`, no DB,
+  fast. This is where transition/decision logic is pinned down.
+- **Integration test** — `convex/<domain>.test.ts`, at the root so
+  `import.meta.glob('./**/*.ts')` sees every module. Uses
+  `convexTest(schema, modules)` and calls the registered function through
+  `api.*` / `internal.*`; this covers the `ctx`-taking I/O.
+
+```ts
+// convex/bot.test.ts
+/// <reference types="vite/client" />
+import { convexTest } from 'convex-test'
+import { describe, expect, it } from 'vitest'
+import { api } from './_generated/api'
+import schema from './schema'
+
+const modules = import.meta.glob('./**/*.ts')
+
+it('opens a session when entering a study channel', async () => {
+  const t = convexTest(schema, modules)
+  // ... seed guildSettings + env, call api.bot.recordVoiceEvent, assert
+})
+```
+
+Only the triple-slash reference goes in test files that use `import.meta.glob`;
+leave `compilerOptions.types` unset.
+
+Commands: `pnpm test` (root, all packages) / `pnpm --filter @studytrack/backend
+test`. Run `pnpm format` and `pnpm test` after every change; `pnpm lint` and
+`pnpm typecheck` on request (see `AGENTS.md`).
+
+## Frontend: a web feature (guidance for new work)
+
+`apps/web/src/routes/` holds **only** route files (TanStack file routes). New UI
+and logic go in feature folders; the route stays thin. Leave existing inline
+`convexQuery(...)` calls (`dashboard.tsx`) alone until you next touch them.
 
 ```
 apps/web/src/
@@ -145,9 +169,9 @@ apps/web/src/
 
 ### Custom hooks are the component's facade over `api.*`
 
-Components never reach into `api.*` paths or know query shapes; they call a
-named hook. The hook wraps Convex's own hook — it does **not** invent query keys
-(Convex owns those, unlike trikora's React Query layer).
+Components call a named hook, not an `api.*` path. The hook wraps Convex's own
+hook and does **not** invent query keys (Convex owns those, unlike trikora's
+React Query layer).
 
 ```ts
 // features/dashboard/useActiveSessions.ts
@@ -156,13 +180,9 @@ import { api } from '@studytrack/backend/convex/_generated/api'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
 export function useActiveSessions() {
-  return useSuspenseQuery(convexQuery(api.sessions.queries.listActive, {})).data
+  return useSuspenseQuery(convexQuery(api.sessions.listActive, {})).data
 }
 ```
-
-The route loader prefetches through the _same_ `convexQuery(...)` expression the
-hook uses — one source, no key drift (`dashboard.tsx:13` and `:20` already do
-this; move the shared expression into the hook when you split).
 
 ### Types come from the schema
 
@@ -174,26 +194,18 @@ does not carry (e.g. a formatted duration), not duplicates of it.
 
 Before adding a file, ask:
 
-1. Is this **wiring** or **logic**? Logic → a `service.ts` pure function.
-2. Is this **shape**? → a validator in `validators.ts` / `schema.ts`, and derive.
+1. Is this **wiring** or **logic**? A decision → an exported, pure helper in
+   `service.ts`, tested with plain Vitest.
+2. Is this **shape**? → a validator in `types.ts` / `schema.ts`, and derive.
 3. Is this the **component's view**? → a `use*` hook, then the component.
 4. Is the file past ~150 lines, or doing two jobs? → it becomes a folder
    (`index.tsx` + `hooks.ts` + `types.ts` + subcomponents), not a longer file.
 5. Is it generated? → leave it alone.
 
-## Worked example: the `bot` split (done) and `sessions` (next)
+## Rollout: touch-only
 
-`bot` shows the target shape today:
-
-- `bot.ts` (12 lines) — `mutation`, `args` from `bot/types.ts`, delegates.
-- `bot/types.ts` — `recordVoiceEventArgs` validator + `Infer` types + result union.
-- `bot/service.ts` — the handler, still coupled to `ctx.db`; sharpen it by
-  extracting the `wasInStudy`/`isInStudy` branch into a pure `resolveVoiceAction`.
-
-`sessions` is the next candidate: `sessions.ts` (52 lines) holds `listActive`,
-`listRecent` and `closeStale` in one file. When you next touch it, split to
-`sessions/queries.ts`, `sessions/internal.ts`, and move the 8-hour rule into a
-pure `sessions/service.ts` function that takes `now`.
-
-Apply the pattern to a domain the first time you touch it; do not sweep the
-codebase to satisfy it.
+Apply the pattern to a domain the **first time you touch it**; do not sweep the
+codebase to satisfy it. `bot/`, `sessions/`, `users/`, `guildSettings/` already
+match. When you start a second activity type or a camera-on/off signal, the
+`StudyTransition` union grows a source/activity dimension — design for it then,
+not now.

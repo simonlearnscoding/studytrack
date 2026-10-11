@@ -34,7 +34,8 @@ packages/
 
 ## Workflow
 
-- `pnpm format` after edits (Prettier). `pnpm lint`, `pnpm typecheck` on request.
+- `pnpm format` and `pnpm test` after edits. `pnpm lint`, `pnpm typecheck` on
+  request.
 - `pnpm dev` runs Convex + web. The bot is separate (`pnpm dev:bot`).
 
 ## Style
@@ -42,3 +43,7 @@ packages/
 - Mirrors `trikora-tanstack`: Prettier `semi:false, singleQuote, printWidth:100`,
   `~/*` and `@/*` → `src/*`, shadcn "new-york" + magicui, lucide icons.
 - Components past ~150 lines become a folder.
+- Domains and tests follow `.agents/skills/domain-workflow`: thin `<domain>.ts`
+  entry + `<domain>/service.ts` + `<domain>/types.ts`; pure ctx-free decision
+  helpers; exports first, helpers below; colocated tests (plain Vitest for pure
+  logic, `convex-test` for I/O). Touch-only rollout — no sweeping refactors.
