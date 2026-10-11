@@ -43,6 +43,23 @@ packages/
 - Mirrors `trikora-tanstack`: Prettier `semi:false, singleQuote, printWidth:100`,
   `~/*` and `@/*` → `src/*`, shadcn "new-york" + magicui, lucide icons.
 - Components past ~150 lines become a folder.
+
+## Agent skills
+
+### Issue tracker
+
+Issues, specs and requirements live as markdown notes in the ZenNotes vault at
+`docs/vault/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage roles as vault tags, plus a `status` lifecycle. See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: a root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
 - Domains and tests follow `.agents/skills/domain-workflow`: thin `<domain>.ts`
   entry + `<domain>/service.ts` + `<domain>/types.ts`; pure ctx-free decision
   helpers; exports first, helpers below; colocated tests (plain Vitest for pure
