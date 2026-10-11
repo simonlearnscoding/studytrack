@@ -9,6 +9,8 @@
  */
 
 import type * as bot from "../bot.js";
+import type * as bot_service from "../bot/service.js";
+import type * as bot_types from "../bot/types.js";
 import type * as crons from "../crons.js";
 import type * as guildSettings from "../guildSettings.js";
 import type * as sessions from "../sessions.js";
@@ -22,6 +24,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   bot: typeof bot;
+  "bot/service": typeof bot_service;
+  "bot/types": typeof bot_types;
   crons: typeof crons;
   guildSettings: typeof guildSettings;
   sessions: typeof sessions;
