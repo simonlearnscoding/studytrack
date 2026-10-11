@@ -15,3 +15,6 @@ coverage/
 
 # Convex local state
 .convex/
+
+# ZenNotes vault metadata cache
+docs/vault/.zennotes/
