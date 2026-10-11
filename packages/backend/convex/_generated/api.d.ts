@@ -13,8 +13,13 @@ import type * as bot_service from "../bot/service.js";
 import type * as bot_types from "../bot/types.js";
 import type * as crons from "../crons.js";
 import type * as guildSettings from "../guildSettings.js";
+import type * as guildSettings_service from "../guildSettings/service.js";
+import type * as guildSettings_types from "../guildSettings/types.js";
 import type * as sessions from "../sessions.js";
+import type * as sessions_service from "../sessions/service.js";
 import type * as users from "../users.js";
+import type * as users_service from "../users/service.js";
+import type * as users_types from "../users/types.js";
 
 import type {
   ApiFromModules,
@@ -28,8 +33,13 @@ declare const fullApi: ApiFromModules<{
   "bot/types": typeof bot_types;
   crons: typeof crons;
   guildSettings: typeof guildSettings;
+  "guildSettings/service": typeof guildSettings_service;
+  "guildSettings/types": typeof guildSettings_types;
   sessions: typeof sessions;
+  "sessions/service": typeof sessions_service;
   users: typeof users;
+  "users/service": typeof users_service;
+  "users/types": typeof users_types;
 }>;
 
 /**
