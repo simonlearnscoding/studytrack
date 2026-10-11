@@ -1,0 +1,18 @@
+.git
+.gitignore
+node_modules
+**/node_modules
+**/.output
+**/dist
+**/.tanstack
+**/.turbo
+.convex
+coverage
+*.log
+.DS_Store
+
+# Secrets stay out of the image — inject them as runtime env / build args.
+.env
+**/.env
+**/.env.*
+!**/.env.example
