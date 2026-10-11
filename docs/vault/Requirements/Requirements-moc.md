@@ -7,4 +7,16 @@ type: moc
 Map of content for feature requirements. Link requirement notes here with their
 `id` and `status`.
 
-_No requirements yet._
+## Dashboard redesign
+
+- [[Studytrack dashboard spec]] — todo · `#ready-for-agent`
+- [[Tasks spec]] — todo · `#ready-for-agent`
+- [[ST-1 Dashboard shell]] — todo
+- [[ST-2 Live room]] — todo
+- [[ST-3 Manual tracking]] — done
+- [[ST-4 Manual precedence]] — done
+- [[ST-5 Tasks]] — in-review
+- [[ST-6 Task visibility]] — todo · `#needs-info`
+- [[ST-7 Leaderboard by Deep focus]] — todo (deferred)
+- [[ST-8 Personal rail]] — todo (deferred)
+- [[ST-9 Discord daily leaderboard]] — todo · `#ready-for-agent`

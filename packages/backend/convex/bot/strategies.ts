@@ -29,12 +29,25 @@ async function startSession(
   const channelId = args.to.channelId
   if (!channelId) return noop()
 
-  // Close a lingering session first (e.g. the bot missed the leave event).
-  const lingering = await findActiveSession(ctx, args.discordId)
-  if (lingering) await endSessionRows(ctx, lingering._id)
+  const userId = await ensureDiscordUser(ctx, args.discordId, args.discordUsername)
+
+  // A session may already be running: a lingering Discord one (e.g. the bot
+  // missed the leave event) or a manual one the member started on the web.
+  const active =
+    (await findActiveSession(ctx, args.discordId)) ?? (await findActiveByUser(ctx, userId))
+  if (active) {
+    // Manual is overtaken, not ended: the same session continues in the Discord
+    // mode, exactly like any other in-session mode change (ADR-0001).
+    if ((await activePartialMode(ctx, active._id)) === 'manual') {
+      await ctx.db.patch(active._id, { discordId: args.discordId, guildId: args.guildId })
+      await closeActivePartials(ctx, active._id)
+      await insertPartial(ctx, active._id, userId, args, channelId)
+      return { started: true }
+    }
+    await endSessionRows(ctx, active._id)
+  }
 
   const now = Date.now()
-  const userId = await ensureDiscordUser(ctx, args.discordId, args.discordUsername)
 
   // Re-entering within 30 minutes continues the previous session: record the
   // gap as a `break` partial and reopen the session instead of starting a new one.
@@ -98,6 +111,22 @@ async function findActiveSession(ctx: MutationCtx, discordId: string) {
     .query('session')
     .withIndex('by_discordId', (q) => q.eq('discordId', discordId).eq('status', 'active'))
     .first()
+}
+
+// A manual session may have no Discord id, so it is found through its user row.
+async function findActiveByUser(ctx: MutationCtx, userId: Id<'users'>) {
+  return await ctx.db
+    .query('session')
+    .withIndex('by_userId', (q) => q.eq('userId', userId).eq('status', 'active'))
+    .first()
+}
+
+async function activePartialMode(ctx: MutationCtx, sessionId: Id<'session'>) {
+  const partial = await ctx.db
+    .query('sessionPartial')
+    .withIndex('by_sessionId', (q) => q.eq('sessionId', sessionId).eq('status', 'active'))
+    .first()
+  return partial?.mode ?? null
 }
 
 async function findLastEndedSession(ctx: MutationCtx, discordId: string) {

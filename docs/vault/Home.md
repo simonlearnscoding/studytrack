@@ -8,6 +8,21 @@ Issue tracker for studytrack. Managed with ZenNotes; see
 - [Requirements](Requirements/Requirements-moc.md)
 - [Bugs](bugs/bugs-moc.md)
 
+## Dashboard redesign
+
+Build order (each task notes its `Blocked by`). Specs:
+[[Studytrack dashboard spec]], [[Tasks spec]].
+
+[[general-ideas]]
+1. [[ST-1 Dashboard shell]] — todo
+2. [[ST-2 Live room]] — todo
+3. [[ST-3 Manual tracking]] — done
+4. [[ST-4 Manual precedence]] — done
+5. [[ST-5 Tasks]] — in-review
+6. [[ST-6 Task visibility]] — todo · `#needs-info`
+7. [[ST-7 Leaderboard by Deep focus]] — todo (deferred)
+8. [[ST-8 Personal rail]] — todo (deferred)
+
 ## Conventions
 
 Notes carry `id`, `status`, `type`, `priority` and `area` frontmatter. Triage

@@ -93,34 +93,38 @@ describe('memberTotalMs', () => {
 })
 
 describe('sortMembers', () => {
-  it('puts online first, then by total time', () => {
-    const offlineBig = member({
-      discordId: 'off-big',
-      sessions: [session([partial({ startedAt: 0, endedAt: 3 * H })])],
-    })
-    const offlineSmall = member({
-      discordId: 'off-small',
-      sessions: [session([partial({ startedAt: 0, endedAt: 1 * H })])],
-    })
-    const onlineSmall = member({
-      discordId: 'on-small',
+  it('puts the most studied first', () => {
+    const least = member({
+      discordId: 'least',
       online: true,
       sessions: [session([partial({ startedAt: 0, endedAt: 5 * M })])],
     })
+    const most = member({
+      discordId: 'most',
+      sessions: [session([partial({ startedAt: 0, endedAt: 3 * H })])],
+    })
+    const middle = member({
+      discordId: 'middle',
+      sessions: [session([partial({ startedAt: 0, endedAt: 1 * H })])],
+    })
 
-    const sorted = sortMembers([offlineSmall, offlineBig, onlineSmall], 3 * H)
-    expect(sorted.map((m) => m.discordId)).toEqual(['on-small', 'off-big', 'off-small'])
+    const sorted = sortMembers([least, most, middle], 3 * H)
+    expect(sorted.map((m) => m.discordId)).toEqual(['most', 'middle', 'least'])
   })
 })
 
 describe('formatDuration', () => {
-  it('formats hours and minutes', () => {
-    expect(formatDuration(3 * H + 30 * M)).toBe('3h30m')
+  it('formats hours, minutes and seconds', () => {
+    expect(formatDuration(3 * H + 30 * M + 5 * 1000)).toBe('3h30m05s')
   })
 
-  it('drops the hours when under an hour', () => {
-    expect(formatDuration(45 * M)).toBe('45m')
-    expect(formatDuration(0)).toBe('0m')
+  it('drops hours when under an hour, keeping seconds', () => {
+    expect(formatDuration(45 * M + 12 * 1000)).toBe('45m12s')
+  })
+
+  it('shows bare seconds under a minute, and zero as 0s', () => {
+    expect(formatDuration(5 * 1000)).toBe('5s')
+    expect(formatDuration(0)).toBe('0s')
   })
 })
 

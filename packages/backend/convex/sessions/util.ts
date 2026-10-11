@@ -26,20 +26,24 @@ export function memberTotalMs(member: Pick<DashboardMember, 'sessions'>, now: nu
   return member.sessions.reduce((sum, session) => sum + sessionStudyMs(session, now), 0)
 }
 
-// Online first, then whoever has studied most today. Recomputed against `now` so
-// a running partial keeps moving its member up the board.
+// Most study time today first. The dashboard splits online/offline into separate
+// sections, so within each section this is the only ordering that matters.
 export function sortMembers(members: DashboardMember[], now: number): DashboardMember[] {
-  return [...members].sort(
-    (a, b) => Number(b.online) - Number(a.online) || memberTotalMs(b, now) - memberTotalMs(a, now)
-  )
+  return [...members].sort((a, b) => memberTotalMs(b, now) - memberTotalMs(a, now))
 }
 
-// Whole minutes, e.g. `3h30m`, `45m`, `0m`.
+// Compact duration with seconds, so a live total visibly ticks each second:
+// `3h30m05s`, `33m12s`, `5s`.
 export function formatDuration(ms: number): string {
-  const totalMinutes = Math.floor(Math.max(0, ms) / 60_000)
-  const hours = Math.floor(totalMinutes / 60)
+  const totalSeconds = Math.floor(Math.max(0, ms) / 1000)
+  const seconds = totalSeconds % 60
+  const totalMinutes = Math.floor(totalSeconds / 60)
   const minutes = totalMinutes % 60
-  return hours > 0 ? `${hours}h${minutes}m` : `${minutes}m`
+  const hours = Math.floor(totalMinutes / 60)
+  const ss = String(seconds).padStart(2, '0')
+  if (hours > 0) return `${hours}h${String(minutes).padStart(2, '0')}m${ss}s`
+  if (minutes > 0) return `${minutes}m${ss}s`
+  return `${seconds}s`
 }
 
 // Midnight (epoch ms) of the calendar day `now` falls in, for a named timezone.

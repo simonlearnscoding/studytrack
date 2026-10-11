@@ -3,6 +3,7 @@ import { Client, GatewayIntentBits } from 'discord.js'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@studytrack/backend/convex/_generated/api'
 import { describeVoiceMove, toVoiceSnapshot } from './voice'
+import { startLeaderboard } from './leaderboard'
 
 const token = process.env.DISCORD_TOKEN
 const convexUrl = process.env.CONVEX_URL
@@ -20,8 +21,13 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 })
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
   console.log(`studytrack bot logged in as ${client.user?.tag}`)
+  try {
+    await startLeaderboard(client, convex, botSecret)
+  } catch (error) {
+    console.error('[leaderboard] failed to start', error)
+  }
 })
 
 // The bot is a dumb reporter: it forwards the raw before/after snapshots and

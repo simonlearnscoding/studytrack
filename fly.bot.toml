@@ -1,0 +1,18 @@
+# Discord bot. Deploy from the repo root:
+#   fly deploy --config fly.bot.toml --ha=false
+#
+# --ha=false keeps it to a single machine: two bot instances would hold two
+# Discord gateway sessions and double every event.
+#
+# No [http_service]: the bot holds a long-lived Discord gateway connection and
+# serves no HTTP. Runtime secrets (DISCORD_TOKEN, CONVEX_URL, BOT_SHARED_SECRET)
+# are set with `fly secrets set`, never baked into the image.
+app = "studytrack-bot"
+primary_region = "fra"
+
+[build]
+  dockerfile = "apps/bot/Dockerfile"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

@@ -37,7 +37,16 @@ export async function getTodaysActivitiesForDashboard(
 ): Promise<DashboardMember[]> {
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) return []
+  return await groupTodaysMembers(ctx, dayStart)
+}
 
+// The shared day-window read, without any auth: everyone who studied today (or is
+// still running), grouped session → member. Both the dashboard query above and the
+// bot leaderboard build on this; the caller decides who may read it.
+export async function groupTodaysMembers(
+  ctx: QueryCtx,
+  dayStart: number
+): Promise<DashboardMember[]> {
   // A partial belongs to today if it started today, or is still running — the
   // latter may have started before midnight and is part of the live picture.
   const [today, active] = await Promise.all([
@@ -70,23 +79,26 @@ export async function getTodaysActivitiesForDashboard(
     const session = await ctx.db.get(sessionId)
     if (!session) continue
 
-    const list = sessionsByMember.get(session.discordId) ?? []
+    // Manual sessions have no Discord id, so a member is keyed by their user row
+    // when needed and only falls back to the session id in the impossible case.
+    const memberKey = session.discordId ?? (session.userId ? String(session.userId) : sessionId)
+    const list = sessionsByMember.get(memberKey) ?? []
     list.push(buildSession(session, sessionPartials))
-    sessionsByMember.set(session.discordId, list)
-    if (!userByMember.has(session.discordId)) {
+    sessionsByMember.set(memberKey, list)
+    if (!userByMember.has(memberKey)) {
       const userId = session.userId ?? sessionPartials.find((p) => p.userId)?.userId ?? null
-      userByMember.set(session.discordId, userId ?? null)
+      userByMember.set(memberKey, userId ?? null)
     }
   }
 
   const members: DashboardMember[] = []
-  for (const [discordId, sessions] of sessionsByMember) {
-    const userId = userByMember.get(discordId) ?? null
+  for (const [memberKey, sessions] of sessionsByMember) {
+    const userId = userByMember.get(memberKey) ?? null
     const user = userId ? await ctx.db.get(userId) : null
     sessions.sort((a, b) => b.startedAt - a.startedAt)
     members.push({
       userId,
-      discordId,
+      discordId: memberKey,
       name: user?.name ?? null,
       image: user?.image ?? null,
       online: sessions.some((s) => s.status === 'active'),

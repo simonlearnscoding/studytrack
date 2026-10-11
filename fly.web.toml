@@ -1,0 +1,25 @@
+# Web dashboard. Deploy from the repo root:
+#   fly deploy --config fly.web.toml
+#
+# VITE_* are baked into the browser bundle at build time, so they live here as
+# build args, not as runtime secrets.
+app = "studytrack-web"
+primary_region = "fra"
+
+[build]
+  dockerfile = "apps/web/Dockerfile"
+
+  [build.args]
+    VITE_CONVEX_URL = "https://dutiful-poodle-591.eu-west-1.convex.cloud"
+    VITE_CLERK_PUBLISHABLE_KEY = "pk_test_bGVhZGluZy1veC05ODA3LmNsZXJrLmFjY291bnRzLmRldiQ"
+    VITE_CLERK_SIGN_IN_URL = "/sign-in"
+    VITE_CLERK_SIGN_UP_URL = "/sign-up"
+    VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL = "/"
+    VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL = "/"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1

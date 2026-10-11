@@ -15,7 +15,7 @@ export function ErrorScreen({ error, reset }: ErrorComponentProps) {
       </pre>
       <button
         onClick={reset}
-        className="inline-flex h-9 items-center rounded-md bg-neutral-100 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-200"
+        className="inline-flex h-9 cursor-pointer items-center rounded-md bg-neutral-100 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-200"
       >
         Try again
       </button>
