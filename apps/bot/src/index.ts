@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { Client, GatewayIntentBits } from 'discord.js'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@studytrack/backend/convex/_generated/api'
+import { describeVoiceMove, toVoiceSnapshot } from './voice'
 
 const token = process.env.DISCORD_TOKEN
 const convexUrl = process.env.CONVEX_URL
@@ -23,21 +24,30 @@ client.once('clientReady', () => {
   console.log(`studytrack bot logged in as ${client.user?.tag}`)
 })
 
-// The bot is deliberately dumb: it forwards the raw before/after channel ids
-// and lets Convex decide whether that opens or closes a study session.
+// The bot is a dumb reporter: it forwards the raw before/after snapshots and
+// lets Convex decide whether they open, change or close a session.
 client.on('voiceStateUpdate', async (oldState, newState) => {
   if (newState.member?.user.bot) return
+
+  const from = toVoiceSnapshot(oldState)
+  const to = toVoiceSnapshot(newState)
+
+  const move = describeVoiceMove(oldState.channelId, newState.channelId)
+  const fromName = oldState.channel?.name ?? oldState.channelId ?? '-'
+  const toName = newState.channel?.name ?? newState.channelId ?? '-'
+  console.log(`[voice] ${newState.member?.user.tag} ${move}: ${fromName} -> ${toName}`)
 
   try {
     await convex.mutation(api.bot.recordVoiceEvent, {
       secret: botSecret,
       discordId: newState.id,
+      discordUsername: newState.member?.user.username,
       guildId: newState.guild.id,
-      fromChannelId: oldState.channelId ?? null,
-      toChannelId: newState.channelId ?? null,
+      from,
+      to,
     })
   } catch (error) {
-    console.error('Failed to record voice event', error)
+    console.error('[voice] failed to record event', error)
   }
 })
 

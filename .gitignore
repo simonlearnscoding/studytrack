@@ -18,3 +18,6 @@ coverage/
 
 # ZenNotes vault metadata cache
 docs/vault/.zennotes/
+
+# Editor
+.zed/

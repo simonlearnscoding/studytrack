@@ -8,26 +8,12 @@ import {
 } from '@tanstack/react-router'
 import { ClerkProvider, SignInButton, UserButton, useAuth } from '@clerk/tanstack-react-start'
 import { shadcn } from '@clerk/ui/themes'
-import { auth } from '@clerk/tanstack-react-start/server'
-import { createServerFn } from '@tanstack/react-start'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
-import type { ConvexQueryClient } from '@convex-dev/react-query'
-import type { QueryClient } from '@tanstack/react-query'
 import type { ConvexReactClient } from 'convex/react'
 import appCss from '~/styles/app.css?url'
 
-const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const { userId, getToken } = await auth()
-  const token = await getToken({ template: 'convex' })
-  return { userId, token }
-})
-
-export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient
-  convexClient: ConvexReactClient
-  convexQueryClient: ConvexQueryClient
-}>()({
+export const Route = createRootRouteWithContext<{ convexClient: ConvexReactClient }>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -36,13 +22,6 @@ export const Route = createRootRouteWithContext<{
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  beforeLoad: async (ctx) => {
-    const { userId, token } = await fetchClerkAuth()
-    // During SSR only: give the server-side Convex HTTP client the Clerk token
-    // so loader prefetches are authenticated.
-    if (token) ctx.context.convexQueryClient.serverHttpClient?.setAuth(token)
-    return { userId, token }
-  },
   component: RootComponent,
 })
 
@@ -70,9 +49,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <header className="flex items-center gap-4 border-b border-neutral-800 px-6 py-3">
           <Link to="/" className="font-semibold">
             studytrack
-          </Link>
-          <Link to="/dashboard" className="text-sm text-neutral-400 hover:text-neutral-100">
-            Dashboard
           </Link>
           <div className="ml-auto">
             {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}

@@ -13,11 +13,8 @@
   "dependencies": {
     "@clerk/tanstack-react-start": "^1.7.0",
     "@clerk/ui": "^1.39.1",
-    "@convex-dev/react-query": "^0.1.0",
     "@studytrack/backend": "workspace:*",
-    "@tanstack/react-query": "^5.104.1",
     "@tanstack/react-router": "^1.170.41",
-    "@tanstack/react-router-ssr-query": "^1.167.3",
     "@tanstack/react-start": "^1.168.60",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

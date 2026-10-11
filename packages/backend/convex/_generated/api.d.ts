@@ -10,13 +10,15 @@
 
 import type * as bot from "../bot.js";
 import type * as bot_service from "../bot/service.js";
+import type * as bot_strategies from "../bot/strategies.js";
 import type * as bot_types from "../bot/types.js";
+import type * as bot_util from "../bot/util.js";
+import type * as clear from "../clear.js";
 import type * as crons from "../crons.js";
-import type * as guildSettings from "../guildSettings.js";
-import type * as guildSettings_service from "../guildSettings/service.js";
-import type * as guildSettings_types from "../guildSettings/types.js";
 import type * as sessions from "../sessions.js";
 import type * as sessions_service from "../sessions/service.js";
+import type * as sessions_types from "../sessions/types.js";
+import type * as sessions_util from "../sessions/util.js";
 import type * as users from "../users.js";
 import type * as users_service from "../users/service.js";
 import type * as users_types from "../users/types.js";
@@ -30,13 +32,15 @@ import type {
 declare const fullApi: ApiFromModules<{
   bot: typeof bot;
   "bot/service": typeof bot_service;
+  "bot/strategies": typeof bot_strategies;
   "bot/types": typeof bot_types;
+  "bot/util": typeof bot_util;
+  clear: typeof clear;
   crons: typeof crons;
-  guildSettings: typeof guildSettings;
-  "guildSettings/service": typeof guildSettings_service;
-  "guildSettings/types": typeof guildSettings_types;
   sessions: typeof sessions;
   "sessions/service": typeof sessions_service;
+  "sessions/types": typeof sessions_types;
+  "sessions/util": typeof sessions_util;
   users: typeof users;
   "users/service": typeof users_service;
   "users/types": typeof users_types;

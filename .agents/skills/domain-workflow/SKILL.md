@@ -1,6 +1,6 @@
 ---
 name: domain-workflow
-description: How this repo is split into domains and kept testable — the Convex domain shape (thin `<domain>.ts` entry + `<domain>/service.ts` + `<domain>/types.ts`), pure ctx-free decision helpers, export-first file layout, state as a discriminated union, colocated tests (plain Vitest for pure logic, convex-test for I/O), the auth checks, the web hook facade over api.*, and schema-derived types. Use when adding or changing a Convex function, a read or write, a web feature, a custom hook, a type, a test, or when a file is getting long and you are about to split it.
+description: How this repo is split into domains and kept testable — the Convex domain shape (thin `<domain>.ts` entry + `<domain>/service.ts` + `<domain>/types.ts`), pure ctx-free decision helpers, export-first file layout, state as an enum of tags, colocated tests (plain Vitest for pure logic, convex-test for I/O), the auth checks, the web hook facade over api.*, and schema-derived types. Use when adding or changing a Convex function, a read or write, a web feature, a custom hook, a type, a test, or when a file is getting long and you are about to split it.
 compatibility: opencode
 ---
 
@@ -22,76 +22,84 @@ The four seams, in every layer:
 
 ## Backend: a Convex domain
 
-The shape the repo has settled on (see `bot/`, `sessions/`, `users/`,
-`guildSettings/`). Registered functions stay in a **root-level** file so the
-API path stays short: `convex/sessions.ts` → `api.sessions.listActive`.
+The shape the repo has settled on (see `bot/`, `sessions/`, `users/`).
+Registered functions stay in a **root-level** file so the API path stays short:
+`convex/sessions.ts` → `api.sessions.listActive`.
 
 ```
 packages/backend/convex/
   schema.ts                 # tables ONLY — all v.* for stored docs live here
   sessions.ts               # registered fns (query / mutation / internalMutation) — thin
   sessions/
-    service.ts              # the work: ctx-taking I/O + pure, ctx-free decisions
+    service.ts              # thin entry logic: auth + dispatch
+    strategies.ts           # strategy map (one handler per state tag) + its handlers
     types.ts                # arg validators for the entry file + Infer types
-    service.test.ts         # pure unit tests; no Convex runtime
+    util.ts                 # pure decisions + domain-agnostic helpers (see below)
+    util.test.ts            # pure unit tests; no Convex runtime
   sessions.test.ts          # convex-test integration tests (at convex/ root)
 ```
 
-| File                      | Holds                                                                         | Never holds                           |
-| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------- |
-| `<domain>.ts`             | `query` / `mutation` / `internalMutation` exports: auth, wire args, delegate  | business decisions, DB queries        |
-| `<domain>/service.ts`     | the I/O (takes `ctx`) and the decisions (pure helpers)                        | `v` validators (those are `types.ts`) |
-| `<domain>/types.ts`       | reused `v.object`/`v.union` args + `type X = Infer<typeof x>` + result unions | tables (those live in `schema.ts`)    |
-| `<domain>/*.test.ts`      | pure unit tests, no runtime                                                   | —                                     |
-| `<domain>.test.ts` (root) | `convex-test` integration tests                                               | —                                     |
+| File                      | Holds                                                                         | Never holds                            |
+| ------------------------- | ----------------------------------------------------------------------------- | -------------------------------------- |
+| `<domain>.ts`             | `query` / `mutation` / `internalMutation` exports: auth, wire args, delegate  | business decisions, DB queries         |
+| `<domain>/service.ts`     | thin: authenticate, resolve state, dispatch to a strategy                     | `v` validators (those are `types.ts`)  |
+| `<domain>/strategies.ts`  | the strategy map + the ctx-taking handlers it dispatches to                   | `v` validators                         |
+| `<domain>/types.ts`       | reused `v.object`/`v.union` args + `type X = Infer<typeof x>` + result unions | tables (those live in `schema.ts`)     |
+| `<domain>/util.ts`        | pure decisions (`getVoiceTransition`) + domain-agnostic helpers               | `ctx`-taking I/O, session/domain rules |
+| `<domain>/*.test.ts`      | pure unit tests, no runtime                                                   | —                                      |
+| `<domain>.test.ts` (root) | `convex-test` integration tests                                               | —                                      |
 
 Split further **only when earned**: pull a cron-only function into
 `internal.ts`, or split `queries.ts`/`mutations.ts` out of the entry file, once
 the entry file genuinely has two audiences. Until then, one entry file.
 
-### service.ts: ctx at the I/O, purity at the decisions
+### ctx at the I/O, purity at the decisions
 
-`service.ts` is allowed to take `ctx` — that is how it reads and writes. The
-**decision** inside it is a separate, pure helper with no `ctx`, exported so it
-can be unit-tested with no database:
+The pure **decision** takes no `ctx`, lives in `util.ts` (not tied to any one
+domain), and unit-tests with no database:
 
 ```ts
-// convex/bot/service.ts — pure, no ctx, no Convex imports
-export type StudyTransition =
-  { kind: 'enter'; channelId: string } | { kind: 'leave' } | { kind: 'none' }
+// convex/bot/util.ts — pure, no ctx, no Convex imports
+export type VoiceTransition = 'enter' | 'leave' | 'change' | 'none'
 
-export function getStudyTransition(
-  studyChannelIds: readonly string[],
-  { fromChannelId, toChannelId }: { fromChannelId: string | null; toChannelId: string | null }
-): StudyTransition {
-  const study = new Set(studyChannelIds)
-  const wasInStudy = fromChannelId !== null && study.has(fromChannelId)
-  const isInStudy = toChannelId !== null && study.has(toChannelId)
-  if (wasInStudy && !isInStudy) return { kind: 'leave' }
-  if (!wasInStudy && isInStudy && toChannelId) return { kind: 'enter', channelId: toChannelId }
-  return { kind: 'none' }
+export function getVoiceTransition({
+  fromChannelId,
+  toChannelId,
+}: {
+  fromChannelId: string | null
+  toChannelId: string | null
+}): VoiceTransition {
+  if (fromChannelId === toChannelId) return 'none'
+  if (fromChannelId === null) return 'enter'
+  if (toChannelId === null) return 'leave'
+  return 'change'
 }
 ```
 
-The I/O half (`getGuildSettings`, `closeActiveSessions`, `openSession`) takes
-`ctx` and is covered by a `convex-test` integration test instead. "No `ctx` in
-the logic" is the rule; "no `ctx` in the file" is not.
+The I/O half (`closeActiveSessions`, `openSession`) takes `ctx` and is covered by
+a `convex-test` integration test instead. "No `ctx` in the logic" is the rule;
+"no `ctx` in the file" is not.
 
-### A "state" question is a union, not booleans
+### A "state" question is an enum of tags, not booleans
 
-Any "which case are we in?" question returns a discriminated union whose
-variants carry their payload (`enter` carries `channelId`), so callers narrow
-without a re-check. Use string-literal unions, never a TS `enum`
-(`verbatimModuleSyntax` + `isolatedModules` rule out `const enum`; the repo has
-no enums).
+Any "which case are we in?" question returns a **string-literal union of tags**
+(`'enter' | 'leave' | 'change' | 'none'`). Dispatch through a **strategy map**
+(`Record<VoiceTransition, Strategy>`, one handler per tag) — not an `if`/`else`
+chain. The map and the handlers it dispatches to live together in
+`strategies.ts`; the entry `service.ts` stays a thin authenticator + dispatcher.
+Keep the tags scalar; if a case needs data, read it from the argument the caller
+already holds rather than attaching it to the tag. Use string-literal unions,
+never a TS `enum` (`verbatimModuleSyntax` + `isolatedModules` rule out
+`const enum`; the repo has no enums).
 
 ### Layout inside a file: exports first, helpers below
 
 The file reads top-down as what it _does_, then how. The exported function(s)
-sit at the top; every helper — auth compare, DB getter, transition resolver —
-sits **below the last export**. `bot/service.ts` is the reference:
-`recordVoiceEvent` first, then `getStudyTransition`, `getGuildSettings`,
-`closeActiveSessions`, `openSession`, `linkUser`, `safeEqual`, `assertBotSecret`.
+sit at the top; every helper — auth compare, DB getter, session actions — sits
+**below the last export**. `bot/strategies.ts` is the reference: `voiceStrategies`
+first, then `closeActiveSessions`, `openSession`, `linkUser`, `noop`. Obvious
+generic helpers (`safeEqual`, `assertBotSecret`) go to `util.ts` in the same
+folder.
 
 ### Auth checks
 
@@ -205,7 +213,7 @@ Before adding a file, ask:
 ## Rollout: touch-only
 
 Apply the pattern to a domain the **first time you touch it**; do not sweep the
-codebase to satisfy it. `bot/`, `sessions/`, `users/`, `guildSettings/` already
-match. When you start a second activity type or a camera-on/off signal, the
-`StudyTransition` union grows a source/activity dimension — design for it then,
+codebase to satisfy it. `bot/`, `sessions/`, `users/` already match. When you
+start a second activity type or a camera-on/off signal, the
+`VoiceTransition` union grows more tags (activity, camera) — design for it then,
 not now.
