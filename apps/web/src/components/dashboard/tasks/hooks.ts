@@ -7,9 +7,11 @@ export function useMyTasks(dayStart: number) {
   const tasks = useQuery(api.tasks.listMine, { dayStart })
   const create = useMutation(api.tasks.create)
   const toggle = useMutation(api.tasks.toggle)
+  const rename = useMutation(api.tasks.rename)
+  const remove = useMutation(api.tasks.remove)
 
   const done = tasks?.filter((task) => task.done).length ?? 0
   const total = tasks?.length ?? 0
 
-  return { tasks, create, toggle, total, done, open: total - done }
+  return { tasks, create, toggle, rename, remove, total, done, open: total - done }
 }
