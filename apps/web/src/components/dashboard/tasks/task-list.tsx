@@ -10,7 +10,7 @@ import { TaskRow } from './task-row'
 // below its own content — a genuinely tall rail just scrolls as before.
 export function TaskList() {
   const dayStart = useDayStart()
-  const { tasks, create, toggle, open } = useMyTasks(dayStart)
+  const { tasks, create, toggle, rename, remove, open } = useMyTasks(dayStart)
 
   return (
     <div className="flex flex-col gap-3 lg:flex-1">
@@ -34,7 +34,13 @@ export function TaskList() {
         ) : (
           <ul className="mt-3 space-y-0.5">
             {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} onToggle={() => toggle({ taskId: task.id })} />
+              <TaskRow
+                key={task.id}
+                task={task}
+                onToggle={() => toggle({ taskId: task.id })}
+                onRename={(title) => rename({ taskId: task.id, title })}
+                onRemove={() => remove({ taskId: task.id })}
+              />
             ))}
           </ul>
         )}

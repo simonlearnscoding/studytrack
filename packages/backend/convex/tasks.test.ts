@@ -109,3 +109,130 @@ describe('tasks.toggle', () => {
     expect(bobTasks).toEqual([])
   })
 })
+
+describe('tasks.rename', () => {
+  it('rejects an unauthenticated caller', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+
+    await expect(
+      t.mutation(api.tasks.rename, { taskId: task._id, title: 'Read two' })
+    ).rejects.toThrow(/Not authenticated/)
+  })
+
+  it('renames an Open task, trimming the title', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+
+    await t.withIdentity(ADA).mutation(api.tasks.rename, {
+      taskId: task._id,
+      title: '  Read two chapters  ',
+    })
+
+    const [after] = await tasksOf(t)
+    expect(after.title).toBe('Read two chapters')
+    expect(after.done).toBe(false)
+  })
+
+  it('renames a Done task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+
+    await t.withIdentity(ADA).mutation(api.tasks.rename, {
+      taskId: task._id,
+      title: 'Read the whole book',
+    })
+
+    const [after] = await tasksOf(t)
+    expect(after.title).toBe('Read the whole book')
+    expect(after.done).toBe(true)
+  })
+
+  it('rejects an empty or whitespace-only title', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.tasks.rename, { taskId: task._id, title: '   ' })
+    ).rejects.toThrow(/needs a title/)
+
+    const [after] = await tasksOf(t)
+    expect(after.title).toBe('Read a chapter')
+  })
+
+  it('refuses to rename another member task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Ada private' })
+    const [adaTask] = await tasksOf(t)
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.tasks.rename, { taskId: adaTask._id, title: 'Hijacked' })
+    ).rejects.toThrow(/Task not found/)
+
+    const [after] = await tasksOf(t)
+    expect(after.title).toBe('Ada private')
+  })
+})
+
+describe('tasks.remove', () => {
+  it('rejects an unauthenticated caller', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+
+    await expect(t.mutation(api.tasks.remove, { taskId: task._id })).rejects.toThrow(
+      /Not authenticated/
+    )
+  })
+
+  it('deletes an Open task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+
+    await t.withIdentity(ADA).mutation(api.tasks.remove, { taskId: task._id })
+
+    expect(await tasksOf(t)).toEqual([])
+  })
+
+  it('refuses to delete a Done task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
+    const [task] = await tasksOf(t)
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.tasks.remove, { taskId: task._id })
+    ).rejects.toThrow(/Reopen the task before deleting it/)
+
+    expect(await tasksOf(t)).toHaveLength(1)
+  })
+
+  it('refuses to delete another member task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Ada private' })
+    const [adaTask] = await tasksOf(t)
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.tasks.remove, { taskId: adaTask._id })
+    ).rejects.toThrow(/Task not found/)
+
+    expect(await tasksOf(t)).toHaveLength(1)
+  })
+})

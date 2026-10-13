@@ -36,18 +36,53 @@ export async function createTask(ctx: MutationCtx, title: string): Promise<void>
 // clears it, so Done is not a one-way door.
 export async function toggleTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
   const user = await requireUser(ctx)
-  const task = await ctx.db.get(taskId)
-  // Same error for missing or someone else's task: never leak that it exists.
-  if (!task || task.userId !== user._id) throw new Error('Task not found')
+  const task = await requireOwnedTask(ctx, user, taskId)
 
   const done = !task.done
   await ctx.db.patch(taskId, { done, completedAt: done ? Date.now() : undefined })
+}
+
+// Rename a task (Open or Done) so a typo or a Done record can be corrected.
+// Rejects an empty title with the same error `create` uses.
+export async function renameTask(
+  ctx: MutationCtx,
+  taskId: Id<'task'>,
+  title: string
+): Promise<void> {
+  const user = await requireUser(ctx)
+  const trimmed = title.trim()
+  if (!trimmed) throw new Error('A task needs a title.')
+  const task = await requireOwnedTask(ctx, user, taskId)
+
+  await ctx.db.patch(task._id, { title: trimmed })
+}
+
+// Hard-delete an Open task. A Done task is kept as a record: it must be reopened
+// first. Ownership is checked before the state, so another member's task never
+// leaks its existence.
+export async function removeTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
+  const user = await requireUser(ctx)
+  const task = await requireOwnedTask(ctx, user, taskId)
+  if (task.done) throw new Error('Reopen the task before deleting it')
+
+  await ctx.db.delete(task._id)
 }
 
 async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
   const user = await getMe(ctx)
   if (!user) throw new Error('Not authenticated')
   return user
+}
+
+// Same error for missing or someone else's task: never leak that it exists.
+async function requireOwnedTask(
+  ctx: MutationCtx,
+  user: Doc<'users'>,
+  taskId: Id<'task'>
+): Promise<Doc<'task'>> {
+  const task = await ctx.db.get(taskId)
+  if (!task || task.userId !== user._id) throw new Error('Task not found')
+  return task
 }
 
 function toTask(task: Doc<'task'>): Task {
