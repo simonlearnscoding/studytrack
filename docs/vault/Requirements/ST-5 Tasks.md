@@ -21,7 +21,6 @@ the owner's own management. Making them visible to the room is ST-6. Spec:
 - private: only the owner reads or writes their tasks (auth on every function)
 
 Documented but **out of scope** for now: editing a task's title, and deleting
-tasks. (Delete would be permitted for Open tasks only; Done tasks are kept as
-history.)
+tasks. (Delete works on both Open and Done tasks.)
 
 Blocked by: ST-1.

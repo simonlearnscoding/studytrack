@@ -19,9 +19,8 @@ Vocabulary: `GLOSSARY.md` (Task, Open, Done). Domain: `packages/backend/convex/t
 1. As a member, I want to fix a typo in a task title, so that my list reads right.
 2. As a member, I want to rename a Done task too, so that my record of what I did is accurate.
 3. As a member, I want to delete an Open task I added by mistake or no longer need, so that my list stays honest.
-4. As a member, I want a Done task kept, so that what I finished stays part of my record (and, later, the timeline markers in [[ST-6 Task visibility]]).
-5. As a member, I want to remove a Done task I ticked by mistake by reopening it first and then deleting it, so that mistakes are fixable without making Done disposable.
-6. As a member, I want nobody else to be able to rename or delete my tasks.
+4. As a member, I want to delete a Done task directly too, so that I can remove a mistaken or unwanted tick without reopening it first.
+5. As a member, I want nobody else to be able to rename or delete my tasks.
 
 ## Implementation Decisions
 
@@ -30,20 +29,19 @@ Vocabulary: `GLOSSARY.md` (Task, Open, Done). Domain: `packages/backend/convex/t
   - `rename({ taskId, title })` trims the title. An empty title is rejected with
     the same `Error('A task needs a title.')` that `create` uses. It works on
     Open and Done tasks.
-  - `remove({ taskId })` hard-deletes an **Open** task. Called on a Done task, it
-    throws `Error('Reopen the task before deleting it')`.
+  - `remove({ taskId })` hard-deletes an **Open or Done** task.
   - Both reuse the ownership check from `toggleTask`. Someone else's task gets
     the same `Error('Task not found')`, so its existence never leaks.
 - **Decided — UI in `task-row.tsx`.**
   - The whole row stays the toggle.
   - Add a trailing actions area that appears on row hover or focus. It must not
     toggle when clicked (`stopPropagation`).
-  - The actions are ✏️ (rename) and 🗑 (delete). Delete is shown on Open rows
-    only.
+  - The actions are ✏️ (rename) and 🗑 (delete). Delete is shown on all rows,
+    Open and Done.
   - Rename swaps the title for an inline `<input>`. Enter or blur saves,
     Escape cancels, and an empty value reverts.
-  - Delete has no confirm dialog. The task is Open, so little is lost, and a
-    confirm would slow down the common case.
+  - Delete has no confirm dialog — a mistake is cheap to re-add, and a confirm
+    would slow down the common case.
   - Use `lucide-react` icons (`Pencil`, `Trash2`), matching the existing `Check`.
 - **Decided — wire through `useMyTasks`** in `tasks/hooks.ts`: expose `rename`
   and `remove` next to `create` and `toggle`. Don't add optimistic updates. The
@@ -56,7 +54,7 @@ Vocabulary: `GLOSSARY.md` (Task, Open, Done). Domain: `packages/backend/convex/t
 - rename works on Open and Done tasks;
 - an empty or whitespace-only title is rejected;
 - removing an Open task deletes it;
-- removing a Done task throws;
+- removing a Done task deletes it;
 - rename and remove on another user's task fail as "not found";
 - an unauthenticated caller is rejected.
 
@@ -65,6 +63,10 @@ Vocabulary: `GLOSSARY.md` (Task, Open, Done). Domain: `packages/backend/convex/t
 _Implemented on `st-16`, merged to `spqrbot-26` and deployed to prod on
 2026-10-13; backend and web suites green. The in-rail interaction is unverified
 (no web test runner)._
+
+_Later that day the Done-deletion guard was removed (commit `0896b09`): a Done
+task can now be deleted directly, reversing the original "reopen first" rule
+above._
 
 - [x] `rename` and `remove` implemented and tested as above.
 - [ ] Rename and delete work in the self rail without toggling the row.

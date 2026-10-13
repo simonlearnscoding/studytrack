@@ -73,7 +73,7 @@ studies.
 - **Done is reversible**: toggling Open→Done stamps `completedAt`; Done→Open
   clears it. There is no separate "complete" operation.
 - **Edit and delete are documented, not built**: a later version may rename a task
-  and delete an Open one; Done tasks are kept as history.
+  and delete an Open or Done one.
 
 ## Testing Decisions
 
@@ -90,7 +90,7 @@ studies.
 
 ## Out of Scope
 
-- Editing a task's title; deleting tasks (Open only) — documented, deferred.
+- Editing a task's title; deleting tasks (Open or Done) — documented, deferred.
 - The backlog view: older, not-today tasks.
 - Room task counts and timeline markers ([[ST-6 Task visibility]]).
 - The Deep-focus leaderboard, streaks and heatmaps (ST-7/ST-8).
