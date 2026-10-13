@@ -7,13 +7,11 @@ import { useState } from 'react'
 import { Button } from '~/components/ui/button'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
-import { MotivationCard } from './motivation-card'
-import { StatsCard } from './stats-card'
 import { TaskList } from './tasks/task-list'
 
 // The personal rail: the manual time tracker (start/stop; the live elapsed figure
-// ticks against the client clock, never the server's), the private task list,
-// and the presentational stats and motivation cards.
+// ticks against the client clock, never the server's) and the private task list.
+// Personal stats live on the room's member card now, not here.
 export function SelfPanel() {
   const { user } = useUser()
   const mounted = useMounted()
@@ -40,8 +38,8 @@ export function SelfPanel() {
   // hydration-safe default.
   const name = mounted ? (user?.fullName ?? user?.username ?? undefined) : undefined
 
-  // `lg:h-full` lets the task list grow into the height the other cards leave
-  // over, pinning stats and motivation to the bottom of the rail.
+  // `lg:h-full` lets the task list grow into the full rail height now that the
+  // stats and motivation cards are gone.
   return (
     <div className="flex flex-col gap-6 lg:h-full">
       <div className="flex flex-col gap-3">
@@ -74,8 +72,6 @@ export function SelfPanel() {
         </div>
       </div>
       <TaskList />
-      <StatsCard />
-      <MotivationCard />
     </div>
   )
 }

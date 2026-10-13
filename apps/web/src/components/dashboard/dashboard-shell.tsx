@@ -17,7 +17,7 @@ export function DashboardShell({ room, self }: { room: ReactNode; self: ReactNod
         <img src={mountains} alt="" className="h-full w-full object-cover opacity-25 blur-sm" />
         <div className="absolute inset-0 bg-gradient-to-l from-transparent via-background/70 to-background" />
       </div>
-      <div className="relative flex flex-col gap-10 px-4 py-8 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-0 lg:p-0">
+      <div className="relative flex flex-col gap-10 px-4 py-8 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-0 lg:p-0">
         <section className="order-2 min-w-0 lg:order-none lg:px-8 lg:py-8">{room}</section>
         <aside className="order-1 flex min-w-0 flex-col gap-6 lg:order-none lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:border-l lg:border-border lg:bg-card/50 lg:p-6">
           {self}

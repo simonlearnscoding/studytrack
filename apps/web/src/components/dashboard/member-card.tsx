@@ -1,4 +1,9 @@
 import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
+import {
+  focusRate,
+  memberFocusMs,
+  memberSpanTotalMs,
+} from '@studytrack/backend/convex/sessions/metrics'
 import { formatDuration, memberTotalMs } from '@studytrack/backend/convex/sessions/util'
 import { cn } from '~/lib/utils'
 import { MemberTimeline } from './member-timeline'
@@ -15,6 +20,7 @@ export function MemberCard({
   const name = member.name ?? member.discordId
   const total = formatDuration(memberTotalMs(member, now))
   const sessions = member.sessions.length
+  const focus = focusRate(memberFocusMs(member, now), memberSpanTotalMs(member, now))
 
   return (
     <article className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-muted-foreground/30">
@@ -27,6 +33,7 @@ export function MemberCard({
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {sessions} {sessions === 1 ? 'session' : 'sessions'} today
+            {focus !== null && ` · ${Math.round(focus * 100)}% focus`}
           </p>
         </div>
         <div className="shrink-0 text-right">
