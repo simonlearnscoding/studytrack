@@ -1,14 +1,12 @@
 ---
 id: ST-15
-status: todo
+status: in-review
 type: bug
 priority: B
 area: bugs
 ---
 
 # ST-15 Timeline segments are rounded at every mode change
-
-#ready-for-agent
 
 Source: [[general-ideas]] ("the progress bar of everyone should only be round at
 the end or start, not on the transition between two states").
@@ -45,6 +43,10 @@ partials therefore both round their touching ends.
 - `min-w-[4px]` stays as it is.
 
 ## Verification
+
+_Implemented on `st-15`, merged into `integration`. `pnpm lint`, `pnpm typecheck`
+and `pnpm format:check` pass. The visual cases below are unverified (no browser
+in the build session)._
 
 `apps/web` has no test runner, and adding one is out of scope. Verify visually
 with `pnpm dev`:

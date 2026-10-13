@@ -1,14 +1,12 @@
 ---
 id: ST-16
-status: todo
+status: in-review
 type: requirement
 priority: B
 area: requirements
 ---
 
 # ST-16 Edit and delete tasks
-
-#ready-for-agent
 
 Source: [[general-ideas]] ("I should be able to edit and delete Tasks"). This
 was already promised as "documented, not built" in [[Tasks spec]] story 20. This
@@ -64,9 +62,12 @@ Vocabulary: `GLOSSARY.md` (Task, Open, Done). Domain: `packages/backend/convex/t
 
 ## Acceptance Criteria
 
-- [ ] `rename` and `remove` implemented and tested as above.
+_Implemented on `st-16`, merged into `integration`; backend and web suites green.
+The in-rail interaction is unverified (no web test runner)._
+
+- [x] `rename` and `remove` implemented and tested as above.
 - [ ] Rename and delete work in the self rail without toggling the row.
-- [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` pass.
+- [x] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` pass.
 
 ## Out of Scope
 

@@ -26,21 +26,21 @@ Build order (each task notes its `Blocked by`). Specs:
 7. [[ST-7 Leaderboard by Deep focus]] — todo (deferred)
 8. [[ST-8 Personal rail]] — todo (deferred)
 
-## Now (agent-ready)
+## Now (shipped, in review)
 
-Independent unless noted. Map: [[Roadmap]].
+Merged on the `integration` branch; pending the prod deploy. Map: [[Roadmap]].
 
-1. [[ST-15 Timeline segment rounding]]: todo · #ready-for-agent
-2. [[ST-16 Edit and delete tasks]]: todo · #ready-for-agent
-3. [[Daily totals]] (ST-11): todo · #ready-for-agent
-4. [[Weekly and monthly leaderboard]] (ST-12): todo · #ready-for-agent · Blocked by ST-11
+1. [[ST-15 Timeline segment rounding]]: in-review
+2. [[ST-16 Edit and delete tasks]]: in-review
+3. [[Daily totals]] (ST-11): in-review
+4. [[Weekly and monthly leaderboard]] (ST-12): in-review
 
 ## Visibility
 
 Build order (each task notes its `Blocked by`). Map: [[Visibility-moc]].
 
-1. [[Daily totals]] (ST-11): todo · #ready-for-agent
-2. [[Weekly and monthly leaderboard]] (ST-12): todo · #ready-for-agent
+1. [[Daily totals]] (ST-11): in-review
+2. [[Weekly and monthly leaderboard]] (ST-12): in-review
 3. [[Consistency heatmap]] (ST-13): todo · #needs-triage
 4. [[Streak]] (ST-14): todo · #needs-triage
 

@@ -1,14 +1,12 @@
 ---
 id: ST-12
-status: todo
+status: in-review
 type: requirement
 priority: A
 area: requirements
 ---
 
 # ST-12 Weekly and monthly leaderboard
-
-#ready-for-agent
 
 The Discord board grows from one embed to three: **Today**, **This week** and
 **This month**. All three sit in one message that the bot edits in place every
@@ -121,13 +119,16 @@ existing clear / post / edit / self-heal loop.
 
 ## Acceptance Criteria
 
-- [ ] `getBoards` replaces `getToday`, and the tests pass.
+_Implemented on `st-11-12` on top of ST-11, merged into `integration`; backend
+and bot suites green. Discord spot checks stay open until the prod rollout._
+
+- [x] `getBoards` replaces `getToday`, and the tests pass.
 - [ ] The Discord channel shows one message with three embeds that refresh every
       minute.
 - [ ] On a Monday, the Week board equals the Today board.
 - [ ] Spot check: a member's Week Deep focus equals the sum of their Daily totals
       since Monday plus today's live value.
-- [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` pass.
+- [x] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` pass.
 
 ## Out of Scope
 

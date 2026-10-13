@@ -1,14 +1,12 @@
 ---
 id: ST-11
-status: todo
+status: in-review
 type: requirement
 priority: A
 area: requirements
 ---
 
 # ST-11 Daily totals
-
-#ready-for-agent
 
 One stored row per member per closed Day: their Study time, Deep focus and Total
 time. Weekly and monthly boards, the heatmap and the Streak all become cheap,
@@ -145,14 +143,17 @@ deployment and spot-check a known Day against the dashboard.
 
 ## Acceptance Criteria
 
+_Implemented on `st-11-12`, merged into `integration`; backend suite green (115
+tests). Deploy and backfill items stay open until the prod rollout._
+
 - [ ] `dailyTotal` table and indexes deployed.
-- [ ] `rollupDay`, `rollupRecent`, `backfill` and `sumDailyTotals` implemented
+- [x] `rollupDay`, `rollupRecent`, `backfill` and `sumDailyTotals` implemented
       and tested as above.
 - [ ] Cron registered. On dev, after midnight, yesterday's rows appear within a
       minute.
 - [ ] Backfill run on prod. For a sampled past Day, the rows match that Day's
       dashboard totals within a minute per member.
-- [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck` and
+- [x] `pnpm format:check`, `pnpm lint`, `pnpm typecheck` and
       `pnpm --filter @studytrack/backend test` pass.
 
 ## Out of Scope

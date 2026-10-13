@@ -8,8 +8,7 @@ How a member's study compares with others' over a Period. This is the
 leaderboard's job, and it lives in Discord. It **never** shows a member's own
 record; that is [[Consistency-moc]].
 
-- [[Weekly and monthly leaderboard]] (ST-12): todo · #ready-for-agent ·
-  Blocked by [[Daily totals]]
+- [[Weekly and monthly leaderboard]] (ST-12): in-review
 
 Parked in this chapter:
 

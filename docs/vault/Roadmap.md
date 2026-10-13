@@ -23,18 +23,17 @@ the heart of the app in [[general-ideas]], and it has the least evidence, so it
 needs grilling and a prototype, not tickets. Then come back with the heatmap
 bet: a measured test of whether a record of showing up brings people back.
 
-## Now: Track A, agent-ready (#ready-for-agent)
+## Now: Track A, shipped (in review)
 
-These are independent unless arrows say otherwise. They can run as parallel
-agent sessions.
+All four are implemented and merged on the `integration` branch, awaiting the
+prod deploy and a human pass. They were independent, so they ran as parallel
+agent sessions in separate worktrees.
 
-1. [[ST-15 Timeline segment rounding]]: bug, about one hour. A visible polish
-   win.
-2. [[ST-16 Edit and delete tasks]]: small, and already promised in
-   [[Tasks spec]].
-3. [[Daily totals]] (ST-11), then [[Weekly and monthly leaderboard]] (ST-12).
-   This is the main deliverable. ST-12 is blocked by ST-11; ship them together
-   or back to back.
+1. [[ST-15 Timeline segment rounding]]: in-review. Visible polish win.
+2. [[ST-16 Edit and delete tasks]]: in-review. Promised in [[Tasks spec]].
+3. [[Daily totals]] (ST-11), then [[Weekly and monthly leaderboard]] (ST-12):
+   both in-review. ST-12 was blocked by ST-11; shipped back to back on one
+   branch. This is the main deliverable.
 
 ## Next: needs one owner session first
 

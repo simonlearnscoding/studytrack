@@ -48,17 +48,26 @@ pnpm --filter @studytrack/backend deploy
 ```
 
 Skip this after a backend change and the bot logs `Server Error` from its
-leaderboard query (it calls `api.leaderboard.getToday`) until you deploy. The
+leaderboard query (it calls `api.leaderboard.getBoards`) until you deploy. The
 command pops a TTY confirmation; run it interactively (or through `script`).
 
-It targets prod because `CONVEX_DEPLOYMENT` is set in
-`packages/backend/.env.local`. It prints the prod URL when done. The first time
+It targets whatever `CONVEX_DEPLOYMENT` selects in
+`packages/backend/.env.local` and prints that deployment's URL when done. That
+value is **not** prod by default — check it first (prod is
+`prod:dutiful-poodle-591`); a `CONVEX_DEPLOY_KEY` for the prod deployment, or
+that `CONVEX_DEPLOYMENT` value, is what actually points the deploy at prod.
+ST-11/ST-12 ship together: deploy the backend before the bot, because the new
+bot calls `getBoards`, then run the one-off backfill:
+
+````bash
+npx convex run dailyTotals:backfill   # once, after the ST-11 deploy
+``` The first time
 (set, or when the values change):
 
 ```bash
 npx convex env set --prod CLERK_JWT_ISSUER_DOMAIN <issuer>
 npx convex env set --prod BOT_SHARED_SECRET <secret>
-```
+````
 
 Convex refuses to deploy if `auth.config.ts` references an env var that is unset
 on prod, so set these before the first deploy.

@@ -9,12 +9,20 @@ Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 - `users`: `by_clerkUserId` (clerkUserId) · `by_discordId` (discordId)
 - `session`: `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, status)
 - `sessionPartial`: `by_sessionId` (sessionId, status) · `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, startedAt) · `by_startedAt` (startedAt)
+- `dailyTotal`: `by_dayStart` (dayStart) · `by_memberKey` (memberKey, dayStart)
 
 A **session** is the whole sitting; its **partials** are the stretches of constant
 voice state. A partial's `mode` is one of `voice`, `camera`, `screenShare`,
 `cameraAndScreenShare`, `break` (a pause), or `manual` (declared from the web).
 `discordId`/`guildId` are optional so a manually tracked session, which has no
 Discord evidence, can exist.
+
+A **dailyTotal** row is one member's Study time, Deep focus and Total time for one
+closed Day, keyed by `memberKey` (`discordId ?? String(userId)`). It is a derived
+cache, not a source of truth: `rollupDay` recomputes a Day from raw partials,
+clipped to `[dayStart, dayEnd)`; a cron (`1 * * * *`) re-rolls the last two closed
+Days; `backfill` fills history. Every Period and Consistency read is a sum over
+these rows, so no reader rescans partials.
 
 > **Guild settings removed for now.** Every voice channel counts as a study
 > channel, so there is no per-server config table.
@@ -63,8 +71,29 @@ erDiagram
     session ||--o{ sessionPartial : "sessionId"
 ```
 
-## Planned (ST-5)
+## Derived (ST-11)
 
-A `task` table will hold each member's private list: `title`, `done`,
+`dailyTotal` is the one derived table, written only by the `dailyTotals` domain:
+
+```mermaid
+erDiagram
+    dailyTotal {
+        Id _id PK
+        string memberKey "discordId or String(userId)"
+        string discordId "optional"
+        Id userId FK "optional"
+        number dayStart "00:00 Europe/Zurich"
+        number studyMs "non-break partials"
+        number deepFocusMs "camera / cameraAndScreenShare"
+        number totalMs "session span incl. Pauses"
+    }
+```
+
+`dayStart` is derivable from `_creationTime`; `memberKey` soft-links to `users`
+(it is not a hard foreign key).
+
+## Tasks (ST-5, shipped)
+
+The `task` table holds each member's private list: `title`, `done`,
 `completedAt` (optional), owner `userId`. Only counts are shared with the room
-(see `docs/adr/0002`).
+(see `docs/adr/0002`). Rename/delete landed in ST-16.

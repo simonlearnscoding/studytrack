@@ -20,14 +20,14 @@ Map of content for feature requirements. Link requirement notes here with their
 - [[ST-7 Leaderboard by Deep focus]] — todo (deferred)
 - [[ST-8 Personal rail]] — todo (deferred)
 - [[ST-9 Discord daily leaderboard]] — todo · `#ready-for-agent`
-- [[ST-16 Edit and delete tasks]] — todo · #ready-for-agent
+- [[ST-16 Edit and delete tasks]] — in-review
 
 ## Visibility
 
 How studytrack shows effort over time. Sprint map: [[Visibility-moc]].
 Direction: [[Roadmap]].
 
-- [[Daily totals]] (ST-11): todo · #ready-for-agent
-- [[Weekly and monthly leaderboard]] (ST-12): todo · #ready-for-agent
+- [[Daily totals]] (ST-11): in-review
+- [[Weekly and monthly leaderboard]] (ST-12): in-review
 - [[Consistency heatmap]] (ST-13): todo · #needs-triage
 - [[Streak]] (ST-14): todo · #needs-triage
