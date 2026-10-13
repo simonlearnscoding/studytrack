@@ -1,4 +1,4 @@
-import { Client, DiscordAPIError, EmbedBuilder, TextChannel } from 'discord.js'
+import { Client, DiscordAPIError, EmbedBuilder, Message, TextChannel } from 'discord.js'
 import type { ConvexHttpClient } from 'convex/browser'
 import { api } from '@studytrack/backend/convex/_generated/api'
 import type {
@@ -116,9 +116,11 @@ export function formatDurationShort(ms: number): string {
   return `${totalMinutes}m`
 }
 
-// On start: clear the bot-owned channel, post a fresh three-embed board, then
-// keep editing that same message every minute. The message id lives only in
-// memory — a restart clears and reposts (ST-9).
+// On start: clear the bot-owned channel, post a fresh three-message board (one
+// embed each), then keep editing those same messages every minute. Discord only
+// renders the first embed reliably when several are stacked in one message, so
+// each board gets its own message. The message ids live only in memory — a
+// restart clears and reposts (ST-9).
 export async function startLeaderboard(
   client: Client,
   convex: ConvexHttpClient,
@@ -152,25 +154,37 @@ export async function startLeaderboard(
     })
   }
 
-  let message = await channel.send({ embeds: await render() })
+  let messages = await postBoard(channel, await render())
   console.log(`[leaderboard] posted in #${channel.name}`)
 
   const update = async () => {
-    try {
-      await message.edit({ embeds: await render() })
-    } catch (error) {
-      // The message was deleted: repost so the board heals itself.
-      if (error instanceof DiscordAPIError && error.code === UNKNOWN_MESSAGE) {
-        message = await channel.send({ embeds: await render() })
-        return
+    const embeds = await render()
+    for (const [index, embed] of embeds.entries()) {
+      try {
+        await messages[index].edit({ embeds: [embed] })
+      } catch (error) {
+        // The message was deleted: repost so the board heals itself.
+        if (error instanceof DiscordAPIError && error.code === UNKNOWN_MESSAGE) {
+          messages[index] = await channel.send({ embeds: [embed] })
+          continue
+        }
+        console.error('[leaderboard] update failed', error)
       }
-      console.error('[leaderboard] update failed', error)
     }
   }
 
   setInterval(() => {
     void update()
   }, UPDATE_INTERVAL_MS)
+}
+
+// One message per board, sent in order so Today stays above Week above Month.
+async function postBoard(channel: TextChannel, embeds: EmbedBuilder[]): Promise<Message[]> {
+  const messages: Message[] = []
+  for (const embed of embeds) {
+    messages.push(await channel.send({ embeds: [embed] }))
+  }
+  return messages
 }
 
 function boardEmbed(opts: {
