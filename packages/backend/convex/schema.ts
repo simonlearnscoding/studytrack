@@ -52,6 +52,23 @@ export default defineSchema({
     .index('by_userId', ['userId', 'startedAt'])
     .index('by_startedAt', ['startedAt']),
 
+  // One closed Day's totals for one member (see GLOSSARY: Daily total, Study
+  // time, Deep focus, Total time). A cron keeps these current; readers sum them
+  // instead of rescanning raw partials. The member key follows the same rule the
+  // dashboard and bot use: `discordId ?? String(userId)`, so manual and Discord
+  // time land in one row per person per Day.
+  dailyTotal: defineTable({
+    memberKey: v.string(),
+    discordId: v.optional(v.string()),
+    userId: v.optional(v.id('users')),
+    dayStart: v.number(),
+    studyMs: v.number(),
+    deepFocusMs: v.number(),
+    totalMs: v.number(),
+  })
+    .index('by_dayStart', ['dayStart'])
+    .index('by_memberKey', ['memberKey', 'dayStart']),
+
   // A private item on a member's study list. Only the owner reads or writes it;
   // the room sees counts, never titles (see docs/adr/0002). `completedAt` is set
   // when the task is marked done and cleared when it is reopened.

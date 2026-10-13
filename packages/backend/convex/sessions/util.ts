@@ -56,6 +56,35 @@ export function startOfDay(now: number, timeZone: string): number {
   return utcMidnight - zoneOffsetMs(new Date(firstPass), timeZone)
 }
 
+// The start of the Day after `dayStart`, DST-safe. Adding 36h overshoots any
+// real day (max 25h) but stays inside the next one, so correcting to local
+// midnight lands on the true boundary.
+export function nextDayStart(dayStart: number, timeZone: string): number {
+  return startOfDay(dayStart + 36 * 60 * 60 * 1000, timeZone)
+}
+
+// The start of the Day before `dayStart`, DST-safe. Subtracting 12h lands in the
+// previous Day for any real day length, so correcting to local midnight is safe.
+export function previousDayStart(dayStart: number, timeZone: string): number {
+  return startOfDay(dayStart - 12 * 60 * 60 * 1000, timeZone)
+}
+
+// Monday 00:00 of the Week containing `now`, DST-safe. Walk back whole calendar
+// days in UTC, then correct to local midnight.
+export function startOfWeek(now: number, timeZone: string): number {
+  const { year, month, day } = zonedParts(now, timeZone)
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+  const daysSinceMonday = (weekday + 6) % 7
+  const monday = Date.UTC(year, month - 1, day - daysSinceMonday)
+  return startOfDay(monday, timeZone)
+}
+
+// 00:00 on the 1st of the Month containing `now`.
+export function startOfMonth(now: number, timeZone: string): number {
+  const { year, month } = zonedParts(now, timeZone)
+  return startOfDay(Date.UTC(year, month - 1, 1), timeZone)
+}
+
 function zonedParts(instant: number, timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,

@@ -5,10 +5,14 @@ import {
   DASHBOARD_TIME_ZONE,
   formatDuration,
   memberTotalMs,
+  nextDayStart,
   partialDurationMs,
+  previousDayStart,
   sessionStudyMs,
   sortMembers,
   startOfDay,
+  startOfMonth,
+  startOfWeek,
 } from './util'
 
 const M = 60 * 1000
@@ -137,5 +141,64 @@ describe('startOfDay', () => {
   it('resolves local midnight in winter (UTC+1)', () => {
     const now = Date.UTC(2026, 0, 15, 11, 0, 0) // 12:00 Zurich
     expect(startOfDay(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 0, 14, 23, 0, 0))
+  })
+})
+
+describe('nextDayStart / previousDayStart', () => {
+  it('walks to the neighbouring midnights on an ordinary day', () => {
+    const day = startOfDay(Date.UTC(2026, 5, 15, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(day).toBe(Date.UTC(2026, 5, 14, 22, 0, 0))
+    expect(nextDayStart(day, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 15, 22, 0, 0))
+    expect(previousDayStart(day, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 13, 22, 0, 0))
+  })
+
+  it('handles the 23-hour spring-forward day (2026-03-29)', () => {
+    const day = startOfDay(Date.UTC(2026, 2, 29, 12, 0, 0), DASHBOARD_TIME_ZONE)
+    const next = nextDayStart(day, DASHBOARD_TIME_ZONE)
+    expect(next - day).toBe(23 * H)
+    expect(previousDayStart(next, DASHBOARD_TIME_ZONE)).toBe(day)
+  })
+
+  it('handles the 25-hour fall-back day (2026-10-25)', () => {
+    const day = startOfDay(Date.UTC(2026, 9, 25, 12, 0, 0), DASHBOARD_TIME_ZONE)
+    const next = nextDayStart(day, DASHBOARD_TIME_ZONE)
+    expect(next - day).toBe(25 * H)
+    expect(previousDayStart(next, DASHBOARD_TIME_ZONE)).toBe(day)
+  })
+})
+
+describe('startOfWeek', () => {
+  it('returns the Monday midnight of the Week', () => {
+    // Wednesday 2026-06-17 12:00 Zurich still belongs to the Week of Mon 15 June.
+    const now = Date.UTC(2026, 5, 17, 10, 0, 0)
+    expect(startOfWeek(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 14, 22, 0, 0))
+  })
+
+  it('is a no-op on a Monday', () => {
+    const now = Date.UTC(2026, 5, 15, 10, 0, 0)
+    expect(startOfWeek(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 14, 22, 0, 0))
+  })
+
+  it('crosses a DST change without drifting', () => {
+    // Sunday 2026-03-29 belongs to the Week starting Mon 23 March (winter, UTC+1).
+    const week = startOfWeek(Date.UTC(2026, 2, 29, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(week).toBe(Date.UTC(2026, 2, 22, 23, 0, 0))
+    // The next Monday is 2026-03-30, after the spring-forward change.
+    const nextWeek = startOfWeek(Date.UTC(2026, 2, 30, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(nextWeek).toBe(Date.UTC(2026, 2, 29, 22, 0, 0))
+    // Seven calendar days, one of them an hour short.
+    expect(nextWeek - week).toBe(7 * 24 * H - H)
+  })
+})
+
+describe('startOfMonth', () => {
+  it('returns 00:00 on the 1st', () => {
+    const now = Date.UTC(2026, 5, 15, 10, 0, 0)
+    expect(startOfMonth(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 4, 31, 22, 0, 0))
+  })
+
+  it('resolves the 1st across the fall-back change', () => {
+    const now = Date.UTC(2026, 9, 25, 10, 0, 0)
+    expect(startOfMonth(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 8, 30, 22, 0, 0))
   })
 })
