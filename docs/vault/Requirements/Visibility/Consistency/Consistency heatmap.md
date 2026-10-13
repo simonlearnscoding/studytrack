@@ -1,0 +1,105 @@
+---
+id: ST-13
+status: todo
+type: requirement
+priority: B
+area: requirements
+---
+
+# ST-13 Consistency heatmap
+
+#needs-triage
+
+A calendar heatmap of your own Study time: one square per Day, a year at a
+glance, private and web only. This is **the bet** of the Visibility sprint. The
+idea is that a truthful record of showing up brings members back on its own,
+with no ranking involved.
+
+Map: [[Visibility-moc]]. Chapter: [[Consistency-moc]]. Vocabulary: `GLOSSARY.md`
+(Consistency, Day, Daily total, Review view).
+
+## Why it is the bet
+
+Heatmaps were among the most-loved features of the owner's previous app, used
+by the same members. That is real evidence, but it comes from a different
+product. So we ship it with a test written down **before** building. That way
+the result can't be explained away afterwards.
+
+## Pre-registered test
+
+Run it for the first 14 days after the feature ships. It **passes** only if both
+of these happen:
+
+- **A**: the owner opens the Review view unprompted on at least 7 of the 14
+  days.
+- **B**: at least one other member mentions the heatmap or visibly uses it
+  (Discord message, screenshot, a question about it).
+
+If either fails, the bet failed. Then [[Streak]] is cut, and Consistency is
+re-grilled before anything else is built on it.
+
+Tally (tick each day you opened it unprompted):
+
+- [ ] D1 - [ ] D2 - [ ] D3 - [ ] D4 - [ ] D5 - [ ] D6 - [ ] D7
+- [ ] D8 - [ ] D9 - [ ] D10 - [ ] D11 - [ ] D12 - [ ] D13 - [ ] D14
+- Other member signal (who / when / what): …
+
+## What is decided
+
+- **Decided** — it encodes **Study time**, not Deep focus. Consistency is you vs
+  your past self, and Deep focus would punish members without a webcam.
+- **Decided** — web only. Discord never shows it. Discord shows Standing, and
+  the web is where you look back.
+- **Decided** — it lives in the **Review view**, not the Focus view. The Focus
+  view is about now, so at most a [[Streak]] token appears there.
+- **Decided** — no comparison, no ranking, no other members' heatmaps.
+- **Decided** — the data comes from [[Daily totals]] for past Days, plus today's
+  live Study time. Add a new authenticated query
+  `dailyTotals.listMine({ fromDayStart })`:
+  - It resolves the caller's `users` row to their member key, using the same rule
+    as ST-11.
+  - It reads `dailyTotal.by_memberKey` from `fromDayStart` onwards, bounded at
+    400 rows.
+  - It returns `{ dayStart, studyMs }[]`.
+- **Decided** — the grid has 53 week-columns with Monday at the top and the
+  current week on the right. Days before a member's first study are blank, not
+  zero.
+- **Decided** — the colour thresholds are fixed, not relative to your own best,
+  so a colour means the same amount of study forever. The buckets are 0,
+  under 30m, 30m–1h30, 1h30–3h, and 3h or more.
+- **Decided** — hovering a square shows a tooltip such as
+  `Tue 14 Oct · 2h15m study`.
+
+## What is still open (settle in one prototype session, then flip to #ready-for-agent)
+
+- **Leaning**: the Review view is a new `/review` route, with a two-link header
+  nav (Focus | Review) added to the dashboard shell. This is the first piece of
+  the Focus / Plan / Review navigation in [[Roadmap]], so it should be judged
+  visually before an agent builds it.
+- **Leaning**: a one-line summary above the grid, such as "142 Days studied in
+  the last year". It is a record, not a score, but the wording needs a look.
+- **Open**: the colour ramp. Should it reuse the mode colours (`mode-colors.ts`)
+  or use a single-hue ramp?
+- **Open**: on mobile, should the grid scroll horizontally or show fewer weeks?
+
+Recommended path: use the `prototype` skill to build a throwaway page with fake
+Daily totals. Decide the four items above. Then update this note and tag it
+#ready-for-agent.
+
+## Acceptance Criteria (once ready)
+
+- [ ] `/review` reachable from the Focus view header and back.
+- [ ] The heatmap renders the signed-in member's last 53 weeks, and today's
+      square updates live.
+- [ ] `listMine` is auth-checked and returns only the caller's rows. Tested with
+      `convex-test`.
+- [ ] Bucket mapping is a pure function with Vitest coverage, including the
+      bucket boundaries.
+
+## Out of Scope
+
+- Weekday × hour heatmap, session log, personal best. All parked in
+  [[Consistency-moc]].
+- Web Period leaderboards in the Review view. Parked in [[Standing-moc]].
+
+Blocked by: [[Daily totals]].

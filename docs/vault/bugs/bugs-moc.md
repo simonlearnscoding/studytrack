@@ -6,4 +6,4 @@ type: moc
 
 Open bug notes live here; each carries `status: todo`.
 
-_No bugs yet._
+- [[ST-15 Timeline segment rounding]]: todo · #ready-for-agent

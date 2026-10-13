@@ -94,3 +94,59 @@ _Avoid_: Pending, incomplete, active
 A task the member has marked complete, carrying the instant it was completed.
 Un-marking returns it to Open. Counted in "done today".
 _Avoid_: Completed, finished, closed
+
+## Visibility
+
+**Consistency**:
+The shape of a member's own study read against their own past — how regularly
+they show up over time. A member's history of themselves, never a comparison
+with anyone else. A Streak is one measure of Consistency, not a synonym for it.
+_Avoid_: Stats, progress, history
+
+**Standing**:
+How a member's study compares with other members' over a period — what the
+leaderboard shows. A comparison with others, never a member's own record.
+_Avoid_: Rank, score, position
+
+**Witness**:
+A member being seen by others to have shown up. About others' awareness of a
+member, not about comparing them with anyone.
+_Avoid_: Public, exposure, visibility
+
+**Symbiosis**:
+The group's study as a single shared effort — the sense that the room studies
+because it studies together, not as separate people.
+_Avoid_: Community, energy, vibe, culture
+
+**Day**:
+One calendar day in the shared Europe/Zurich timezone, midnight to midnight. The
+unit every period is built from; a Day is 23 or 25 hours across a DST change.
+_Avoid_: 24 hours, date
+
+**Period**:
+A calendar span the leaderboard is computed over: the current Day, the current
+Week (Monday to Sunday) or the current Month. Always calendar-aligned, never
+trailing — a Period resets, and that reset is the point.
+_Avoid_: Window, range, last 7 days
+
+**Daily total**:
+One member's Study time, Deep focus and Total time for one closed Day, stored as
+one row. Every Period and the Consistency views are sums or reads of Daily totals.
+_Avoid_: Rollup, aggregate, history
+
+**Streak**:
+The number of consecutive Days, ending today or yesterday, on which a member
+logged at least the threshold of Study time. One number; never ranked.
+_Avoid_: Chain, run, combo
+
+## Views
+
+**Focus view**:
+The page about _now_: the live room, your current Session, today's Tasks. The
+current dashboard is the Focus view.
+_Avoid_: Action panel, dashboard, home
+
+**Review view**:
+The page about _looking back_: your own Consistency, and the room's Standing over
+a Period. Not built yet.
+_Avoid_: Statistics, stats page, history
