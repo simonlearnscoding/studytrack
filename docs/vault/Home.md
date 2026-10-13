@@ -14,6 +14,7 @@ Build order (each task notes its `Blocked by`). Specs:
 [[Studytrack dashboard spec]], [[Tasks spec]].
 
 [[general-ideas]]
+
 1. [[ST-1 Dashboard shell]] — todo
 2. [[ST-2 Live room]] — todo
 3. [[ST-3 Manual tracking]] — done
