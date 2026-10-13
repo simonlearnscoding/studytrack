@@ -62,8 +62,9 @@ Vocabulary: `GLOSSARY.md` (Task, Open, Done). Domain: `packages/backend/convex/t
 
 ## Acceptance Criteria
 
-_Implemented on `st-16`, merged into `integration`; backend and web suites green.
-The in-rail interaction is unverified (no web test runner)._
+_Implemented on `st-16`, merged to `spqrbot-26` and deployed to prod on
+2026-10-13; backend and web suites green. The in-rail interaction is unverified
+(no web test runner)._
 
 - [x] `rename` and `remove` implemented and tested as above.
 - [ ] Rename and delete work in the self rail without toggling the row.

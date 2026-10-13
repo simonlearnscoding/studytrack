@@ -26,9 +26,19 @@ Build order (each task notes its `Blocked by`). Specs:
 7. [[ST-7 Leaderboard by Deep focus]] — todo (deferred)
 8. [[ST-8 Personal rail]] — todo (deferred)
 
+## Trunk (owner — next session)
+
+Map: [[Roadmap]]. The heart of the app, designed before it is built.
+
+1. Session feel: a `grilling` on "the soul of a shared Session", then a
+   `prototype` of the strongest candidate.
+
+See `docs/adr/0004-session-is-the-trunk.md`.
+
 ## Now (shipped, in review)
 
-Merged on the `integration` branch; pending the prod deploy. Map: [[Roadmap]].
+Merged to `spqrbot-26` and deployed to prod on 2026-10-13; awaiting the owner's
+pass. Map: [[Roadmap]].
 
 1. [[ST-15 Timeline segment rounding]]: in-review
 2. [[ST-16 Edit and delete tasks]]: in-review

@@ -4,56 +4,65 @@ type: moc
 
 # Roadmap
 
-Where studytrack goes next, and why in this order. **Now** items are tickets an
-agent can pick up today. **Next** items need one short session with the owner
-first. **Later** items are blurry on purpose; each says what would move it
-closer.
+Where studytrack goes next, and why in this order. **Now** items are what to
+pick up today (agent tickets, or the owner's next design session). **Next** items
+need one short owner session first. **Later** items are blurry on purpose; each
+says what would move it closer.
 
 Raw source: [[general-ideas]]. Vocabulary: `GLOSSARY.md`. Area maps:
 [[Visibility-moc]], [[Requirements-moc]], [[bugs-moc]].
 
+## North star
+
+Members keep coming back to study _together_, in shared Sessions. Every other
+view — Visibility, Review, Plan — exists to feed that one experience. Anyone
+wondering "why did the leaderboard ship before the Session?" should read
+`docs/adr/0004-session-is-the-trunk.md`.
+
 ## The direction in one paragraph
 
-Run two tracks in parallel. **Track A (agents):** ship what already has
-evidence: the weekly and monthly boards the members asked for, plus the two
-obvious fixes. It is cheap, it is proven, and it builds the Daily totals record
-that everything later needs. **Track B (owner):** use the time to design the
-thing that can't be delegated, which is how a Session should _feel_. That is
-the heart of the app in [[general-ideas]], and it has the least evidence, so it
-needs grilling and a prototype, not tickets. Then come back with the heatmap
-bet: a measured test of whether a record of showing up brings people back.
+Run two tracks in parallel. **Track B (owner) is the trunk:** design how a
+Session should _feel_ — the most important open question in the product, and the
+least evidenced, so it needs grilling and a prototype, not tickets. **Track A
+(agents) is the branches:** ship what already has evidence — the weekly and
+monthly boards the members asked for, plus the two obvious fixes. It is cheap,
+it is proven, and it builds the Daily totals record everything later needs.
+Then the heatmap: a look at whether a record of showing up brings people back.
 
-## Now: Track A, shipped (in review)
+## Now: Track B, the trunk (owner — start now)
 
-All four are implemented and merged on the `integration` branch, awaiting the
-prod deploy and a human pass. They were independent, so they ran as parallel
-agent sessions in separate worktrees.
+The trunk runs in parallel with Track A from the start. It has no evidence, so it
+is designed before it is built.
 
-1. [[ST-15 Timeline segment rounding]]: in-review. Visible polish win.
-2. [[ST-16 Edit and delete tasks]]: in-review. Promised in [[Tasks spec]].
-3. [[Daily totals]] (ST-11), then [[Weekly and monthly leaderboard]] (ST-12):
-   both in-review. ST-12 was blocked by ST-11; shipped back to back on one
-   branch. This is the main deliverable.
-
-## Next: needs one owner session first
-
-4. [[Consistency heatmap]] (ST-13): **the bet.** Most of it is decided. One
-   `prototype` session settles the Review view placement and the colours. It
-   ships with a 14-day pre-registered test.
-5. [[Streak]] (ST-14): only if the heatmap test passes.
-
-## Track B: owner design work (start now, in parallel)
-
-6. **Session feel.** _Leaning: this is the most important open question in the
-   product._ What makes studying in the room feel like _one Session together_?
+1. **Session feel.** _The most important open question in the product._ What
+   makes studying in the room feel like _one Session together_?
    - Candidates from the ramble: a shared timer or pomodoro, timeline bars that
      look like Sessions, and a hover card on a Session showing its duration,
      Tasks planned and Tasks done.
-   - **Unlock:** a `grilling` session on "what is the soul of a shared Session".
+   - **Next session:** a `grilling` on "what is the soul of a shared Session".
      Then a `prototype` of the strongest candidate, likely the shared timer,
      shown to two or three members.
    - **Why not tickets yet:** none of it has evidence. Building before the
      grill risks building the wrong heart.
+
+## Now: Track A, shipped (in review)
+
+All four are implemented, merged to `spqrbot-26` and deployed to prod on
+2026-10-13, awaiting the owner's pass. They were independent, so they ran as
+parallel agent sessions in separate worktrees.
+
+2. [[ST-15 Timeline segment rounding]]: in-review. Visible polish win.
+3. [[ST-16 Edit and delete tasks]]: in-review. Promised in [[Tasks spec]].
+4. [[Daily totals]] (ST-11), then [[Weekly and monthly leaderboard]] (ST-12):
+   both in-review. ST-12 was blocked by ST-11; shipped back to back on one
+   branch. This is the main deliverable of the branches.
+
+## Next: needs one owner session first
+
+5. [[Consistency heatmap]] (ST-13): most of it is decided. One `prototype`
+   session settles the Review view placement and the colours. Judge it by feel
+   once it is out — no pre-registered test, no gate.
+6. [[Streak]] (ST-14): build it after the heatmap, if it still feels worth it.
 
 ## Later: parked, blurry on purpose
 
@@ -120,3 +129,9 @@ Each item has a confidence tag, what it is, and what would move it closer.
   `in-review`.
 - [[ST-1 Dashboard shell]] and [[ST-2 Live room]] are `todo`, but the dashboard
   exists. Check whether they are `done` or `partial`.
+
+## Re-read this when
+
+- The Visibility branches (ST-11…ST-16) pass review and deploy.
+- The Session-soul grill and its prototype have run — the trunk gets a direction.
+- The heatmap has been out for a couple of weeks.

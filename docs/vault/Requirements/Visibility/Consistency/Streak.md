@@ -17,9 +17,9 @@ full record lives in the [[Consistency heatmap]].
 Map: [[Visibility-moc]]. Chapter: [[Consistency-moc]]. Vocabulary: `GLOSSARY.md`
 (Streak, Day, Study time).
 
-**Gate:** build this only if the [[Consistency heatmap]] bet passes. If members
-don't care about their own record, a counter over that record won't change
-that.
+**Build order:** after the [[Consistency heatmap]]; not gated on any test. If
+members don't care about their own record, a counter over it won't change that —
+so build it only if the heatmap still feels worth it.
 
 ## What is decided
 
@@ -43,4 +43,4 @@ that.
   quietly reset? Leaning towards a quiet reset, because shame makes people stop
   coming.
 
-Blocked by: [[Daily totals]], and the pass of the [[Consistency heatmap]] test.
+Blocked by: [[Daily totals]]. Build after the [[Consistency heatmap]].

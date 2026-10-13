@@ -19,7 +19,7 @@ two lenses share a surface.
 | Lens            | Looks at              | Surface                          | Tag                                  |
 | --------------- | --------------------- | -------------------------------- | ------------------------------------ |
 | **Standing**    | you vs others         | Discord (group, glanceable)      | **Decided**: extend the board        |
-| **Consistency** | you vs your past self | Web, Review view (private, deep) | **Decided**: the bet                 |
+| **Consistency** | you vs your past self | Web, Review view (private, deep) | **Decided**: the record              |
 | **Witness**     | others seeing you     | none                             | **Parked**: no evidence; can exhaust |
 | **Symbiosis**   | the room as one       | none                             | **Parked**: needs a record to share  |
 
@@ -45,12 +45,12 @@ two lenses share a surface.
 | 1   | [[Daily totals]] (ST-11)                   | [[Foundation-moc]]  | in-review | —             | —                 |
 | 2   | [[Weekly and monthly leaderboard]] (ST-12) | [[Standing-moc]]    | in-review | —             | ST-11 (shipped)   |
 | 3   | [[Consistency heatmap]] (ST-13)            | [[Consistency-moc]] | todo      | #needs-triage | ST-11 + prototype |
-| 4   | [[Streak]] (ST-14)                         | [[Consistency-moc]] | todo      | #needs-triage | ST-13 test passes |
+| 4   | [[Streak]] (ST-14)                         | [[Consistency-moc]] | todo      | #needs-triage | ST-13 shipped     |
 
 How we judge it:
 
 - Tickets 1 and 2 answer an explicit request, so no test is needed.
-- Ticket 3 is a bet with a pre-registered 14-day test, written into its note.
+- Ticket 3 is judged by feel once it is out; no pre-registered test, no gate.
 
 ## Calls made overnight (confirmed and shipped)
 
@@ -71,7 +71,8 @@ and the glossary change below.
       once, on the last embed.
 - [ ] **Heatmap thresholds are fixed:** 0 / under 30m / up to 1h30 / up to 3h /
       3h or more. Study time, 53 weeks.
-- [ ] **Streak is gated on the heatmap test passing.**
+- [x] **Streak is built after the heatmap, not gated on a test.** (Changed
+      2026-10-13: go by feel, don't over-formalise QA.)
 - [x] **New glossary terms:** Day, Period, Daily total, Streak, Focus view,
       Review view. Consistency no longer lists "Streak" as a word to avoid; a
       Streak is now its own term.

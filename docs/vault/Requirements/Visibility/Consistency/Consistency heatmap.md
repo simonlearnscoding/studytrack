@@ -11,38 +11,24 @@ area: requirements
 #needs-triage
 
 A calendar heatmap of your own Study time: one square per Day, a year at a
-glance, private and web only. This is **the bet** of the Visibility sprint. The
-idea is that a truthful record of showing up brings members back on its own,
-with no ranking involved.
+glance, private and web only. The idea is that a truthful record of showing up
+brings members back on its own, with no ranking involved.
 
 Map: [[Visibility-moc]]. Chapter: [[Consistency-moc]]. Vocabulary: `GLOSSARY.md`
 (Consistency, Day, Daily total, Review view).
 
-## Why it is the bet
+## Why we ship it
 
 Heatmaps were among the most-loved features of the owner's previous app, used
-by the same members. That is real evidence, but it comes from a different
-product. So we ship it with a test written down **before** building. That way
-the result can't be explained away afterwards.
+by the same members. That evidence comes from a different product, so it is not
+proof — but it is enough to build, and we judge it by feel once it is out rather
+than by a formal test.
 
-## Pre-registered test
+## How we'll judge it
 
-Run it for the first 14 days after the feature ships. It **passes** only if both
-of these happen:
-
-- **A**: the owner opens the Review view unprompted on at least 7 of the 14
-  days.
-- **B**: at least one other member mentions the heatmap or visibly uses it
-  (Discord message, screenshot, a question about it).
-
-If either fails, the bet failed. Then [[Streak]] is cut, and Consistency is
-re-grilled before anything else is built on it.
-
-Tally (tick each day you opened it unprompted):
-
-- [ ] D1 - [ ] D2 - [ ] D3 - [ ] D4 - [ ] D5 - [ ] D6 - [ ] D7
-- [ ] D8 - [ ] D9 - [ ] D10 - [ ] D11 - [ ] D12 - [ ] D13 - [ ] D14
-- Other member signal (who / when / what): …
+A look, not a gate: over the first couple of weeks, does the owner open the
+Review view without prompting, and does anyone else mention it? No
+pre-registered test, and [[Streak]] is not gated on it.
 
 ## What is decided
 

@@ -143,10 +143,11 @@ deployment and spot-check a known Day against the dashboard.
 
 ## Acceptance Criteria
 
-_Implemented on `st-11-12`, merged into `integration`; backend suite green (115
-tests). Deploy and backfill items stay open until the prod rollout._
+_Implemented on `st-11-12`, merged to `spqrbot-26` and deployed to prod Convex
+(`dutiful-poodle-591`) on 2026-10-13; backend suite green (115 tests). The
+backfill ran once; spot-check a past Day against the dashboard._
 
-- [ ] `dailyTotal` table and indexes deployed.
+- [x] `dailyTotal` table and indexes deployed.
 - [x] `rollupDay`, `rollupRecent`, `backfill` and `sumDailyTotals` implemented
       and tested as above.
 - [ ] Cron registered. On dev, after midnight, yesterday's rows appear within a

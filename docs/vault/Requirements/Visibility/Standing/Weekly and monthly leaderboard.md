@@ -119,8 +119,9 @@ existing clear / post / edit / self-heal loop.
 
 ## Acceptance Criteria
 
-_Implemented on `st-11-12` on top of ST-11, merged into `integration`; backend
-and bot suites green. Discord spot checks stay open until the prod rollout._
+_Implemented on `st-11-12` on top of ST-11, merged to `spqrbot-26` and deployed
+to prod on 2026-10-13; backend and bot suites green, the bot posts the three
+embeds. On-channel spot checks stay open (Monday=Today, a member's week sum)._
 
 - [x] `getBoards` replaces `getToday`, and the tests pass.
 - [ ] The Discord channel shows one message with three embeds that refresh every

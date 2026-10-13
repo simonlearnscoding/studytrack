@@ -44,9 +44,9 @@ partials therefore both round their touching ends.
 
 ## Verification
 
-_Implemented on `st-15`, merged into `integration`. `pnpm lint`, `pnpm typecheck`
-and `pnpm format:check` pass. The visual cases below are unverified (no browser
-in the build session)._
+_Implemented on `st-15`, merged to `spqrbot-26` and deployed to prod on
+2026-10-13. `pnpm lint`, `pnpm typecheck` and `pnpm format:check` pass. The
+visual cases below are unverified (no browser in the build session)._
 
 `apps/web` has no test runner, and adding one is out of scope. Verify visually
 with `pnpm dev`:
