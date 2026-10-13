@@ -57,13 +57,11 @@ export async function renameTask(
   await ctx.db.patch(task._id, { title: trimmed })
 }
 
-// Hard-delete an Open task. A Done task is kept as a record: it must be reopened
-// first. Ownership is checked before the state, so another member's task never
-// leaks its existence.
+// Hard-delete the caller's task, Open or Done. Ownership is checked, so another
+// member's task never leaks its existence.
 export async function removeTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
   const user = await requireUser(ctx)
   const task = await requireOwnedTask(ctx, user, taskId)
-  if (task.done) throw new Error('Reopen the task before deleting it')
 
   await ctx.db.delete(task._id)
 }

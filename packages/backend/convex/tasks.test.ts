@@ -208,18 +208,16 @@ describe('tasks.remove', () => {
     expect(await tasksOf(t)).toEqual([])
   })
 
-  it('refuses to delete a Done task', async () => {
+  it('deletes a Done task', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Read a chapter' })
     const [task] = await tasksOf(t)
     await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
 
-    await expect(
-      t.withIdentity(ADA).mutation(api.tasks.remove, { taskId: task._id })
-    ).rejects.toThrow(/Reopen the task before deleting it/)
+    await t.withIdentity(ADA).mutation(api.tasks.remove, { taskId: task._id })
 
-    expect(await tasksOf(t)).toHaveLength(1)
+    expect(await tasksOf(t)).toEqual([])
   })
 
   it('refuses to delete another member task', async () => {

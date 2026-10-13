@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { cn } from '~/lib/utils'
 
 // One task row: the whole row toggles, the checkbox carries the state. A trailing
-// actions area (rename, and delete on Open rows) shows on hover or focus.
+// actions area (delete, rename) shows on hover or focus, for Open and Done rows.
 export function TaskRow({
   task,
   onToggle,
@@ -79,19 +79,17 @@ export function TaskRow({
 
       {!editing && (
         <div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-          {!task.done && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                onRemove()
-              }}
-              aria-label="Delete task"
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onRemove()
+            }}
+            aria-label="Delete task"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
           <button
             type="button"
             onClick={(event) => {
