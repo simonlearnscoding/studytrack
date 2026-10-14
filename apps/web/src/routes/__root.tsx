@@ -53,7 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-          <div className="mx-auto flex h-14 w-full max-w-[1560px] shrink-0 items-center justify-between gap-3 px-3.5 lg:px-6">
+          <div className="mx-auto flex h-14 w-full max-w-[1560px] shrink-0 items-center justify-between gap-3 px-3.5 text-sm lg:px-6">
             <div className="flex min-w-0 items-center gap-4">
               <Link
                 to="/"
@@ -76,7 +76,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     <span className="inline-block h-3 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
                   )}
                 </span>
-                <h1 className="ml-3 text-lg font-semibold max-lg:ml-2.5">Today</h1>
+                <h1 className="ml-3 font-semibold max-lg:ml-2.5">Today</h1>
               </div>
             </div>
             {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
