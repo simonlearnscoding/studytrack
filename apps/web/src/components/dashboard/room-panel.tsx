@@ -19,7 +19,7 @@ export function RoomPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      <RoomHeader dayStart={dayStart} studying={online.length} total={members.length} />
+      <RoomHeader studying={online.length} total={members.length} />
 
       {members.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
@@ -43,37 +43,12 @@ export function RoomPanel({
   )
 }
 
-function RoomHeader({
-  dayStart,
-  studying,
-  total,
-}: {
-  dayStart?: number
-  studying?: number
-  total?: number
-}) {
+function RoomHeader({ studying, total }: { studying?: number; total?: number }) {
   // Clean text over the shell's full-height backdrop; the photo emerges only
-  // toward the rail, behind the quote.
+  // toward the rail, behind the quote. The date + "Today" title live in the top
+  // site bar now, so this header leads with the live counts.
   return (
     <header className="relative flex flex-col gap-2">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-        {dayStart === undefined ? (
-          <span className="inline-block h-3 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-        ) : (
-          new Intl.DateTimeFormat(undefined, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          }).format(dayStart)
-        )}
-      </p>
-      <div className="flex items-center gap-2.5">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:hidden" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-        </span>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Today</h1>
-      </div>
       {total !== undefined && (
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground tabular-nums">{studying}</span> studying now

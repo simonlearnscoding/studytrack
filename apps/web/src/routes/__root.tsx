@@ -1,5 +1,6 @@
 import {
   HeadContent,
+  Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
@@ -52,20 +53,31 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-          <div className="flex h-14 w-full shrink-0 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-baseline">
-              <span className="text-label tracking-[0.18em]">
-                {mounted ? (
-                  new Intl.DateTimeFormat(undefined, {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  }).format(new Date())
-                ) : (
-                  <span className="inline-block h-3 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-                )}
-              </span>
-              <h1 className="ml-3 text-lg font-semibold max-lg:ml-2.5">Today</h1>
+          <div className="mx-auto flex h-14 w-full max-w-[1560px] shrink-0 items-center justify-between gap-3 px-3.5 lg:px-6">
+            <div className="flex min-w-0 items-center gap-4">
+              <Link
+                to="/"
+                className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold tracking-tight"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 ring-1 ring-primary/30">
+                  <span className="h-2 w-2 rounded-[3px] bg-primary" />
+                </span>
+                studytrack
+              </Link>
+              <div className="flex items-baseline">
+                <span className="text-label tracking-[0.18em]">
+                  {mounted ? (
+                    new Intl.DateTimeFormat(undefined, {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    }).format(new Date())
+                  ) : (
+                    <span className="inline-block h-3 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                  )}
+                </span>
+                <h1 className="ml-3 text-lg font-semibold max-lg:ml-2.5">Today</h1>
+              </div>
             </div>
             {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
           </div>
