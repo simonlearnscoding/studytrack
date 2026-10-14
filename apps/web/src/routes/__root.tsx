@@ -12,6 +12,7 @@ import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
 import type { ConvexReactClient } from 'convex/react'
 import { useMounted } from '~/hooks/use-mounted'
+import { useDateStore } from '~/state/date.store'
 // Side-effect import (not `?url`): Start discovers the stylesheet from the
 // client build and links it per route. With `?url` the SSR build hashes the CSS
 // differently than the client build on Linux, so the SSR `<link>` 404s.
@@ -43,6 +44,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { isSignedIn } = useAuth()
+  const selectedDate = useDateStore((state) => state.selectedDate)
   // The date is derived from the client clock, so gate it behind mount to keep
   // the server HTML and the first client paint identical.
   const mounted = useMounted()
@@ -71,7 +73,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                       weekday: 'long',
                       month: 'long',
                       day: 'numeric',
-                    }).format(new Date())
+                    }).format(selectedDate)
                   ) : (
                     <span className="inline-block h-3 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
                   )}
