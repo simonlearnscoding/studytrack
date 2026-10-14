@@ -1,59 +1,106 @@
 @import 'tailwindcss';
 @import '@clerk/ui/themes/shadcn.css';
 
-/* The app is dark-only. Near-black page with a blue undertone, dark navy
-   surfaces and one emerald primary, per the FocusFlow dashboard palette.
-   Clerk's shadcn theme reads these directly (its modal background is
-   `var(--card)`), and the `@theme inline` block exposes them as Tailwind
-   utilities (`bg-card`, `border-border`, …). */
+/* Fonts — self-hosted via @fontsource. The design uses Space Grotesk
+   400/500/600 only (there is no 700 in the system; nothing is bold) and
+   IBM Plex Mono 400/500/600 for timers and counters. */
+@import '@fontsource/space-grotesk/latin-400.css';
+@import '@fontsource/space-grotesk/latin-500.css';
+@import '@fontsource/space-grotesk/latin-600.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+
+/* Design tokens — Tailwind v4 + new shadcn (hex in :root, surfaced as
+   utilities by the `@theme inline` block). Dark-only: these are the only
+   theme. Every value is the canonical source hex from the approved mock.
+   Neutrals carry a deliberate blue cast (hue ≈ 216–222) — do not neutralise. */
 :root {
   color-scheme: dark;
-  --radius: 0.75rem;
-  --background: #080b11;
-  --foreground: #f1f5f9;
-  --card: #0d121c;
-  --card-foreground: #f1f5f9;
-  --popover: #111827;
-  --popover-foreground: #f1f5f9;
-  --primary: #00d6a0;
-  --primary-foreground: #052e24;
-  --secondary: #1a2332;
-  --secondary-foreground: #f1f5f9;
-  --muted: #1a2332;
-  --muted-foreground: #94a3b8;
-  --accent: #1a2332;
-  --accent-foreground: #f1f5f9;
-  --destructive: #f87171;
-  --border: #202938;
-  --input: #202938;
-  --ring: #00d6a0;
+
+  /* Radius — base 12px; sm 8 / md 10 / lg 12 / xl 16 derived in @theme. */
+  --radius: 0.75rem; /* #— 12px */
+
+  /* Neutrals */
+  --background: #0b0e14; /* page base */
+  --foreground: #e9edf3; /* primary text */
+  --card: #12151b; /* card/panel surface — white 2.8% over bg */
+  --card-foreground: #e9edf3; /* foreground */
+  --popover: #0e1219; /* sheets, popovers, menus (elevated) */
+  --popover-foreground: #e9edf3; /* foreground */
+  --sidebar: #090c11; /* edge panels (shell layout, later) */
+
+  --secondary: #15181d; /* subtle fills, hover bg, ghost buttons */
+  --secondary-foreground: #e9edf3; /* foreground */
+  --muted: #15181d; /* same as secondary surface */
+  --muted-foreground: #85898f; /* secondary text — foreground @ 55% */
+  --accent: #15181d; /* same as secondary surface */
+  --accent-foreground: #e9edf3; /* foreground */
+
+  --subtle-foreground: #5f6369; /* timestamps, hints, tertiary — fg @ 38% */
+  --hint: #4a4d51; /* placeholders / disabled (~26%) */
+
+  /* Accent & semantic */
+  --primary: #34d399; /* emerald — every live/active/success state */
+  --primary-foreground: #0b0e14; /* near-black, NOT white */
+  --primary-tint: #112a27; /* emerald @ 14% over bg — chips, NOW badges */
+  --gold: #f3cf6b; /* "longest session" badge only */
+
+  --destructive: #f87171; /* red-400 (reads soft on dark) */
+  --destructive-foreground: #e9edf3; /* foreground */
+  --destructive-tint: #1e161b; /* destructive @ 8% — soft surfaces */
+
+  --border: #1b1e23; /* hairlines — white 6.5% over bg */
+  --input: #1b1e23; /* same as border */
+  --ring: #34d399; /* focus = emerald; use /35–/40 at usage */
 }
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Typography */
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+  --color-sidebar: var(--sidebar);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-tint: var(--primary-tint);
+  --color-gold: var(--gold);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-hint: var(--hint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-tint: var(--destructive-tint);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Radii derived from --radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Elevation — flat by default; shadows exist only on floating overlays */
+  --shadow-popover: 0 14px 38px rgb(0 0 0 / 0.55);
+  --shadow-overlay-bar: 0 12px 34px rgb(0 0 0 / 0.5);
+  --shadow-glow: 0 0 9px rgb(52 211 153 / 0.35);
+
+  /* Feature/mode accents (unchanged, out of token scope) */
   --color-mode-cam-screen: #00d6a0;
   --color-mode-cam: #06b6d4;
   --color-mode-screen: #a78bfa;
@@ -61,12 +108,28 @@
   --color-mode-manual: #fbbf24;
 }
 
+/* Label pattern: 10.5px / 600 / uppercase / tracked, in subtle-foreground. */
+@utility text-label {
+  font-size: 0.65625rem; /* 10.5px */
+  line-height: 1;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--subtle-foreground);
+}
+
 @layer base {
   * {
     @apply border-border;
   }
+
+  /* Mono numerals are tabular everywhere (timers, counters) so digits
+     never jitter as they tick. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 body {
-  @apply bg-background text-foreground antialiased;
+  @apply bg-background font-sans text-foreground antialiased;
 }
