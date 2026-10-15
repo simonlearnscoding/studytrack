@@ -7,12 +7,17 @@ const DAY = Date.UTC(2026, 9, 14)
 const MIN = 60_000
 const at = (minutes: number) => DAY + minutes * MIN
 
+// 880px makes the core land exactly on the 48px/h floor: 32 + 816 + 32.
+const FLOOR_PX = 880
+const CORE_LEFT = 32
+const PX_PER_HOUR = 48
+
 const partial = (
   mode: DashboardPartial['mode'],
   fromMin: number,
   toMin: number | null
 ): DashboardPartial => ({
-  id: 'p' as Id<'sessionPartial'>,
+  id: `p-${fromMin}` as Id<'sessionPartial'>,
   channelId: mode === 'break' ? null : 'study-1',
   mode,
   startedAt: at(fromMin),
@@ -49,7 +54,7 @@ const member = (
   sessions,
 })
 
-const window = resolveWindow({ nowMin: 15 * 60, availablePx: 1440 })
+const window = resolveWindow({ nowMin: 15 * 60, availablePx: FLOOR_PX })
 const input = (over: Partial<Parameters<typeof toTimelineRows>[1]> = {}) => ({
   now: at(15 * 60),
   dayStart: DAY,
@@ -59,23 +64,57 @@ const input = (over: Partial<Parameters<typeof toTimelineRows>[1]> = {}) => ({
 })
 
 describe('resolveWindow', () => {
-  it('renders a single full-scale core across the whole day', () => {
-    const w = resolveWindow({ nowMin: 0, availablePx: 1440 })
-    expect(w.segments).toEqual([{ kind: 'core', startMin: 0, endMin: 1440, widthPx: 1440 }])
-    expect(w.widthPx).toBe(1440)
+  it('draws a fixed core flanked by two collapsed night bands', () => {
+    const w = resolveWindow({ nowMin: 12 * 60, availablePx: FLOOR_PX })
+    expect(w.segments).toHaveLength(3)
+    expect(w.segments[0]).toMatchObject({ kind: 'band', side: 'morning', collapsed: true })
+    expect(w.segments[1]).toMatchObject({
+      kind: 'core',
+      startMin: 5 * 60,
+      endMin: 22 * 60,
+      widthPx: 17 * PX_PER_HOUR,
+    })
+    expect(w.segments[2]).toMatchObject({ kind: 'band', side: 'evening', collapsed: true })
+    expect(w.widthPx).toBe(FLOOR_PX)
     expect(w.overflow).toBe(false)
   })
 
-  it('labels the axis at every two hours, both ends included', () => {
-    const w = resolveWindow({ nowMin: 0, availablePx: 1440 })
-    expect(w.ticks[0]).toEqual({ leftPx: 0, label: '00:00' })
-    expect(w.ticks.at(-1)).toEqual({ leftPx: 1440, label: '24:00' })
-    expect(w.ticks).toHaveLength(13)
+  it('scrolls once the track falls past the 48px/h floor', () => {
+    const w = resolveWindow({ nowMin: 12 * 60, availablePx: 400 })
+    expect(w.segments[1]).toMatchObject({ widthPx: 17 * PX_PER_HOUR })
+    expect(w.widthPx).toBeGreaterThan(400)
+    expect(w.overflow).toBe(true)
   })
 
-  it('places now on the axis', () => {
-    const w = resolveWindow({ nowMin: 15 * 60, availablePx: 1440 })
-    expect(w.nowPx).toBe(900)
+  it('keeps the core scale fixed when a band expands, widening the axis', () => {
+    const collapsed = resolveWindow({ nowMin: 23 * 60, availablePx: FLOOR_PX })
+    const expanded = resolveWindow({
+      nowMin: 23 * 60,
+      availablePx: FLOOR_PX,
+      expansion: { morning: false, evening: true },
+    })
+    expect(expanded.segments[1]).toMatchObject({ widthPx: collapsed.segments[1].widthPx })
+    expect(expanded.segments[2]).toMatchObject({ collapsed: false, widthPx: 2 * PX_PER_HOUR })
+    expect(expanded.widthPx).toBeGreaterThan(collapsed.widthPx)
+  })
+
+  it('labels the core hours and thins out near the floor', () => {
+    const w = resolveWindow({ nowMin: 12 * 60, availablePx: FLOOR_PX })
+    expect(w.ticks[0]).toEqual({ leftPx: CORE_LEFT, label: '05:00' })
+    expect(w.ticks.at(-1)).toEqual({ leftPx: CORE_LEFT + 17 * PX_PER_HOUR, label: '22:00' })
+    expect(w.ticks).toHaveLength(10)
+  })
+
+  it('centres now on the core, and pins it to the boundary inside a band', () => {
+    expect(resolveWindow({ nowMin: 15 * 60, availablePx: FLOOR_PX }).nowPx).toBe(
+      CORE_LEFT + 10 * PX_PER_HOUR
+    )
+    // 03:00, morning collapsed: pinned to the morning band's inner edge.
+    expect(resolveWindow({ nowMin: 3 * 60, availablePx: FLOOR_PX }).nowPx).toBe(CORE_LEFT)
+    // 22:15, evening collapsed: pinned to the core's right edge.
+    expect(resolveWindow({ nowMin: 22 * 60 + 15, availablePx: FLOOR_PX }).nowPx).toBe(
+      CORE_LEFT + 17 * PX_PER_HOUR
+    )
   })
 })
 
@@ -110,8 +149,10 @@ describe('toTimelineRows', () => {
       [member(0, 'Me', [session([partial('camera', 300, 360)], [{ title: 'Read', atMin: 330 }])])],
       input()
     )
-    expect(rows[0].bars).toEqual([{ leftPx: 300, widthPx: 60, mode: 'camera', live: false }])
-    expect(rows[0].dots).toEqual([{ leftPx: 330 }])
+    expect(rows[0].bars).toEqual([
+      { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'camera', live: false },
+    ])
+    expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2 }])
   })
 
   it('marks a running partial live and extends it to now', () => {
@@ -120,11 +161,40 @@ describe('toTimelineRows', () => {
       input({ now: at(15 * 60) })
     )
     expect(rows[0].bars[0]).toEqual({
-      leftPx: 840,
-      widthPx: 60,
+      leftPx: CORE_LEFT + 9 * PX_PER_HOUR,
+      widthPx: PX_PER_HOUR,
       mode: 'screenShare',
       live: true,
     })
+  })
+
+  it('clips a bar at the night boundary and counts the hidden part', () => {
+    const rows = toTimelineRows(
+      [member(0, 'Me', [session([partial('voice', 21 * 60, 23 * 60)])])],
+      input({ now: at(23 * 60) })
+    )
+    // 21:00–22:00 visible in the core; 22:00–23:00 hidden in the evening band.
+    expect(rows[0].bars).toEqual([
+      { leftPx: CORE_LEFT + 16 * PX_PER_HOUR, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
+    ])
+    expect(rows[0].eveningHidden).toBe(1)
+    expect(rows[0].morningHidden).toBe(0)
+  })
+
+  it('counts a session (not each partial) hidden in a band', () => {
+    const rows = toTimelineRows(
+      [
+        member(0, 'Me', [
+          session([
+            partial('voice', 0, 60),
+            partial('voice', 60, 120),
+            partial('voice', 120, null),
+          ]),
+        ]),
+      ],
+      input({ now: at(3 * 60) })
+    )
+    expect(rows[0].morningHidden).toBe(1)
   })
 })
 

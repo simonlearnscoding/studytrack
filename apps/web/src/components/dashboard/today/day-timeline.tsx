@@ -34,6 +34,18 @@ export function DayTimeline({
   const you = rows.find((r) => r.you)
   const now = axis.nowPx
 
+  // The night bands, with their axis offsets, so they can be drawn as distinct
+  // collapsed strips flanking the core.
+  const bands: {
+    segment: Extract<TimelineWindow['segments'][number], { kind: 'band' }>
+    offsetPx: number
+  }[] = []
+  let bandOffset = 0
+  for (const segment of axis.segments) {
+    if (segment.kind === 'band') bands.push({ segment, offsetPx: bandOffset })
+    bandOffset += segment.widthPx
+  }
+
   // <lg the page scrolls, so the "you" lane can't live inside the sideways
   // scroller — a sticky child of overflow-x-auto only sticks to that box, never
   // to the page. It is rendered as its own bar under the site header, and this
@@ -152,7 +164,23 @@ export function DayTimeline({
           ref={scrollerRef}
           className="min-w-0 flex-1 overflow-x-auto pt-6 pb-2 max-lg:pt-0 lg:overflow-x-clip"
         >
-          <div className="relative" style={{ width: axis.widthPx }}>
+          <div className="relative min-h-10" style={{ width: axis.widthPx }}>
+            {/* the night bands — thin, labelled collapsed strips at both ends.
+                Expanding one (T4) grows it to real scale and widens the axis. */}
+            {bands.map(({ segment, offsetPx }) => (
+              <div
+                key={segment.side}
+                className={`absolute inset-y-0 z-[1] overflow-hidden ${segment.collapsed ? 'border-x border-white/[0.05] bg-white/[0.02]' : ''}`}
+                style={{ left: offsetPx, width: segment.widthPx }}
+              >
+                {segment.collapsed && (
+                  <span className="text-label pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-mono whitespace-nowrap [writing-mode:vertical-rl]">
+                    {segment.label}
+                  </span>
+                )}
+              </div>
+            ))}
+
             {/* hour gridlines */}
             {axis.ticks.map((t) => (
               <div

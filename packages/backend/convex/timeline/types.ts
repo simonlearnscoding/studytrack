@@ -8,6 +8,10 @@ export const DAY_MINUTES = 24 * 60
 // 22:00–24:00 (see LD-1 / the expansion spec).
 export type BandSide = 'morning' | 'evening'
 
+// Which night bands are open. A manual toggle persists per user; an auto-expand
+// is transient (LD-1). Both resolve to this shape.
+export type ExpansionState = Record<BandSide, boolean>
+
 // One slice of the horizontal axis. The core is the fixed full-scale window;
 // a band is a night end, either squashed to a thin collapsed strip or grown to
 // real scale when expanded.
