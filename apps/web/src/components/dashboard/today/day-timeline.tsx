@@ -44,6 +44,13 @@ export function DayTimeline({
   const you = rows.find((r) => r.you)
   const now = axis.nowPx
 
+  // Activity hidden inside each collapsed band, summed across the room. Shown as
+  // a marker on the band rather than force-opening it.
+  const hidden: Record<BandSide, number> = {
+    morning: rows.reduce((count, row) => count + row.morningHidden, 0),
+    evening: rows.reduce((count, row) => count + row.eveningHidden, 0),
+  }
+
   // The night bands, with their axis offsets, so they can be drawn as distinct
   // collapsed strips flanking the core.
   const bands: { segment: NightBandSegment; offsetPx: number }[] = []
@@ -194,6 +201,7 @@ export function DayTimeline({
                 key={segment.side}
                 segment={segment}
                 offsetPx={offsetPx}
+                hiddenCount={hidden[segment.side]}
                 onToggle={onToggleBand}
               />
             ))}
@@ -288,10 +296,12 @@ const BAND_HANDLE_PX = 24
 function NightBand({
   segment,
   offsetPx,
+  hiddenCount,
   onToggle,
 }: {
   segment: NightBandSegment
   offsetPx: number
+  hiddenCount: number
   onToggle: (side: BandSide) => void
 }) {
   const atStart = segment.side === 'morning'
@@ -300,7 +310,7 @@ function NightBand({
     return (
       <button
         type="button"
-        aria-label={`Show the ${segment.label} night`}
+        aria-label={`Show the ${segment.label} night${hiddenCount > 0 ? `, ${hiddenCount} hidden` : ''}`}
         aria-expanded={false}
         onClick={() => onToggle(segment.side)}
         className="absolute inset-y-0 z-[1] flex cursor-pointer items-center justify-center overflow-hidden border-x border-white/[0.05] bg-white/[0.02] transition-colors hover:bg-white/[0.06]"
@@ -309,6 +319,11 @@ function NightBand({
         <span className="text-label pointer-events-none font-mono whitespace-nowrap [writing-mode:vertical-rl]">
           {segment.label}
         </span>
+        {hiddenCount > 0 && (
+          <span className="bg-primary/20 text-primary pointer-events-none absolute top-1 left-1/2 flex h-4 min-w-4 -translate-x-1/2 items-center justify-center rounded-full px-1 font-mono text-label">
+            {hiddenCount}
+          </span>
+        )}
       </button>
     )
   }

@@ -1,5 +1,6 @@
 import {
   formatClock,
+  mergeExpansion,
   resolveWindow,
   toMinute,
   toTimelineRows,
@@ -7,6 +8,7 @@ import {
 import { useMemo, useRef } from 'react'
 import { DayTimeline } from './day-timeline'
 import { ScenarioSwitcher } from './scenario-switcher'
+import { useAutoExpansion } from './use-auto-expansion'
 import { useElementWidth } from './use-element-width'
 import { useExpansionPreference } from './use-expansion-preference'
 import { useScenario } from './use-scenario'
@@ -23,7 +25,9 @@ export function TimelineSection() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
   const nowMin = toMinute(scenario.now, scenario.dayStart)
-  const [expansion, toggleBand] = useExpansionPreference()
+  const [manual, toggleBand] = useExpansionPreference()
+  const auto = useAutoExpansion(nowMin)
+  const expansion = useMemo(() => mergeExpansion(manual, auto), [manual, auto])
 
   const axis = useMemo(
     () => resolveWindow({ nowMin, availablePx, expansion }),

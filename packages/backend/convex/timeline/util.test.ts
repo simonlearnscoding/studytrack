@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
 import type { DashboardMember, DashboardPartial, DashboardSession } from '../sessions/types'
-import { centreScrollLeft, formatClock, resolveWindow, toMinute, toTimelineRows } from './util'
+import {
+  autoExpansionAt,
+  centreScrollLeft,
+  formatClock,
+  mergeExpansion,
+  resolveWindow,
+  toMinute,
+  toTimelineRows,
+} from './util'
 
 const DAY = Date.UTC(2026, 9, 14)
 const MIN = 60_000
@@ -205,6 +213,35 @@ describe('toTimelineRows', () => {
       input({ now: at(3 * 60) })
     )
     expect(rows[0].morningHidden).toBe(1)
+  })
+})
+
+describe('autoExpansionAt', () => {
+  it('opens the morning before 05:00 and the evening at/after 22:00', () => {
+    expect(autoExpansionAt(3 * 60)).toEqual({ morning: true, evening: false })
+    expect(autoExpansionAt(22 * 60 + 15)).toEqual({ morning: false, evening: true })
+  })
+
+  it('leaves both collapsed inside the window, including the 05:00 boundary', () => {
+    expect(autoExpansionAt(5 * 60)).toEqual({ morning: false, evening: false })
+    expect(autoExpansionAt(12 * 60)).toEqual({ morning: false, evening: false })
+  })
+})
+
+describe('mergeExpansion', () => {
+  it('opens a band when either manual or auto asks for it', () => {
+    expect(
+      mergeExpansion({ morning: false, evening: false }, { morning: true, evening: false })
+    ).toEqual({ morning: true, evening: false })
+    expect(
+      mergeExpansion({ morning: false, evening: true }, { morning: false, evening: false })
+    ).toEqual({ morning: false, evening: true })
+  })
+
+  it('never lets a manual collapse close an auto-opened band', () => {
+    expect(
+      mergeExpansion({ morning: false, evening: false }, { morning: true, evening: true })
+    ).toEqual({ morning: true, evening: true })
   })
 })
 

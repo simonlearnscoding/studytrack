@@ -102,6 +102,22 @@ export function toMinute(instant: number, dayStart: number): number {
   return (instant - dayStart) / MINUTE_MS
 }
 
+// Which band the clock opens on its own: before 05:00 the morning, at/after
+// 22:00 the evening. Pure — the caller latches this for the visit so crossing
+// 05:00 does not snap it shut (LD-1).
+export function autoExpansionAt(nowMin: number): ExpansionState {
+  return { morning: nowMin < CORE_START_MIN, evening: nowMin >= CORE_END_MIN }
+}
+
+// Combine the user's manual expansion with the clock's. Either one opening a
+// band keeps it open; a manual collapse never overrides an auto-open.
+export function mergeExpansion(manual: ExpansionState, auto: ExpansionState): ExpansionState {
+  return {
+    morning: manual.morning || auto.morning,
+    evening: manual.evening || auto.evening,
+  }
+}
+
 // The scroll offset that puts "now" at the centre of the viewport, clamped to
 // the real ends of the axis (0 … width − viewport) so the timeline never scrolls
 // into empty space past 00:00 or 24:00 (LD-1 edge-centring).
