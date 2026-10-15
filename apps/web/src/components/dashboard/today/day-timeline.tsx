@@ -193,7 +193,9 @@ export function DayTimeline({
             becoming a scroll container, so the sticky "now" pill sticks to the page. */}
         <div
           ref={scrollerRef}
-          className="min-w-0 flex-1 overflow-x-auto pt-6 pb-2 max-lg:pt-0 lg:overflow-x-clip"
+          className={`min-w-0 flex-1 pt-6 pb-2 max-lg:pt-0 ${
+            axis.overflow ? 'overflow-x-auto' : 'overflow-x-clip'
+          }`}
         >
           <div className="relative min-h-10" style={{ width: axis.widthPx }}>
             {/* the night bands — thin, labelled collapsed strips at both ends.
