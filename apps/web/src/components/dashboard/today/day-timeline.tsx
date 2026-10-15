@@ -1,5 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import { useEffect, useRef } from 'react'
+import { LiveDot } from '../live-dot'
 import { label, segEnded, segLive, type Hour, type TimelineRow } from './data'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
@@ -126,7 +127,7 @@ export function DayTimeline({
           {rows.map((row) => (
             <div
               key={row.name}
-              className={`flex h-6 w-40 items-center gap-1.5 lg:w-44 lg:pr-2 ${row.you ? 'my-3.5 max-lg:hidden lg:sticky lg:top-24 lg:z-[5] lg:rounded-l-md lg:bg-background/75 lg:backdrop-blur-md' : ''}`}
+              className={`flex h-6 w-40 items-center gap-1.5 lg:w-44 lg:pr-2 ${row.you ? 'max-lg:hidden lg:sticky lg:top-19 lg:z-[5] lg:h-[4.75rem] lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur' : ''}`}
             >
               <RowName row={row} />
             </div>
@@ -150,14 +151,16 @@ export function DayTimeline({
               />
             ))}
 
-            {/* hour labels — their own row so they can pin under the hero on lg,
-                sitting above the "now" pill instead of scrolling through it.
+            {/* hour labels — pinned ladder on lg: hero (0..4.75rem) → this strip +
+                the "now" pill (4.75..6.25rem) → your lane (6.25..9.5rem). Every band
+                carries the same bg + blur and pins flush against the one above, so
+                the stack reads as a single element while the list scrolls under.
                 <lg they ride in the pinned lane above instead. */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px max-lg:hidden lg:sticky lg:top-[4.75rem]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px max-lg:hidden lg:sticky lg:top-19 lg:h-6 lg:bg-background/80 lg:backdrop-blur">
               {hours.map((h) => (
                 <span
                   key={h.label}
-                  className={`absolute top-0 font-mono text-[10px] whitespace-nowrap text-white/45 ${
+                  className={`absolute top-0 lg:top-3 font-mono text-[10px] whitespace-nowrap text-white/45 ${
                     h.pct === 0 ? '' : h.pct === 100 ? '-translate-x-full' : '-translate-x-1/2'
                   }`}
                   style={{ left: `${h.pct}%` }}
@@ -172,7 +175,7 @@ export function DayTimeline({
               className="bg-primary absolute -top-0.5 bottom-1.5 z-10 w-[1.5px]"
               style={{ left: `${now}%` }}
             >
-              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap max-lg:hidden lg:sticky lg:top-16 lg:-mt-4">
+              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap max-lg:hidden lg:sticky lg:top-19 lg:-mt-4">
                 now · 18:58
               </span>
             </div>
@@ -183,7 +186,7 @@ export function DayTimeline({
               {rows.map((row) => (
                 <div
                   key={row.name}
-                  className={`flex h-6 items-center ${row.you ? 'my-3.5 max-lg:hidden lg:sticky lg:top-24 lg:z-[6] lg:rounded-r-md lg:bg-background/75 lg:backdrop-blur-md' : ''}`}
+                  className={`flex h-6 items-center ${row.you ? 'max-lg:hidden lg:sticky lg:top-25 lg:z-[6] lg:h-13 lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur' : ''}`}
                 >
                   <RowTrack row={row} />
                 </div>
@@ -201,7 +204,7 @@ export function DayTimeline({
 function RowName({ row }: { row: TimelineRow }) {
   return (
     <>
-      {row.live && <span className="bg-primary h-1.5 w-1.5 shrink-0 animate-pulse rounded-full" />}
+      {row.live && <LiveDot className="h-1.5 w-1.5 text-primary" />}
       <p className={`min-w-0 truncate text-xs ${row.live ? 'text-white/80' : 'text-white/35'}`}>
         {row.name}
       </p>
