@@ -1,4 +1,5 @@
 import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
+import { centreScrollLeft } from '@studytrack/backend/convex/timeline/util'
 import { useEffect, useRef, type RefObject } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import { LiveDot } from '../live-dot'
@@ -62,6 +63,20 @@ export function DayTimeline({
     scroller.addEventListener('scroll', sync, { passive: true })
     return () => scroller.removeEventListener('scroll', sync)
   }, [you, scrollerRef])
+
+  // Open the track centred on "now", but only on mount and when the window
+  // itself changes (resize, band expand) — never on the ticking clock, so the
+  // view does not jump each second, and a manual scroll survives.
+  useEffect(() => {
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    scroller.scrollLeft = centreScrollLeft({
+      nowPx: axis.nowPx,
+      widthPx: axis.widthPx,
+      availablePx: scroller.clientWidth,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-snap on window change only
+  }, [axis.widthPx, axis.overflow, scrollerRef])
 
   return (
     <section>

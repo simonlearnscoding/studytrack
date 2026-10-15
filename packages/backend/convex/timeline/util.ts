@@ -21,7 +21,6 @@ export const CORE_END_MIN = 22 * 60
 const CORE_HOURS = (CORE_END_MIN - CORE_START_MIN) / 60
 // The axis never shrinks past this; below it the track scrolls instead.
 export const PX_PER_HOUR_FLOOR = 48
-const CORE_FLOOR_PX = CORE_HOURS * PX_PER_HOUR_FLOOR
 // The width of a squashed night band, and the hour step at which labels stop
 // colliding near the floor.
 const BAND_COLLAPSED_PX = 32
@@ -101,6 +100,23 @@ export function toTimelineRows(members: DashboardMember[], input: TimelineInput)
 // Minutes since the day start for an instant.
 export function toMinute(instant: number, dayStart: number): number {
   return (instant - dayStart) / MINUTE_MS
+}
+
+// The scroll offset that puts "now" at the centre of the viewport, clamped to
+// the real ends of the axis (0 … width − viewport) so the timeline never scrolls
+// into empty space past 00:00 or 24:00 (LD-1 edge-centring).
+export function centreScrollLeft({
+  nowPx,
+  widthPx,
+  availablePx,
+}: {
+  nowPx: number
+  widthPx: number
+  availablePx: number
+}): number {
+  const max = Math.max(0, widthPx - availablePx)
+  const centred = nowPx - availablePx / 2
+  return Math.max(0, Math.min(max, centred))
 }
 
 // A wall-clock label for a minute-of-day, e.g. 1110 → "18:30", 1440 → "24:00".

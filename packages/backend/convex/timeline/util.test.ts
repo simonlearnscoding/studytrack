@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
 import type { DashboardMember, DashboardPartial, DashboardSession } from '../sessions/types'
-import { formatClock, resolveWindow, toMinute, toTimelineRows } from './util'
+import { centreScrollLeft, formatClock, resolveWindow, toMinute, toTimelineRows } from './util'
 
 const DAY = Date.UTC(2026, 9, 14)
 const MIN = 60_000
@@ -195,6 +195,24 @@ describe('toTimelineRows', () => {
       input({ now: at(3 * 60) })
     )
     expect(rows[0].morningHidden).toBe(1)
+  })
+})
+
+describe('centreScrollLeft', () => {
+  it('centres now when the track overflows', () => {
+    expect(centreScrollLeft({ nowPx: 512, widthPx: 880, availablePx: 400 })).toBe(312)
+  })
+
+  it('clamps at the 00:00 end instead of showing empty space', () => {
+    expect(centreScrollLeft({ nowPx: 50, widthPx: 880, availablePx: 400 })).toBe(0)
+  })
+
+  it('clamps at the 24:00 end', () => {
+    expect(centreScrollLeft({ nowPx: 860, widthPx: 880, availablePx: 400 })).toBe(480)
+  })
+
+  it('does not scroll when the track fits', () => {
+    expect(centreScrollLeft({ nowPx: 512, widthPx: 880, availablePx: 900 })).toBe(0)
   })
 })
 
