@@ -1,4 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
+import { useEffect, useRef } from 'react'
 import { label, segEnded, segLive, type Hour, type TimelineRow } from './data'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
@@ -25,6 +26,25 @@ export function DayTimeline({
   now: number
   rows: TimelineRow[]
 }) {
+  const you = rows.find((r) => r.you)
+
+  // <lg the page scrolls, so the "you" lane can't live inside the sideways
+  // scroller — a sticky child of overflow-x-auto only sticks to that box, never
+  // to the page. It is rendered as its own bar under the site header, and this
+  // mirror keeps its labels + track panned in lockstep with the real scroller.
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const mirrorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const scroller = scrollerRef.current
+    const mirror = mirrorRef.current
+    if (!scroller || !mirror) return
+    const sync = () => {
+      mirror.style.transform = `translateX(${-scroller.scrollLeft}px)`
+    }
+    scroller.addEventListener('scroll', sync, { passive: true })
+    return () => scroller.removeEventListener('scroll', sync)
+  }, [you])
+
   return (
     <section>
       <div className={`flex items-center gap-2.5 pl-0.5 ${label}`}>
@@ -54,31 +74,61 @@ export function DayTimeline({
         </Popover>
       </div>
 
+      {/* <lg: hour labels + your lane leave the list and pin flush under the site
+          header — same surface recipe (bg + blur + border-b), no gap above, full
+          bleed — so the two read as one element while the room scrolls under. */}
+      {you && (
+        <div className="sticky top-14 z-30 -mx-3.5 border-b border-border bg-background/80 px-3.5 pt-2 pb-1 backdrop-blur lg:hidden">
+          <div className="flex gap-2">
+            <div className="w-40 shrink-0">
+              <div className="h-[30px]" />
+              <div className="flex h-6 items-center gap-1.5">
+                <RowName row={you} />
+              </div>
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden pb-4">
+              <div ref={mirrorRef} className="relative min-w-[40rem]">
+                <div className="relative h-[30px]">
+                  <div
+                    className="bg-primary absolute top-3.5 bottom-0 w-[1.5px]"
+                    style={{ left: `${now}%` }}
+                  />
+                  {hours.map((h) => (
+                    <span
+                      key={h.label}
+                      className={`absolute bottom-0 font-mono text-[10px] whitespace-nowrap text-white/45 ${
+                        h.pct === 0 ? '' : h.pct === 100 ? '-translate-x-full' : '-translate-x-1/2'
+                      }`}
+                      style={{ left: `${h.pct}%` }}
+                    >
+                      {h.label}
+                    </span>
+                  ))}
+                  <span
+                    className="bg-primary-tint text-primary absolute top-0 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap"
+                    style={{ left: `${now}%` }}
+                  >
+                    now · 18:58
+                  </span>
+                </div>
+                <div className="flex h-6 items-center">
+                  <RowTrack row={you} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex gap-2 pb-2 max-lg:-mx-3.5 max-lg:px-3.5 lg:gap-0">
         {/* names + hours — pinned, never scroll */}
-        <div className="flex shrink-0 flex-col gap-3.5 pt-6">
+        <div className="flex shrink-0 flex-col gap-3.5 pt-6 max-lg:pt-0">
           {rows.map((row) => (
             <div
               key={row.name}
-              className={`flex h-6 w-40 items-center gap-1.5 lg:w-44 lg:pr-2 ${row.you ? 'my-3.5 lg:sticky lg:top-24 lg:z-[5] lg:rounded-l-md lg:bg-background/75 lg:backdrop-blur-md' : ''}`}
+              className={`flex h-6 w-40 items-center gap-1.5 lg:w-44 lg:pr-2 ${row.you ? 'my-3.5 max-lg:hidden lg:sticky lg:top-24 lg:z-[5] lg:rounded-l-md lg:bg-background/75 lg:backdrop-blur-md' : ''}`}
             >
-              {row.live && (
-                <span className="bg-primary h-1.5 w-1.5 shrink-0 animate-pulse rounded-full" />
-              )}
-              <p
-                className={`min-w-0 truncate text-xs ${row.live ? 'text-white/80' : 'text-white/35'}`}
-              >
-                {row.name}
-              </p>
-              {row.you && (
-                <span className="border-primary/30 text-primary shrink-0 rounded border px-1 text-[9px] tracking-wider">
-                  you
-                </span>
-              )}
-              <span className="shrink-0 font-mono text-[11px] text-white/60">
-                {row.you && <span className="text-primary">{row.tail.split(' · ')[0]}</span>}
-                {row.you ? ' · ' + row.tail.split(' · ').slice(1).join(' · ') : row.tail}
-              </span>
+              <RowName row={row} />
             </div>
           ))}
         </div>
@@ -86,7 +136,10 @@ export function DayTimeline({
         {/* track area — fluid on lg+ (full day at a glance, no scroll), scrolls on mobile.
             lg uses clip, not overflow-hidden: it trims the 1px ruler overhang without
             becoming a scroll container, so the sticky "now" pill sticks to the page. */}
-        <div className="min-w-0 flex-1 overflow-x-auto pt-6 pb-2 lg:overflow-x-clip">
+        <div
+          ref={scrollerRef}
+          className="min-w-0 flex-1 overflow-x-auto pt-6 pb-2 max-lg:pt-0 lg:overflow-x-clip"
+        >
           <div className="relative min-w-[40rem] lg:min-w-0">
             {/* hour gridlines */}
             {hours.map((h) => (
@@ -98,8 +151,9 @@ export function DayTimeline({
             ))}
 
             {/* hour labels — their own row so they can pin under the hero on lg,
-                sitting above the "now" pill instead of scrolling through it */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px lg:sticky lg:top-[4.75rem]">
+                sitting above the "now" pill instead of scrolling through it.
+                <lg they ride in the pinned lane above instead. */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px max-lg:hidden lg:sticky lg:top-[4.75rem]">
               {hours.map((h) => (
                 <span
                   key={h.label}
@@ -113,12 +167,12 @@ export function DayTimeline({
               ))}
             </div>
 
-            {/* now-line — every live bar ends here */}
+            {/* now-line — every live bar ends here. <lg the pill rides in the pinned lane. */}
             <div
               className="bg-primary absolute -top-0.5 bottom-1.5 z-10 w-[1.5px]"
               style={{ left: `${now}%` }}
             >
-              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap lg:sticky lg:top-16 lg:-mt-4">
+              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap max-lg:hidden lg:sticky lg:top-16 lg:-mt-4">
                 now · 18:58
               </span>
             </div>
@@ -129,47 +183,9 @@ export function DayTimeline({
               {rows.map((row) => (
                 <div
                   key={row.name}
-                  className={`flex h-6 items-center ${row.you ? 'my-3.5 lg:sticky lg:top-24 lg:z-[6] lg:rounded-r-md lg:bg-background/75 lg:backdrop-blur-md' : ''}`}
+                  className={`flex h-6 items-center ${row.you ? 'my-3.5 max-lg:hidden lg:sticky lg:top-24 lg:z-[6] lg:rounded-r-md lg:bg-background/75 lg:backdrop-blur-md' : ''}`}
                 >
-                  <div
-                    className={`relative w-full rounded-full bg-white/[0.035] ${row.you ? 'h-3 cursor-crosshair' : 'h-2.5'}`}
-                  >
-                    {row.plans?.map((pl) => (
-                      <span
-                        key={pl.left}
-                        className="absolute -top-4 truncate text-[10px] text-white/50"
-                        style={{ left: `${pl.left}%` }}
-                      >
-                        {pl.label}
-                      </span>
-                    ))}
-                    {row.plans?.map((pl) => (
-                      <div
-                        key={pl.left}
-                        className="border-primary/50 bg-primary/5 absolute -top-[3px] -bottom-[3px] rounded-md border-[1.5px] border-dashed"
-                        style={{ left: `${pl.left}%`, width: `${pl.width}%` }}
-                      />
-                    ))}
-                    {row.bars.map((b, i) => (
-                      <div
-                        key={i}
-                        className={`absolute top-0 bottom-0 rounded-full ${b.live ? segLive[b.mode] : segEnded[b.mode]}`}
-                        style={{ left: `${b.left}%`, width: `${b.width}%` }}
-                      />
-                    ))}
-                    {row.dots?.map((d) => (
-                      <span
-                        key={d}
-                        className="border-primary/75 bg-background absolute top-1/2 z-[3] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px]"
-                        style={{ left: `${d}%` }}
-                      />
-                    ))}
-                    {row.you && (
-                      <span className="pointer-events-none absolute -bottom-4 left-0 font-mono text-[9px] text-white/25">
-                        tap empty time to plan
-                      </span>
-                    )}
-                  </div>
+                  <RowTrack row={row} />
                 </div>
               ))}
             </div>
@@ -177,5 +193,72 @@ export function DayTimeline({
         </div>
       </div>
     </section>
+  )
+}
+
+// The name cell's contents — shared by the pinned names column (lg) and the
+// mobile lane that pins under the site header.
+function RowName({ row }: { row: TimelineRow }) {
+  return (
+    <>
+      {row.live && <span className="bg-primary h-1.5 w-1.5 shrink-0 animate-pulse rounded-full" />}
+      <p className={`min-w-0 truncate text-xs ${row.live ? 'text-white/80' : 'text-white/35'}`}>
+        {row.name}
+      </p>
+      {row.you && (
+        <span className="border-primary/30 text-primary shrink-0 rounded border px-1 text-[9px] tracking-wider">
+          you
+        </span>
+      )}
+      <span className="shrink-0 font-mono text-[11px] text-white/60">
+        {row.you && <span className="text-primary">{row.tail.split(' · ')[0]}</span>}
+        {row.you ? ' · ' + row.tail.split(' · ').slice(1).join(' · ') : row.tail}
+      </span>
+    </>
+  )
+}
+
+// One person's track bar — shared by the scrolling list and the mobile pinned lane.
+function RowTrack({ row }: { row: TimelineRow }) {
+  return (
+    <div
+      className={`relative w-full rounded-full bg-white/[0.035] ${row.you ? 'h-3 cursor-crosshair' : 'h-2.5'}`}
+    >
+      {row.plans?.map((pl) => (
+        <span
+          key={pl.left}
+          className="absolute -top-4 truncate text-[10px] text-white/50"
+          style={{ left: `${pl.left}%` }}
+        >
+          {pl.label}
+        </span>
+      ))}
+      {row.plans?.map((pl) => (
+        <div
+          key={pl.left}
+          className="border-primary/50 bg-primary/5 absolute -top-[3px] -bottom-[3px] rounded-md border-[1.5px] border-dashed"
+          style={{ left: `${pl.left}%`, width: `${pl.width}%` }}
+        />
+      ))}
+      {row.bars.map((b, i) => (
+        <div
+          key={i}
+          className={`absolute top-0 bottom-0 rounded-full ${b.live ? segLive[b.mode] : segEnded[b.mode]}`}
+          style={{ left: `${b.left}%`, width: `${b.width}%` }}
+        />
+      ))}
+      {row.dots?.map((d) => (
+        <span
+          key={d}
+          className="border-primary/75 bg-background absolute top-1/2 z-[3] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px]"
+          style={{ left: `${d}%` }}
+        />
+      ))}
+      {row.you && (
+        <span className="pointer-events-none absolute -bottom-4 left-0 font-mono text-[9px] text-white/25">
+          tap empty time to plan
+        </span>
+      )}
+    </div>
   )
 }
