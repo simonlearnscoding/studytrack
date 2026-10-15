@@ -157,6 +157,12 @@ export function DayTimeline({
                 the stack reads as a single element while the list scrolls under.
                 <lg they ride in the pinned lane above instead. */}
             <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px max-lg:hidden lg:sticky lg:top-19 lg:h-6 lg:bg-background/80 lg:backdrop-blur">
+              {/* the now-line, faked through this band: the real line (z-[3]) is
+                  covered by the bar, so each band draws its own segment at `now` */}
+              <div
+                className="bg-primary absolute top-3 bottom-0 w-[1.5px]"
+                style={{ left: `${now}%` }}
+              />
               {hours.map((h) => (
                 <span
                   key={h.label}
@@ -194,6 +200,12 @@ export function DayTimeline({
                 and the line would paint through the lane's blur. */}
             {you && (
               <div className="mb-3.5 flex h-6 items-center max-lg:hidden lg:sticky lg:top-25 lg:z-[6] lg:h-13 lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur">
+                {/* the now-line's segment through the lane — it meets the live
+                    bar's leading edge, so the lane reads as the line's origin */}
+                <div
+                  className="bg-primary absolute inset-y-0 w-[1.5px]"
+                  style={{ left: `${now}%` }}
+                />
                 <RowTrack row={you} />
               </div>
             )}
