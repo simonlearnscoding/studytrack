@@ -170,15 +170,19 @@ export function DayTimeline({
               ))}
             </div>
 
-            {/* now-line — every live bar ends here. <lg the pill rides in the pinned lane. */}
+            {/* now-line — every live bar ends here. z-[3]: above the rows (z-[2]),
+                below every band of the pinned bar so it never crosses it.
+                <lg the pill rides in the pinned lane. */}
             <div
-              className="bg-primary absolute -top-0.5 bottom-1.5 z-10 w-[1.5px]"
+              className="bg-primary absolute -top-0.5 bottom-1.5 z-[3] w-[1.5px]"
+              style={{ left: `${now}%` }}
+            />
+            <span
+              className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap max-lg:hidden lg:sticky lg:top-19 lg:-mt-4 z-[7]"
               style={{ left: `${now}%` }}
             >
-              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap max-lg:hidden lg:sticky lg:top-19 lg:-mt-4">
-                now · 18:58
-              </span>
-            </div>
+              now · 18:58
+            </span>
 
             {/* contract: tracks only; the name column is the pinned sibling.
                 a shadcn Popover hangs off each bar (session details) in prod */}
