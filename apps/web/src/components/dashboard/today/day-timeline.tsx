@@ -89,11 +89,13 @@ export function DayTimeline({
             </div>
             <div className="min-w-0 flex-1 overflow-hidden pb-4">
               <div ref={mirrorRef} className="relative min-w-[40rem]">
+                {/* the now-line through the whole pinned lane — full height so
+                    the pill (opaque) just paints over its top, seam-free */}
+                <div
+                  className="bg-primary absolute top-0 bottom-0 w-[1.5px]"
+                  style={{ left: `${now}%` }}
+                />
                 <div className="relative h-[30px]">
-                  <div
-                    className="bg-primary absolute top-3.5 bottom-0 w-[1.5px]"
-                    style={{ left: `${now}%` }}
-                  />
                   {hours.map((h) => (
                     <span
                       key={h.label}
@@ -158,9 +160,11 @@ export function DayTimeline({
                 <lg they ride in the pinned lane above instead. */}
             <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px max-lg:hidden lg:sticky lg:top-19 lg:h-6 lg:bg-background/80 lg:backdrop-blur">
               {/* the now-line, faked through this band: the real line (z-[3]) is
-                  covered by the bar, so each band draws its own segment at `now` */}
+                  covered by the bar, so each band draws its own segment at `now`.
+                  Full-height: the pill paints over its top, so no seam regardless
+                  of how the pill's font metrics round. */}
               <div
-                className="bg-primary absolute top-3 bottom-0 w-[1.5px]"
+                className="bg-primary absolute top-0 bottom-0 w-[1.5px]"
                 style={{ left: `${now}%` }}
               />
               {hours.map((h) => (
