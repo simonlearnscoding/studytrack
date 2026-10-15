@@ -23,6 +23,7 @@ import type * as leaderboard from "../leaderboard.js";
 import type * as leaderboard_service from "../leaderboard/service.js";
 import type * as leaderboard_types from "../leaderboard/types.js";
 import type * as leaderboard_util from "../leaderboard/util.js";
+import type * as maintenance from "../maintenance.js";
 import type * as sessions from "../sessions.js";
 import type * as sessions_metrics from "../sessions/metrics.js";
 import type * as sessions_service from "../sessions/service.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "leaderboard/service": typeof leaderboard_service;
   "leaderboard/types": typeof leaderboard_types;
   "leaderboard/util": typeof leaderboard_util;
+  maintenance: typeof maintenance;
   sessions: typeof sessions;
   "sessions/metrics": typeof sessions_metrics;
   "sessions/service": typeof sessions_service;

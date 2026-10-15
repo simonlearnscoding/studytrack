@@ -35,8 +35,13 @@ export async function getTodaysActivitiesForDashboard(
   ctx: QueryCtx,
   dayStart: number
 ): Promise<DashboardMember[]> {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) return []
+  // DEV: the dev deployment sets DEV_AUTH_BYPASS (packages/backend/.env.local,
+  // synced by `npx convex dev`) so /beta can be worked on signed-out. Prod never
+  // has it and keeps the identity gate.
+  if (process.env.DEV_AUTH_BYPASS !== '1') {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) return []
+  }
   return await groupTodaysMembers(ctx, dayStart)
 }
 
