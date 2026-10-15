@@ -177,12 +177,15 @@ export function DayTimeline({
               className="bg-primary absolute -top-0.5 bottom-1.5 z-[3] w-[1.5px]"
               style={{ left: `${now}%` }}
             />
-            <span
-              className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap max-lg:hidden lg:sticky lg:top-19 lg:-mt-4 z-[7]"
-              style={{ left: `${now}%` }}
-            >
-              now · 18:58
-            </span>
+            {/* the pill rides a zero-width rail at `now` — `left` here is plain
+                absolute positioning, so `lg:sticky` below only pins it vertically
+                and -translate-x-1/2 keeps it centered on the line. z-auto rail:
+                no stacking context, so the pill's z-[7] still beats the strip. */}
+            <div className="absolute inset-y-0 w-0 max-lg:hidden" style={{ left: `${now}%` }}>
+              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap lg:sticky lg:top-19 lg:-mt-4 z-[7]">
+                now · 18:58
+              </span>
+            </div>
 
             {/* contract: tracks only; the name column is the pinned sibling.
                 a shadcn Popover hangs off each bar (session details) in prod */}
