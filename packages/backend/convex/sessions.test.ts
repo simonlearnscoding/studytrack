@@ -234,4 +234,145 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
     // Sessions newest first.
     expect(res[0].sessions[0].status).toBe('active')
   })
+
+  it('binds each completed task to the session containing its completion instant', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', {
+        discordId: 'discord-1',
+        name: 'Ada',
+        createdAt: NOW,
+      })
+      const sessionId = await ctx.db.insert('session', {
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        status: 'ended',
+        startedAt: NOW - 2 * H,
+        endedAt: NOW - 1 * H,
+      })
+      await ctx.db.insert('sessionPartial', {
+        sessionId,
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        channelId: 'chan-a',
+        mode: 'voice',
+        status: 'ended',
+        startedAt: NOW - 2 * H,
+        endedAt: NOW - 1 * H,
+        durationMs: 1 * H,
+      })
+      // Completed inside the session — bound.
+      await ctx.db.insert('task', {
+        userId,
+        title: 'Read a chapter',
+        done: true,
+        completedAt: NOW - 90 * M,
+      })
+      // Completed before it started — no session owns it.
+      await ctx.db.insert('task', {
+        userId,
+        title: 'Before the session',
+        done: true,
+        completedAt: NOW - 3 * H,
+      })
+      // Open — never bound.
+      await ctx.db.insert('task', { userId, title: 'Still open', done: false })
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+
+    const tasks = res[0].sessions[0].tasks
+    expect(tasks.map((task) => task.title)).toEqual(['Read a chapter'])
+    expect(tasks[0].completedAt).toBe(NOW - 90 * M)
+  })
+
+  it('binds tasks to a still-running session by its open end', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', { discordId: 'discord-1', createdAt: NOW })
+      const sessionId = await ctx.db.insert('session', {
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+      await ctx.db.insert('sessionPartial', {
+        sessionId,
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        channelId: 'chan-a',
+        mode: 'camera',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+      await ctx.db.insert('task', {
+        userId,
+        title: 'Finished mid-session',
+        done: true,
+        completedAt: NOW - 5 * M,
+      })
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+
+    expect(res[0].sessions[0].tasks.map((task) => task.title)).toEqual(['Finished mid-session'])
+  })
+
+  it('keeps each member tasks with their own card', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      const ada = await ctx.db.insert('users', { discordId: 'ada', name: 'Ada', createdAt: NOW })
+      const bob = await ctx.db.insert('users', { discordId: 'bob', name: 'Bob', createdAt: NOW })
+
+      for (const { userId, discordId } of [
+        { userId: ada, discordId: 'ada' },
+        { userId: bob, discordId: 'bob' },
+      ]) {
+        const sessionId = await ctx.db.insert('session', {
+          discordId,
+          userId,
+          guildId: 'guild-1',
+          status: 'ended',
+          startedAt: NOW - 2 * H,
+          endedAt: NOW - 1 * H,
+        })
+        await ctx.db.insert('sessionPartial', {
+          sessionId,
+          discordId,
+          userId,
+          guildId: 'guild-1',
+          channelId: 'chan-a',
+          mode: 'voice',
+          status: 'ended',
+          startedAt: NOW - 2 * H,
+          endedAt: NOW - 1 * H,
+          durationMs: 1 * H,
+        })
+      }
+
+      await ctx.db.insert('task', {
+        userId: ada,
+        title: 'Ada private task',
+        done: true,
+        completedAt: NOW - 90 * M,
+      })
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+
+    const ada = res.find((member) => member.discordId === 'ada')
+    const bob = res.find((member) => member.discordId === 'bob')
+    expect(ada?.sessions[0].tasks.map((task) => task.title)).toEqual(['Ada private task'])
+    expect(bob?.sessions[0].tasks).toEqual([])
+  })
 })

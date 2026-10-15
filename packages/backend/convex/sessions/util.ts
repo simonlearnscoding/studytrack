@@ -1,4 +1,9 @@
-import type { DashboardMember, DashboardPartial, DashboardSession } from './types'
+import type {
+  DashboardCompletedTask,
+  DashboardMember,
+  DashboardPartial,
+  DashboardSession,
+} from './types'
 
 // The dashboard's "today" is one shared calendar day in this timezone, so every
 // viewer sees the same grouping. Move this single constant to shift the day
@@ -30,6 +35,35 @@ export function memberTotalMs(member: Pick<DashboardMember, 'sessions'>, now: nu
 // sections, so within each section this is the only ordering that matters.
 export function sortMembers(members: DashboardMember[], now: number): DashboardMember[] {
   return [...members].sort((a, b) => memberTotalMs(b, now) - memberTotalMs(a, now))
+}
+
+// A completed task belongs to the session whose span contains its `completedAt`:
+// `startedAt <= completedAt < (endedAt ?? now)`. The query has no wall clock, so
+// a still-running session's open end is `Infinity` — equivalent to `now` because
+// `completedAt` is always a past instant.
+export function sessionContainsCompletedAt(
+  session: Pick<DashboardSession, 'startedAt' | 'endedAt'>,
+  completedAt: number
+): boolean {
+  return (
+    completedAt >= session.startedAt && completedAt < (session.endedAt ?? Number.POSITIVE_INFINITY)
+  )
+}
+
+// Attach each completed task to the session whose span contains it. A member's
+// sessions never overlap (re-entering within 30 minutes continues the same
+// session), so a task lands on at most one session; a task completed in a gap
+// between sessions lands on none.
+export function attachTasksToSessions(
+  sessions: DashboardSession[],
+  tasks: DashboardCompletedTask[]
+): DashboardSession[] {
+  return sessions.map((session) => ({
+    ...session,
+    tasks: tasks
+      .filter((task) => sessionContainsCompletedAt(session, task.completedAt))
+      .sort((a, b) => a.completedAt - b.completedAt),
+  }))
 }
 
 // Compact duration with seconds, so a live total visibly ticks each second:

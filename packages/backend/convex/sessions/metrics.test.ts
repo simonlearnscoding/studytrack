@@ -34,6 +34,7 @@ function session(
     startedAt: NOW - H,
     endedAt: NOW,
     partials,
+    tasks: [],
     ...overrides,
   }
 }

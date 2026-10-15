@@ -1,6 +1,12 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import type { DashboardMember, DashboardPartial, DashboardSession } from './types'
+import type {
+  DashboardCompletedTask,
+  DashboardMember,
+  DashboardPartial,
+  DashboardSession,
+} from './types'
+import { attachTasksToSessions } from './util'
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
 
@@ -8,6 +14,7 @@ const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
 // neither query can scan the table without a cap.
 const MAX_TODAY_PARTIALS = 1000
 const MAX_ACTIVE_PARTIALS = 500
+const MAX_TASKS_PER_MEMBER = 200
 
 // Everyone currently in a study channel. Live — the dashboard subscribes to it.
 export async function listActive(ctx: QueryCtx) {
@@ -42,7 +49,8 @@ export async function getTodaysActivitiesForDashboard(
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return []
   }
-  return await groupTodaysMembers(ctx, dayStart)
+  const members = await groupTodaysMembers(ctx, dayStart)
+  return await attachCompletedTasks(ctx, members)
 }
 
 // The shared day-window read, without any auth: everyone who studied today (or is
@@ -149,6 +157,7 @@ function buildSession(
     startedAt: session.startedAt,
     endedAt: session.endedAt ?? null,
     partials: partials.map(toDashboardPartial).sort((a, b) => b.startedAt - a.startedAt),
+    tasks: [],
   }
 }
 
@@ -160,4 +169,35 @@ function toDashboardPartial(partial: Doc<'sessionPartial'>): DashboardPartial {
     startedAt: partial.startedAt,
     endedAt: partial.endedAt ?? null,
   }
+}
+
+// Bind each member's completed tasks to the session they were finished during.
+// Only done tasks carry a `completedAt` to bind with; open tasks never appear.
+// The read is newest-first and bounded so today's completions survive a long
+// history, and only title + completion instant are shared (ADR-0005).
+async function attachCompletedTasks(
+  ctx: QueryCtx,
+  members: DashboardMember[]
+): Promise<DashboardMember[]> {
+  return await Promise.all(
+    members.map(async (member) => {
+      const userId = member.userId
+      if (!userId) return member
+
+      const tasks = await ctx.db
+        .query('task')
+        .withIndex('by_userId', (q) => q.eq('userId', userId))
+        .order('desc')
+        .take(MAX_TASKS_PER_MEMBER)
+
+      const completed: DashboardCompletedTask[] = tasks.flatMap((task) =>
+        task.done && task.completedAt !== undefined
+          ? [{ id: task._id, title: task.title, completedAt: task.completedAt }]
+          : []
+      )
+      if (completed.length === 0) return member
+
+      return { ...member, sessions: attachTasksToSessions(member.sessions, completed) }
+    })
+  )
 }

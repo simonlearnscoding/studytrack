@@ -28,6 +28,7 @@ function session(partials: DashboardPartial[], overrides: Partial<DashboardSessi
     startedAt: 0,
     endedAt: null,
     partials,
+    tasks: [],
     ...overrides,
   }
 }

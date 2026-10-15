@@ -14,6 +14,15 @@ export type DashboardPartial = {
   endedAt: number | null
 }
 
+// A task a member completed while a session was running, exposed to the room
+// (ADR-0005: task titles are public on the live card). Only the title and the
+// instant it was marked done are shared — nothing else leaves its owner.
+export type DashboardCompletedTask = {
+  id: Id<'task'>
+  title: string
+  completedAt: number
+}
+
 // One sitting belonging to a member today.
 export type DashboardSession = {
   id: Id<'session'>
@@ -21,6 +30,8 @@ export type DashboardSession = {
   startedAt: number
   endedAt: number | null
   partials: DashboardPartial[]
+  // Tasks completed while this session was running, bound by time (see ./util).
+  tasks: DashboardCompletedTask[]
 }
 
 // One card on the dashboard: a person's whole day.
