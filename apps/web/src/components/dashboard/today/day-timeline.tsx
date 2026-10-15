@@ -1,10 +1,17 @@
-import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
+import type {
+  BandSide,
+  TimelineRowVM,
+  TimelineWindow,
+} from '@studytrack/backend/convex/timeline/types'
 import { centreScrollLeft } from '@studytrack/backend/convex/timeline/util'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useRef, type RefObject } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import { LiveDot } from '../live-dot'
 import { BAR_LIVE, barClass } from './bar-style'
 import { label } from './data'
+
+type NightBandSegment = Extract<TimelineWindow['segments'][number], { kind: 'band' }>
 
 // The track swatches, shown behind the "?" so the header stays quiet.
 const legend = [
@@ -26,21 +33,20 @@ export function DayTimeline({
   rows,
   nowLabel,
   scrollerRef,
+  onToggleBand,
 }: {
   window: TimelineWindow
   rows: TimelineRowVM[]
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
+  onToggleBand: (side: BandSide) => void
 }) {
   const you = rows.find((r) => r.you)
   const now = axis.nowPx
 
   // The night bands, with their axis offsets, so they can be drawn as distinct
   // collapsed strips flanking the core.
-  const bands: {
-    segment: Extract<TimelineWindow['segments'][number], { kind: 'band' }>
-    offsetPx: number
-  }[] = []
+  const bands: { segment: NightBandSegment; offsetPx: number }[] = []
   let bandOffset = 0
   for (const segment of axis.segments) {
     if (segment.kind === 'band') bands.push({ segment, offsetPx: bandOffset })
@@ -181,19 +187,15 @@ export function DayTimeline({
         >
           <div className="relative min-h-10" style={{ width: axis.widthPx }}>
             {/* the night bands — thin, labelled collapsed strips at both ends.
-                Expanding one (T4) grows it to real scale and widens the axis. */}
+                Clicking one grows it to real scale and widens the axis; clicking
+                the slim handle that replaces it folds it back. */}
             {bands.map(({ segment, offsetPx }) => (
-              <div
+              <NightBand
                 key={segment.side}
-                className={`absolute inset-y-0 z-[1] overflow-hidden ${segment.collapsed ? 'border-x border-white/[0.05] bg-white/[0.02]' : ''}`}
-                style={{ left: offsetPx, width: segment.widthPx }}
-              >
-                {segment.collapsed && (
-                  <span className="text-label pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-mono whitespace-nowrap [writing-mode:vertical-rl]">
-                    {segment.label}
-                  </span>
-                )}
-              </div>
+                segment={segment}
+                offsetPx={offsetPx}
+                onToggle={onToggleBand}
+              />
             ))}
 
             {/* hour gridlines */}
@@ -276,6 +278,55 @@ export function DayTimeline({
         </div>
       </div>
     </section>
+  )
+}
+
+const BAND_HANDLE_PX = 24
+
+// A night band: collapsed it is a tap-sized labelled strip that opens on click;
+// expanded it leaves a slim handle at the outer edge that folds it back.
+function NightBand({
+  segment,
+  offsetPx,
+  onToggle,
+}: {
+  segment: NightBandSegment
+  offsetPx: number
+  onToggle: (side: BandSide) => void
+}) {
+  const atStart = segment.side === 'morning'
+
+  if (segment.collapsed) {
+    return (
+      <button
+        type="button"
+        aria-label={`Show the ${segment.label} night`}
+        aria-expanded={false}
+        onClick={() => onToggle(segment.side)}
+        className="absolute inset-y-0 z-[1] flex cursor-pointer items-center justify-center overflow-hidden border-x border-white/[0.05] bg-white/[0.02] transition-colors hover:bg-white/[0.06]"
+        style={{ left: offsetPx, width: segment.widthPx }}
+      >
+        <span className="text-label pointer-events-none font-mono whitespace-nowrap [writing-mode:vertical-rl]">
+          {segment.label}
+        </span>
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={`Hide the ${segment.label} night`}
+      aria-expanded={true}
+      onClick={() => onToggle(segment.side)}
+      className={`absolute inset-y-0 z-[4] flex cursor-pointer items-center justify-center text-white/35 transition-colors hover:text-white/80 ${atStart ? 'border-r' : 'border-l'} border-white/[0.06]`}
+      style={{
+        left: atStart ? offsetPx : offsetPx + segment.widthPx - BAND_HANDLE_PX,
+        width: BAND_HANDLE_PX,
+      }}
+    >
+      {atStart ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+    </button>
   )
 }
 

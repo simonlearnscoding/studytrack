@@ -98,6 +98,16 @@ describe('resolveWindow', () => {
     expect(expanded.widthPx).toBeGreaterThan(collapsed.widthPx)
   })
 
+  it('expands the two ends independently', () => {
+    const onlyEvening = resolveWindow({
+      nowMin: 0,
+      availablePx: FLOOR_PX,
+      expansion: { morning: false, evening: true },
+    })
+    expect(onlyEvening.segments[0]).toMatchObject({ side: 'morning', collapsed: true })
+    expect(onlyEvening.segments[2]).toMatchObject({ side: 'evening', collapsed: false })
+  })
+
   it('labels the core hours and thins out near the floor', () => {
     const w = resolveWindow({ nowMin: 12 * 60, availablePx: FLOOR_PX })
     expect(w.ticks[0]).toEqual({ leftPx: CORE_LEFT, label: '05:00' })

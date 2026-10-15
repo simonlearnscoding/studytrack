@@ -8,6 +8,7 @@ import { useMemo, useRef } from 'react'
 import { DayTimeline } from './day-timeline'
 import { ScenarioSwitcher } from './scenario-switcher'
 import { useElementWidth } from './use-element-width'
+import { useExpansionPreference } from './use-expansion-preference'
 import { useScenario } from './use-scenario'
 
 // The width the track assumes before it has measured itself — the fixed-scale
@@ -22,8 +23,12 @@ export function TimelineSection() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
   const nowMin = toMinute(scenario.now, scenario.dayStart)
+  const [expansion, toggleBand] = useExpansionPreference()
 
-  const axis = useMemo(() => resolveWindow({ nowMin, availablePx }), [nowMin, availablePx])
+  const axis = useMemo(
+    () => resolveWindow({ nowMin, availablePx, expansion }),
+    [nowMin, availablePx, expansion]
+  )
   const rows = useMemo(
     () =>
       toTimelineRows(scenario.members, {
@@ -43,6 +48,7 @@ export function TimelineSection() {
         rows={rows}
         nowLabel={`now · ${formatClock(nowMin)}`}
         scrollerRef={scrollerRef}
+        onToggleBand={toggleBand}
       />
     </div>
   )
