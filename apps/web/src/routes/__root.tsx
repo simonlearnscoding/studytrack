@@ -12,6 +12,7 @@ import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
 import type { ConvexReactClient } from 'convex/react'
 import { useMounted } from '~/hooks/use-mounted'
+import { useScrollVisibility } from '~/hooks/use-scroll-visibility'
 import { useDateStore } from '~/state/date.store'
 // Side-effect import (not `?url`): Start discovers the stylesheet from the
 // client build and links it per route. With `?url` the SSR build hashes the CSS
@@ -48,6 +49,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   // The date is derived from the client clock, so gate it behind mount to keep
   // the server HTML and the first client paint identical.
   const mounted = useMounted()
+  useScrollVisibility()
   return (
     <html lang="en" className="dark">
       <head>

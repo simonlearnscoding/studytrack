@@ -1,0 +1,2695 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StudyTrack — Today</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --panel: rgba(255, 255, 255, 0.028);
+        --line: rgba(255, 255, 255, 0.065);
+        --txt: #e9edf3;
+        --t2: rgba(233, 237, 243, 0.55);
+        --t3: rgba(233, 237, 243, 0.38);
+        --live: #34d399;
+        --liveDim: rgba(52, 211, 153, 0.14);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--txt);
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      .mono {
+        font-family: 'IBM Plex Mono', monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.09);
+        border-radius: 99px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .app {
+        height: 100dvh;
+        max-width: 1560px;
+        margin: 0 auto;
+        padding: 20px 26px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .hdate {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--t3);
+      }
+      .htitle {
+        font-size: 19px;
+        font-weight: 600;
+        margin-left: 14px;
+      }
+      .hright {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .pulse {
+        position: relative;
+        width: 7px;
+        height: 7px;
+        flex: none;
+      }
+      .pulse i {
+        position: absolute;
+        inset: 0;
+        border-radius: 99px;
+        background: var(--live);
+      }
+      .pulse::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 99px;
+        background: var(--live);
+        opacity: 0.5;
+        animation: ping 1.6s ease-out infinite;
+      }
+      @keyframes ping {
+        0% {
+          transform: scale(0.5);
+          opacity: 0.6;
+        }
+        80%,
+        100% {
+          transform: scale(1.7);
+          opacity: 0;
+        }
+      }
+      .clockctl {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .clockctl .lbl {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--t3);
+        margin-right: 4px;
+      }
+      .clockctl button {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 11px;
+        color: var(--t2);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 4px 9px;
+        cursor: pointer;
+      }
+      .clockctl button:hover {
+        color: var(--txt);
+      }
+      .clockctl button.on {
+        color: var(--live);
+        border-color: rgba(52, 211, 153, 0.35);
+        background: var(--liveDim);
+      }
+      .clockctl button svg {
+        width: 11px;
+        height: 11px;
+        display: block;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+      }
+
+      .cols {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 278px minmax(0, 1fr) 296px;
+        gap: 24px;
+      }
+      .col {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        animation: rise 0.5s ease-out backwards;
+      }
+      .col.center {
+        animation-delay: 0.08s;
+      }
+      .col.rail {
+        animation-delay: 0.16s;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .sechead {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 2px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--t3);
+      }
+      .sechead .n {
+        color: var(--t2);
+        letter-spacing: 0.04em;
+      }
+
+      /* ---------- presence (who + what now) ---------- */
+      .stack {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-right: 2px;
+      }
+      .pcard {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 13px;
+        padding: 12px 13px;
+        animation: cardin 0.38s cubic-bezier(0.2, 0.8, 0.3, 1);
+      }
+      @keyframes cardin {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .pcard.leaving {
+        opacity: 0;
+        transform: translateX(-10px);
+        transition: all 0.3s ease;
+      }
+      .prow {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+      }
+      .avatar {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: 99px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .avatar.on::after {
+        content: '';
+        position: absolute;
+        right: -1px;
+        bottom: -1px;
+        width: 9px;
+        height: 9px;
+        border-radius: 99px;
+        background: var(--live);
+        border: 2.5px solid var(--bg);
+      }
+      .pname {
+        min-width: 0;
+        flex: 1;
+      }
+      .pname p {
+        font-size: 13.5px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .pname span {
+        font-size: 11px;
+        color: var(--t3);
+      }
+      .modeic {
+        width: 13px;
+        height: 13px;
+        flex: none;
+        display: flex;
+        color: rgba(52, 211, 153, 0.6);
+      }
+      .modeic svg {
+        width: 13px;
+        height: 13px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .ptime {
+        font-family: 'IBM Plex Mono';
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--live);
+      }
+      .pnow {
+        margin-top: 8px;
+        font-size: 10.5px;
+        color: var(--t3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .pnow svg {
+        width: 10px;
+        height: 10px;
+        stroke: var(--t3);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        vertical-align: -1px;
+        margin-right: 4px;
+      }
+      .pnow .chip {
+        font-family: 'IBM Plex Mono';
+        font-size: 9px;
+        color: var(--live);
+        background: var(--liveDim);
+        border-radius: 4px;
+        padding: 1px 4px;
+        margin-right: 5px;
+      }
+      .ptasks {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 9px;
+      }
+      .pbar {
+        flex: 1;
+        height: 3px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.09);
+        overflow: hidden;
+      }
+      .pbar i {
+        display: block;
+        height: 100%;
+        background: var(--live);
+        opacity: 0.85;
+        border-radius: 99px;
+        transition: width 0.4s;
+      }
+      .ptasks span {
+        font-size: 11px;
+        color: var(--t3);
+      }
+      .fresh {
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: var(--live);
+        background: var(--liveDim);
+        border-radius: 99px;
+        padding: 2.5px 8px;
+      }
+
+      /* ---------- center ---------- */
+      .center {
+        overflow-y: auto;
+        min-height: 0;
+      }
+      #dayview {
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+        position: relative;
+      }
+      .bignum {
+        font-family: 'IBM Plex Mono';
+        font-weight: 500;
+        font-size: 36px;
+        letter-spacing: -0.01em;
+      }
+      .bignum .sec {
+        color: var(--t3);
+        font-size: 28px;
+      }
+      .bignum.quiet {
+        font-family: 'Space Grotesk';
+        font-size: 22px;
+        color: var(--t2);
+      }
+      .biglabel {
+        font-size: 12px;
+        color: var(--t3);
+        margin-top: 3px;
+      }
+      .bigmeta {
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--t2);
+      }
+      .bigmeta b {
+        color: var(--txt);
+        font-weight: 500;
+      }
+      .goal {
+        margin-top: 14px;
+        max-width: 430px;
+      }
+      .goaltext {
+        font-size: 11.5px;
+        color: var(--t3);
+      }
+      .goaltext b {
+        color: var(--t2);
+        font-weight: 500;
+      }
+      .goaltext.hit b {
+        color: var(--live);
+      }
+      .goalbar {
+        height: 4px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        margin-top: 6px;
+      }
+      .goalfill {
+        height: 100%;
+        background: var(--live);
+        border-radius: 99px;
+        width: 0%;
+        transition: width 0.6s;
+      }
+
+      .legend {
+        margin-left: auto;
+        display: flex;
+        gap: 13px;
+        font-size: 10px;
+        color: var(--t3);
+      }
+      .legend i {
+        display: inline-block;
+        vertical-align: -1px;
+        margin-right: 4px;
+      }
+      .legend .sw {
+        width: 13px;
+        height: 5px;
+        border-radius: 99px;
+      }
+      .sw.cam {
+        background: var(--live);
+      }
+      .sw.screen {
+        background: repeating-linear-gradient(
+          -55deg,
+          rgba(52, 211, 153, 0.85) 0 3px,
+          rgba(52, 211, 153, 0.3) 3px 6px
+        );
+      }
+      .sw.voice {
+        background: rgba(52, 211, 153, 0.38);
+      }
+      .sw.plan {
+        background: transparent;
+        border: 1px dashed rgba(52, 211, 153, 0.55);
+        height: 8px;
+        vertical-align: -2px;
+      }
+      .legend .dt {
+        width: 6px;
+        height: 6px;
+        border-radius: 99px;
+        background: var(--bg);
+        border: 1.5px solid var(--live);
+      }
+
+      .tl {
+        position: relative;
+        margin-top: 18px;
+        padding: 24px 0 8px;
+      }
+      #grid {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .axisl {
+        position: absolute;
+        top: 5px;
+        transform: translateX(-50%);
+        font-family: 'IBM Plex Mono';
+        font-size: 9.5px;
+        color: rgba(255, 255, 255, 0.32);
+      }
+      .gline {
+        position: absolute;
+        top: 20px;
+        bottom: 8px;
+        width: 1px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .nowline {
+        position: absolute;
+        top: -2px;
+        bottom: 6px;
+        width: 1.5px;
+        background: var(--live);
+        z-index: 5;
+      }
+      .nowtag {
+        position: absolute;
+        top: -18px;
+        left: 0;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-family: 'IBM Plex Mono';
+        font-size: 9.5px;
+        font-weight: 600;
+        color: var(--live);
+        background: var(--liveDim);
+        padding: 2px 7px;
+        border-radius: 5px;
+      }
+      .tl-rows {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .tl-row {
+        display: grid;
+        grid-template-columns: 146px 1fr 104px;
+        gap: 12px;
+        align-items: center;
+      }
+      .tl-row.me {
+        margin: 14px 0 18px;
+      }
+      .tl-name {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+      .tl-name .dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 99px;
+        background: var(--live);
+        flex: none;
+        animation: blink 2s ease-in-out infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.35;
+        }
+      }
+      .tl-name p {
+        font-size: 12.5px;
+        color: rgba(255, 255, 255, 0.8);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .tl-row.off .tl-name p {
+        color: rgba(255, 255, 255, 0.34);
+      }
+      .youtag {
+        font-size: 9px;
+        color: var(--live);
+        border: 1px solid rgba(52, 211, 153, 0.3);
+        border-radius: 4px;
+        padding: 1px 4px;
+        flex: none;
+        letter-spacing: 0.05em;
+      }
+      .rchip {
+        font-family: 'IBM Plex Mono';
+        font-size: 8.5px;
+        color: var(--t2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 1px 3px;
+        flex: none;
+      }
+      .crown {
+        width: 11px;
+        height: 11px;
+        flex: none;
+        color: #f3cf6b;
+      }
+      .crown svg {
+        width: 11px;
+        height: 11px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .tl-zone {
+        position: relative;
+        min-width: 0;
+      }
+      .tl-track {
+        position: relative;
+        height: 9px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.035);
+      }
+      .tl-track.me {
+        height: 12px;
+        cursor: crosshair;
+      }
+      .tl-track.me:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .seg {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-radius: 99px;
+        z-index: 2;
+      }
+      .me .seg {
+        top: 2px;
+        bottom: 2px;
+      }
+      .seg.cam {
+        background: var(--live);
+        box-shadow: 0 0 9px rgba(52, 211, 153, 0.35);
+      }
+      .seg.screen {
+        background: repeating-linear-gradient(
+          -55deg,
+          rgba(52, 211, 153, 0.85) 0 4px,
+          rgba(52, 211, 153, 0.3) 4px 8px
+        );
+      }
+      .seg.voice {
+        background: rgba(52, 211, 153, 0.38);
+      }
+      .seg.ended {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .seg.ended.voice {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .plan {
+        position: absolute;
+        top: -3px;
+        bottom: -3px;
+        border: 1.5px dashed rgba(52, 211, 153, 0.5);
+        border-radius: 5px;
+        background: rgba(52, 211, 153, 0.05);
+        z-index: 1;
+      }
+      .plan.mine {
+        cursor: pointer;
+      }
+      .plan.mine:hover {
+        background: rgba(52, 211, 153, 0.12);
+      }
+      .plabel {
+        position: absolute;
+        top: -17px;
+        font-size: 9.5px;
+        color: rgba(233, 237, 243, 0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+      }
+      .planhint {
+        position: absolute;
+        right: 0;
+        bottom: -17px;
+        font-family: 'IBM Plex Mono';
+        font-size: 9px;
+        color: rgba(255, 255, 255, 0.26);
+        letter-spacing: 0.03em;
+        pointer-events: none;
+      }
+      .cdot {
+        position: absolute;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        border-radius: 99px;
+        transform: translate(-50%, -50%);
+        background: var(--bg);
+        border: 1.5px solid rgba(52, 211, 153, 0.75);
+        z-index: 3;
+      }
+      .tl-tail {
+        text-align: right;
+        font-family: 'IBM Plex Mono';
+        font-size: 10px;
+        color: var(--t3);
+        white-space: nowrap;
+      }
+      .tl-tail .rk {
+        color: var(--live);
+      }
+
+      /* ---------- popover ---------- */
+      .pv {
+        position: absolute;
+        z-index: 70;
+        width: 252px;
+        background: #0e1219;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 11px;
+        padding: 11px 12px;
+        box-shadow: 0 14px 38px rgba(0, 0, 0, 0.55);
+        transform: translate(-50%, -100%);
+        display: none;
+        pointer-events: none;
+      }
+      .pv.inter {
+        pointer-events: auto;
+      }
+      .pv-head {
+        font-size: 12.5px;
+        font-weight: 600;
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+      .modechip {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        color: var(--live);
+        background: var(--liveDim);
+        padding: 2px 5px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+      .modechip svg {
+        width: 9px;
+        height: 9px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .pv-sub {
+        font-family: 'IBM Plex Mono';
+        font-size: 10.5px;
+        color: var(--t3);
+        margin-top: 4px;
+      }
+      .pv-tasks {
+        margin-top: 9px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        list-style: none;
+      }
+      .pv-tasks li {
+        display: flex;
+        gap: 7px;
+        align-items: flex-start;
+        font-size: 11.5px;
+        color: rgba(255, 255, 255, 0.75);
+        line-height: 1.35;
+      }
+      .pv-tasks li svg {
+        width: 10px;
+        height: 10px;
+        flex: none;
+        margin-top: 2px;
+        stroke: var(--live);
+        fill: none;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .pv-tasks .t {
+        font-family: 'IBM Plex Mono';
+        font-size: 9.5px;
+        color: rgba(255, 255, 255, 0.28);
+        margin-left: auto;
+        flex: none;
+        padding-top: 1px;
+      }
+      .pv-pace {
+        margin-top: 9px;
+        font-size: 10.5px;
+        color: var(--t3);
+      }
+      .pv-opts {
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .pv-opt {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 6px 7px;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 11.5px;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.3;
+      }
+      .pv-opt:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .pv-opt i {
+        width: 10px;
+        height: 10px;
+        border-radius: 99px;
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+        margin-top: 2px;
+        flex: none;
+      }
+      .pv-opt.sel {
+        background: var(--liveDim);
+        color: var(--txt);
+      }
+      .pv-opt.sel i {
+        border-color: var(--live);
+        background: var(--live);
+      }
+      .pv-input {
+        width: 100%;
+        margin-top: 7px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 7px 9px;
+        color: var(--txt);
+        font-family: 'Space Grotesk';
+        font-size: 12px;
+        outline: none;
+      }
+      .pv-input:focus {
+        border-color: rgba(52, 211, 153, 0.35);
+      }
+      .pv-durs {
+        display: flex;
+        gap: 5px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .pill {
+        font-family: 'IBM Plex Mono';
+        font-size: 10px;
+        color: var(--t2);
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+        padding: 3px 8px;
+        cursor: pointer;
+      }
+      .pill.on {
+        color: var(--live);
+        border-color: rgba(52, 211, 153, 0.4);
+        background: var(--liveDim);
+      }
+      .pv-btn {
+        margin-top: 10px;
+        width: 100%;
+        background: var(--liveDim);
+        color: var(--live);
+        border: 1px solid rgba(52, 211, 153, 0.35);
+        border-radius: 8px;
+        padding: 7px;
+        font-family: 'Space Grotesk';
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .pv-btn:hover {
+        background: rgba(52, 211, 153, 0.22);
+      }
+      .pv-remove {
+        margin-top: 10px;
+        width: 100%;
+        background: rgba(248, 113, 113, 0.08);
+        color: #f87171;
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        border-radius: 8px;
+        padding: 6px;
+        font-family: 'Space Grotesk';
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      /* ---------- week ---------- */
+      .wk-days {
+        display: flex;
+        gap: 10px;
+      }
+      .wk-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .wk-barwrap {
+        height: 92px;
+        width: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .wk-bar {
+        width: 58%;
+        border-radius: 6px 6px 2px 2px;
+        background: rgba(255, 255, 255, 0.2);
+        transition: height 0.4s;
+      }
+      .wk-bar.today {
+        background: var(--live);
+        box-shadow: 0 0 12px rgba(52, 211, 153, 0.3);
+      }
+      .wk-bar.empty {
+        background: transparent;
+        border: 1px dashed rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        width: 58%;
+        height: 4px;
+      }
+      .wk-dlab {
+        font-size: 10.5px;
+        color: var(--t3);
+        letter-spacing: 0.06em;
+      }
+      .wk-col.today .wk-dlab {
+        color: var(--txt);
+      }
+      .wk-hrs {
+        font-family: 'IBM Plex Mono';
+        font-size: 9.5px;
+        color: rgba(255, 255, 255, 0.3);
+      }
+      .wk-col.today .wk-hrs {
+        color: var(--live);
+      }
+      .wk-cap {
+        font-size: 10.5px;
+        color: var(--t3);
+        margin-top: 8px;
+      }
+      .wk-row {
+        display: grid;
+        grid-template-columns: 20px 26px minmax(90px, 1fr) 96px 62px 48px;
+        gap: 12px;
+        align-items: center;
+        padding: 8px 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      .wk-row.you {
+        background: rgba(52, 211, 153, 0.05);
+        border-radius: 8px;
+        border-bottom-color: transparent;
+      }
+      .rk {
+        font-family: 'IBM Plex Mono';
+        font-size: 10px;
+        color: var(--t3);
+      }
+      .wk-row .avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+      }
+      .wk-name {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        font-size: 12.5px;
+      }
+      .wk-name p {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .spark {
+        display: flex;
+        gap: 2px;
+        align-items: flex-end;
+        height: 16px;
+        width: 86px;
+        justify-self: end;
+      }
+      .sp {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 1px;
+        min-height: 1px;
+      }
+      .sp.hi {
+        background: var(--live);
+      }
+      .wk-num {
+        font-family: 'IBM Plex Mono';
+        font-size: 11px;
+        color: var(--t2);
+        text-align: right;
+      }
+      .wk-note {
+        font-size: 11px;
+        color: var(--t3);
+        margin-top: 10px;
+      }
+
+      /* ---------- rail ---------- */
+      .rail {
+        overflow-y: auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 13px;
+        padding: 15px 16px;
+      }
+      .youcard {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .youcard .meta p {
+        font-size: 14.5px;
+        font-weight: 600;
+      }
+      .youcard .meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        color: var(--t3);
+        margin-top: 2px;
+      }
+      .youcard .meta .mono {
+        color: var(--live);
+        font-size: 11.5px;
+      }
+      .midot {
+        width: 5px;
+        height: 5px;
+        border-radius: 99px;
+        background: var(--live);
+      }
+      .taskhead .priv {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 9.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--t3);
+      }
+      .taskhead svg {
+        width: 10px;
+        height: 10px;
+        stroke: var(--t3);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .tasks {
+        display: flex;
+        flex-direction: column;
+      }
+      .task {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      .task:last-child {
+        border-bottom: none;
+      }
+      .cb {
+        flex: none;
+        width: 17px;
+        height: 17px;
+        margin-top: 1px;
+        border-radius: 5px;
+        cursor: pointer;
+        border: 1.5px solid rgba(255, 255, 255, 0.22);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      }
+      .cb svg {
+        width: 10px;
+        height: 10px;
+        stroke: var(--bg);
+        fill: none;
+        stroke-width: 3.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0;
+        transform: scale(0.5);
+        transition: all 0.15s;
+      }
+      .task.done .cb {
+        background: var(--live);
+        border-color: var(--live);
+      }
+      .task.done .cb svg {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .task .txt {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.82);
+      }
+      .task.done .txt {
+        color: var(--t3);
+        text-decoration: line-through;
+      }
+      .tchip {
+        display: inline-block;
+        font-family: 'IBM Plex Mono';
+        font-size: 9px;
+        color: var(--live);
+        background: var(--liveDim);
+        border-radius: 4px;
+        padding: 1px 4px;
+        margin-left: 6px;
+        vertical-align: 1px;
+      }
+      .donetime {
+        font-family: 'IBM Plex Mono';
+        font-size: 9px;
+        color: var(--t3);
+        margin-left: 6px;
+      }
+      .eye {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.3;
+        color: var(--t2);
+        margin-top: 2px;
+      }
+      .eye svg {
+        width: 12px;
+        height: 12px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .eye.on {
+        opacity: 1;
+        color: var(--live);
+      }
+      .addtask {
+        display: flex;
+        gap: 8px;
+        margin-top: 11px;
+      }
+      .addtask input {
+        flex: 1;
+        min-width: 0;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 7px 11px;
+        color: var(--txt);
+        font-family: 'Space Grotesk';
+        font-size: 12.5px;
+        outline: none;
+      }
+      .addtask input::placeholder {
+        color: var(--t3);
+      }
+      .addtask input:focus {
+        border-color: rgba(52, 211, 153, 0.35);
+      }
+      .addtask button {
+        flex: none;
+        width: 31px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .addtask button svg {
+        width: 13px;
+        height: 13px;
+        stroke: var(--t2);
+        fill: none;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+      }
+      .addtask button:hover svg {
+        stroke: var(--live);
+      }
+      .stats {
+        display: flex;
+        flex-direction: column;
+        gap: 11px;
+      }
+      .stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .stat span {
+        font-size: 12px;
+        color: var(--t3);
+      }
+      .stat b {
+        font-family: 'IBM Plex Mono';
+        font-weight: 500;
+        font-size: 13px;
+        text-align: right;
+      }
+      .stat b .gap {
+        color: var(--live);
+      }
+
+      .mo2-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+      }
+      .mo2-wd {
+        text-align: center;
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        color: var(--t3);
+        text-transform: uppercase;
+      }
+      .mo2-cell {
+        aspect-ratio: 1.5;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        font-family: 'IBM Plex Mono';
+        font-size: 8px;
+        color: rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: flex-end;
+        padding: 3px 4px;
+      }
+      .mo2-cell.l1 {
+        background: rgba(52, 211, 153, 0.09);
+      }
+      .mo2-cell.l2 {
+        background: rgba(52, 211, 153, 0.18);
+      }
+      .mo2-cell.l3 {
+        background: rgba(52, 211, 153, 0.3);
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .mo2-cell.l4 {
+        background: rgba(52, 211, 153, 0.48);
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .mo2-cell.today {
+        box-shadow: 0 0 0 1.5px var(--live);
+        color: var(--live);
+      }
+      .mo2-cell.fut {
+        opacity: 0.45;
+        border-style: dashed;
+      }
+      .mo2-stats {
+        display: flex;
+        gap: 20px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .mo2-stats b {
+        display: block;
+        font-family: 'IBM Plex Mono';
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .mo2-stats span {
+        font-size: 10px;
+        color: var(--t3);
+      }
+
+      .quote {
+        margin-top: 2px;
+        padding: 4px 2px 2px 14px;
+        border-left: 2px solid rgba(52, 211, 153, 0.3);
+        font-family: Georgia, 'Times New Roman', serif;
+        font-style: italic;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.42);
+      }
+
+      @media (max-width: 1100px) {
+        body {
+          overflow: auto;
+        }
+        .app {
+          height: auto;
+        }
+        .cols {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        .stack {
+          flex-direction: row;
+          overflow-x: auto;
+          overflow-y: hidden;
+        }
+        .pcard {
+          min-width: 216px;
+        }
+        .center,
+        .rail {
+          overflow: visible;
+        }
+        .tl-row {
+          grid-template-columns: 112px 1fr;
+        }
+        .tl-tail {
+          display: none;
+        }
+        .gline,
+        .axisl,
+        .nowline {
+          display: none;
+        }
+        .tl {
+          margin-top: 10px;
+          padding-top: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div style="display: flex; align-items: baseline">
+          <span class="hdate" id="hdate"></span>
+          <span class="htitle">Today</span>
+        </div>
+        <div class="hright">
+          <div class="clockctl">
+            <span class="lbl">demo clock</span>
+            <button data-sp="1">1×</button>
+            <button data-sp="60" class="on">60×</button>
+            <button data-sp="600">600×</button>
+            <button id="pauseBtn" title="pause / resume">
+              <svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14" /></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="cols">
+        <div class="col">
+          <div class="sechead">
+            <span class="pulse" style="width: 6px; height: 6px"><i></i></span>In the room<span
+              class="n"
+              id="presn"
+            ></span>
+          </div>
+          <div class="stack" id="stack"></div>
+        </div>
+
+        <div class="col center">
+          <div id="dayview">
+            <div class="summary">
+              <div class="bignum" id="bignum">–</div>
+              <div class="biglabel">of shared focus right now</div>
+              <div class="bigmeta" id="bigmeta"></div>
+              <div class="goal">
+                <div class="goaltext" id="goaltext"></div>
+                <div class="goalbar"><div class="goalfill" id="goalfill"></div></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="sechead" style="padding-bottom: 0">
+                Today's sessions
+                <div class="legend">
+                  <span><i class="sw cam"></i>cam</span>
+                  <span><i class="sw screen"></i>screen</span>
+                  <span><i class="sw voice"></i>voice</span>
+                  <span><i class="sw plan"></i>planned</span>
+                  <span><i class="dt"></i>done</span>
+                </div>
+              </div>
+              <div class="tl" id="tl">
+                <div id="grid"></div>
+                <div class="tl-rows" id="rows"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="sechead">
+                This week<span class="n">· room focus per day</span
+                ><span class="n" id="wktot" style="margin-left: auto"></span>
+              </div>
+              <div class="wk-days" id="wkdays"></div>
+              <div class="wk-cap">
+                evenings are usually the busiest window — worth planning tomorrow around
+              </div>
+            </div>
+
+            <div>
+              <div class="sechead">Consistency board<span class="n">· the leaderboard</span></div>
+              <div id="board"></div>
+              <div class="wk-note">ranked by streak, not raw hours — showing up beats grinding</div>
+            </div>
+
+            <div id="pop" class="pv"></div>
+          </div>
+        </div>
+
+        <div class="col rail">
+          <div class="card youcard">
+            <span class="avatar on" id="youav">S</span>
+            <div class="meta">
+              <p>Simon M</p>
+              <span
+                ><i class="midot"></i>studying&nbsp;<span class="mono" id="youtime"
+                  >0:00</span
+                ></span
+              >
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sechead taskhead" style="padding: 0 0 10px">
+              Tasks
+              <span class="priv">
+                <svg viewBox="0 0 24 24">
+                  <rect x="5" y="11" width="14" height="9" rx="2" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+                eye = shared
+              </span>
+            </div>
+            <div class="tasks" id="tasks"></div>
+            <div class="addtask">
+              <input id="taskin" placeholder="Plan the next step…" maxlength="80" />
+              <button id="taskadd">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sechead" style="padding: 0 0 11px">Statistics</div>
+            <div class="stats">
+              <div class="stat"><span>Day standing</span><b id="stStand">–</b></div>
+              <div class="stat"><span>People who studied</span><b id="stPeople">–</b></div>
+              <div class="stat"><span>Tasks completed</span><b id="stTasks">–</b></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sechead" style="padding: 0 0 10px" id="mohead">Your month</div>
+            <div class="mo2-grid" id="mogrid"></div>
+            <div class="mo2-stats" id="mostats"></div>
+          </div>
+
+          <div class="quote">Discipline is just love for your future self.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (s) => document.querySelector(s)
+
+      /* ============ clock ============ */
+      const DAY = new Date()
+      DAY.setHours(14, 23, 0, 0)
+      const midnight = (() => {
+        const b = new Date(DAY)
+        b.setHours(0, 0, 0, 0)
+        return b.getTime()
+      })()
+      let vt = DAY.getTime(),
+        vt0 = vt,
+        speed = 60,
+        paused = false
+      const MS = (m) => m * 60000
+      const vtm = () => (vt - midnight) / 60000
+      const pad = (n) => String(n).padStart(2, '0')
+      const clkM = (m) => pad(Math.floor(m / 60)) + ':' + pad(Math.floor(m % 60))
+      const durM = (m) => {
+        m = Math.round(m)
+        const h = Math.floor(m / 60),
+          mm = m % 60
+        return h ? h + 'h ' + pad(mm) + 'm' : mm + 'm'
+      }
+      const durS = (min) => {
+        const s = Math.floor(min * 60),
+          m = Math.floor(s / 60)
+        return m + ':' + pad(s % 60)
+      }
+
+      /* ============ icons ============ */
+      const IC = {
+        cam: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 10.5l6-3v9l-6-3"/></svg>',
+        screen:
+          '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></svg>',
+        voice:
+          '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+        eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
+        lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+        check: '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>',
+        crown:
+          '<svg viewBox="0 0 24 24"><path d="M4 8l4 4 4-7 4 7 4-4v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/></svg>',
+      }
+      const MODE = {
+        cam: { label: 'cam on', ic: IC.cam },
+        screen: { label: 'screen share', ic: IC.screen },
+        voice: { label: 'voice', ic: IC.voice },
+      }
+
+      /* ============ people ============ */
+      const P = {}
+      const T = (txt, o = {}) =>
+        Object.assign({ txt, done: false, doneAt: null, plannedAt: null, shared: true }, o)
+      function person(id, name, color, segs, tasks, plans) {
+        P[id] = {
+          id,
+          name,
+          color,
+          segs,
+          tasks,
+          plans: plans || [],
+          card: null,
+          rowEl: null,
+          tailEl: null,
+        }
+      }
+
+      person(
+        'maya',
+        'Maya',
+        '#b3a7e8',
+        [{ s: 736, e: null, mode: 'cam' }],
+        [
+          T('Past paper 2019 — full run', { done: true, doneAt: 761 }),
+          T('Error log review', { done: true, doneAt: 784 }),
+          T('Flashcards: neuro ch.3', { done: true, doneAt: 821 }),
+          T('Essay citations pass', { done: true, doneAt: 842 }),
+          T('Summary notes ch.4–5', { plannedAt: 900 }),
+          T('Problem set 6'),
+        ],
+        [{ s: 900, d: 60, txt: 'Summary notes ch.4–5' }]
+      )
+
+      person(
+        'ana',
+        'Ana',
+        '#e89aa6',
+        [{ s: 779, e: null, mode: 'screen' }],
+        [
+          T('Lab report: methods', { done: true, doneAt: 808 }),
+          T('Lab report: results', { done: true, doneAt: 832 }),
+          T('Lab report: discussion', { plannedAt: 930 }),
+          T('Read 2 papers'),
+          T('Anki: pharmacology'),
+        ],
+        [{ s: 930, d: 45, txt: 'Lab report: discussion' }]
+      )
+
+      person(
+        'simon',
+        'Simon M',
+        '#d9a05b',
+        [{ s: 791, e: null, mode: 'cam' }],
+        [
+          T('Read chapter 4 — Kant, the categorical imperative', { done: true, doneAt: 828 }),
+          T('Problem set 3, questions 1–6', { plannedAt: 900 }),
+          T('Anki deck: German irregular verbs ×40'),
+          T('Draft essay outline + thesis statement', { shared: false }),
+        ],
+        [{ s: 900, d: 60, txt: 'Problem set 3, questions 1–6' }]
+      )
+
+      person(
+        'leo',
+        'Leo',
+        '#8fd9c9',
+        [{ s: 800, e: null, mode: 'voice' }],
+        [
+          T('Grind leetcode ×2', { done: true, doneAt: 826 }),
+          T("Review yesterday's problem", { done: true, doneAt: 851 }),
+          T('Grind leetcode — round 2'),
+          T('System design notes'),
+        ]
+      )
+
+      person(
+        'star',
+        'starbuckswifi',
+        '#8fb8d9',
+        [{ s: 815, e: null, mode: 'voice' }],
+        [
+          T('CSS grid recap', { done: true, doneAt: 845 }),
+          T('Build settings page'),
+          T('Write tests for auth'),
+          T('Deploy staging'),
+          T('Email professor re: extension'),
+          T('Review PR comments'),
+        ]
+      )
+
+      person(
+        'kai',
+        'Kai',
+        '#e8c07a',
+        [{ s: 838, e: null, mode: 'cam' }],
+        [
+          T('Warm-up exercises', { done: true, doneAt: 847 }),
+          T('Chapter 5 exercises', { plannedAt: 915 }),
+        ],
+        [{ s: 915, d: 30, txt: 'Chapter 5 exercises' }]
+      )
+
+      person(
+        'noor',
+        'Noor',
+        '#e0a1c4',
+        [{ s: 854, e: null, mode: 'voice' }],
+        [T('Watch lecture 8'), T('Notes: lecture 8'), T('Recap quiz', { plannedAt: 945 })],
+        [{ s: 945, d: 45, txt: 'Recap quiz' }]
+      )
+
+      person(
+        'mei',
+        'Mei',
+        '#c9a8d9',
+        [{ s: 862, e: null, mode: 'cam' }],
+        [
+          T('Vocab lists ×3'),
+          T('Listening practice'),
+          T('Grammar drills ×2'),
+          T('Essay: 300 words'),
+        ]
+      )
+
+      person(
+        'tomas',
+        'Tomas',
+        '#9fb0c9',
+        [{ s: 520, e: 592, mode: 'voice' }],
+        [
+          T('Flashcards: art history', { done: true, doneAt: 535 }),
+          T('Timed essay practice', { done: true, doneAt: 570 }),
+        ]
+      )
+
+      person(
+        'jules',
+        'Jules',
+        '#a9d9b8',
+        [{ s: 552, e: 638, mode: 'screen' }],
+        [
+          T('Problem set 2', { done: true, doneAt: 587 }),
+          T('Read chapter 3', { done: true, doneAt: 602 }),
+          T('Anki: kanji', { done: true, doneAt: 621 }),
+          T('Review problem set 2'),
+        ]
+      )
+
+      person(
+        'ravi',
+        'Ravi',
+        '#d9b98f',
+        [{ s: 575, e: 610, mode: 'cam' }],
+        [
+          T('Thesis: write 500 words', { done: true, doneAt: 590 }),
+          T('Thesis: edit intro'),
+          T('Find 3 sources'),
+          T('Annotate source A'),
+          T('Methodology section'),
+        ]
+      )
+
+      person(
+        'dex',
+        'Dex',
+        '#a8c9a1',
+        [{ s: 605, e: 626, mode: 'voice' }],
+        [T('Sketch thumbnail concepts')]
+      )
+
+      person(
+        'priya',
+        'Priya',
+        '#d9a98f',
+        [
+          { s: 450, e: 485, mode: 'cam' },
+          { s: 665, e: 730, mode: 'voice' },
+        ],
+        [
+          T('Algo HW q1–3', { done: true, doneAt: 466 }),
+          T('Algo HW q4–6', { done: true, doneAt: 698 }),
+          T('Mock interview recap', { done: true, doneAt: 719 }),
+          T('Read CLRS ch.15'),
+          T('Algo HW q7'),
+        ]
+      )
+
+      person(
+        'elena',
+        'Elena',
+        '#d9d0a1',
+        [{ s: 750, e: 785, mode: 'screen' }],
+        [
+          T('Organic chem mechanisms', { done: true, doneAt: 764 }),
+          T('Lab prep'),
+          T('Flashcards: reactions'),
+        ]
+      )
+
+      const liveSeg = (p) => p.segs.find((g) => g.e === null)
+      const isLive = (p) => !!liveSeg(p)
+      const doneCnt = (p) => p.tasks.filter((t) => t.done).length
+      const totalM = (p) => p.segs.reduce((a, g) => a + ((g.e ?? vtm()) - g.s), 0)
+      const focusToday = () => Object.values(P).reduce((a, p) => a + totalM(p), 0)
+      const GOAL = 900
+
+      function standing() {
+        const arr = Object.values(P)
+          .map((p) => ({ p, m: totalM(p) }))
+          .sort((a, b) => b.m - a.m)
+        const i = arr.findIndex((x) => x.p === P.simon)
+        return { rank: i + 1, n: arr.length, m: arr[i].m, ahead: i > 0 ? arr[i - 1] : null }
+      }
+
+      /* ============ timeline geometry ============ */
+      let t0m
+      ;(function () {
+        const min = Math.min(...Object.values(P).flatMap((p) => p.segs.map((g) => g.s)))
+        t0m = Math.floor(min / 60) * 60
+      })()
+      const maxPlanEnd = () =>
+        Math.max(0, ...Object.values(P).flatMap((p) => p.plans.map((b) => b.s + b.d)))
+      const t1m = () => Math.max(vtm() + 35, t0m + 120, maxPlanEnd() + 10)
+      const X = (m) => ((m - t0m) / (t1m() - t0m)) * 100
+      const leftCalc = (m) => 'calc(158px + (100% - 274px) * ' + (X(m) / 100).toFixed(4) + ')'
+
+      /* ============ grid ============ */
+      const tl = $('#tl'),
+        gridEl = $('#grid'),
+        rowsEl = $('#rows')
+      const nowEl = document.createElement('div')
+      nowEl.className = 'nowline'
+      nowEl.innerHTML = '<span class="nowtag" id="nowtag">now</span>'
+      tl.appendChild(nowEl)
+
+      let glMs = [],
+        glA = [],
+        glG = []
+      function renderGrid() {
+        const hrs = []
+        for (let m = t0m; m <= t1m(); m += 60) hrs.push(m)
+        if (hrs.length !== glMs.length) {
+          glMs = hrs
+          const skip = hrs.length > 12
+          gridEl.innerHTML = hrs
+            .map(
+              (m, i) =>
+                '<div class="axisl">' +
+                (skip && i % 2 ? '' : clkM(m)) +
+                '</div><div class="gline"></div>'
+            )
+            .join('')
+          glA = [...gridEl.querySelectorAll('.axisl')]
+          glG = [...gridEl.querySelectorAll('.gline')]
+        }
+        glMs.forEach((m, i) => {
+          const l = leftCalc(m)
+          glA[i].style.left = l
+          glG[i].style.left = l
+        })
+      }
+
+      /* ============ rows ============ */
+      function sortedRows() {
+        const me = P.simon
+        const live = Object.values(P)
+          .filter((p) => isLive(p) && p !== me)
+          .sort((a, b) => liveSeg(a).s - liveSeg(b).s)
+        const ended = Object.values(P)
+          .filter((p) => !isLive(p))
+          .sort((a, b) => totalM(b) - totalM(a))
+        return [me, ...live, ...ended]
+      }
+      function longestHolder() {
+        let best = null,
+          bm = 0
+        Object.values(P).forEach((p) =>
+          p.segs.forEach((g) => {
+            const d = (g.e ?? vtm()) - g.s
+            if (d > bm) {
+              bm = d
+              best = p
+            }
+          })
+        )
+        return bm > 45 ? best : null
+      }
+      function trackHTML(p) {
+        let h = ''
+        p.plans.forEach((b) => {
+          h +=
+            '<div class="plan' +
+            (p === P.simon ? ' mine' : '') +
+            '" data-p="' +
+            p.id +
+            '" data-s="' +
+            b.s +
+            '"></div>'
+        })
+        p.segs.forEach((g) => {
+          const cls = g.e === null ? g.mode : 'ended' + (g.mode === 'voice' ? ' voice' : '')
+          h += '<div class="seg ' + cls + '" data-p="' + p.id + '" data-s="' + g.s + '"></div>'
+        })
+        p.tasks
+          .filter((t) => t.done && t.doneAt != null)
+          .forEach((t) => {
+            h += '<span class="cdot" style="left:' + X(t.doneAt) + '%"></span>'
+          })
+        return h
+      }
+      function renderRows() {
+        rowsEl.innerHTML = ''
+        const king = longestHolder()
+        sortedRows().forEach((p) => {
+          const r = document.createElement('div')
+          r.className = 'tl-row' + (isLive(p) ? '' : ' off') + (p === P.simon ? ' me' : '')
+          const n = p.segs.length
+          r.innerHTML =
+            '<div class="tl-name">' +
+            (isLive(p) ? '<span class="dot"></span>' : '') +
+            '<p>' +
+            p.name +
+            '</p>' +
+            (p === P.simon ? '<span class="youtag">you</span>' : '') +
+            (isLive(p) && n > 1 ? '<span class="rchip">R' + n + '</span>' : '') +
+            (king === p ? IC.crown : '') +
+            '</div>' +
+            '<div class="tl-zone">' +
+            (p === P.simon
+              ? p.plans
+                  .map((b) => '<div class="plabel" data-s="' + b.s + '">' + b.txt + '</div>')
+                  .join('')
+              : '') +
+            '<div class="tl-track' +
+            (p === P.simon ? ' me' : '') +
+            '" data-p="' +
+            p.id +
+            '">' +
+            trackHTML(p) +
+            '</div>' +
+            (p === P.simon ? '<div class="planhint">click empty time to plan a block</div>' : '') +
+            '</div>' +
+            '<div class="tl-tail"></div>'
+          p.rowEl = r
+          p.tailEl = r.querySelector('.tl-tail')
+          rowsEl.appendChild(r)
+        })
+      }
+      function updateRows() {
+        const st = standing()
+        Object.values(P).forEach((p) => {
+          if (!p.rowEl) return
+          p.rowEl.querySelectorAll('.seg').forEach((el) => {
+            const g = p.segs.find((x) => x.s === +el.dataset.s)
+            if (!g) return
+            el.style.left = X(g.s) + '%'
+            el.style.width = Math.max(0.6, X(g.e ?? vtm()) - X(g.s)) + '%'
+          })
+          p.rowEl.querySelectorAll('.plan').forEach((el) => {
+            const b = p.plans.find((x) => x.s === +el.dataset.s)
+            if (!b) return
+            el.style.left = X(b.s) + '%'
+            el.style.width = Math.max(1, X(b.s + b.d) - X(b.s)) + '%'
+          })
+          if (p === P.simon)
+            p.rowEl.querySelectorAll('.plabel').forEach((el) => {
+              const b = p.plans.find((x) => x.s === +el.dataset.s)
+              if (!b) return
+              el.style.left = X(b.s) + '%'
+              el.style.width = Math.min(X(b.s + b.d) - X(b.s), 97 - X(b.s)) + '%'
+            })
+          if (p.tailEl)
+            p.tailEl.innerHTML =
+              (p === P.simon ? '<span class="rk">#' + st.rank + '</span> · ' : '') +
+              durM(totalM(p)) +
+              ' · ' +
+              doneCnt(p) +
+              '✓'
+        })
+        nowEl.style.left = leftCalc(vtm())
+        $('#nowtag').textContent = 'now · ' + clkM(vtm())
+      }
+
+      /* ============ popovers ============ */
+      const pop = $('#pop'),
+        dayview = $('#dayview')
+      let hideT = null
+      function hidePop() {
+        pop.style.display = 'none'
+        pop.classList.remove('inter')
+      }
+      function placePop(x, y) {
+        const dv = dayview.getBoundingClientRect()
+        pop.style.left = Math.max(135, Math.min(x - dv.left, dv.width - 135)) + 'px'
+        pop.style.top = y - dv.top - 12 + 'px'
+        pop.style.display = 'block'
+      }
+      function modeChip(m) {
+        return '<span class="modechip">' + MODE[m].ic + MODE[m].label + '</span>'
+      }
+
+      function sessionPop(p, g) {
+        const end = g.e ?? vtm(),
+          dur = end - g.s
+        const during = p.tasks
+          .filter((t) => t.done && t.doneAt != null && t.doneAt >= g.s && t.doneAt <= end)
+          .sort((a, b) => a.doneAt - b.doneAt)
+        let h =
+          '<div class="pv-head">' +
+          p.name +
+          ' ' +
+          modeChip(g.mode) +
+          '</div>' +
+          '<div class="pv-sub">' +
+          clkM(g.s) +
+          (g.e ? '–' + clkM(g.e) : ' → now') +
+          ' · ' +
+          durM(dur) +
+          (g.e ? '' : '…') +
+          '</div>'
+        if (during.length) {
+          h +=
+            '<ul class="pv-tasks">' +
+            during
+              .map(
+                (t) =>
+                  '<li>' +
+                  IC.check +
+                  '<span>' +
+                  t.txt +
+                  '</span><span class="t">' +
+                  clkM(t.doneAt) +
+                  '</span></li>'
+              )
+              .join('') +
+            '</ul>'
+          h +=
+            '<div class="pv-pace">' +
+            (during.length === 1 ? '1 task' : during.length + ' tasks') +
+            ' · 1 / ' +
+            durM(dur / during.length) +
+            '</div>'
+        } else h += '<div class="pv-pace">no completions during this session</div>'
+        return h
+      }
+      function planPop(p, b) {
+        return (
+          '<div class="pv-head">' +
+          (p === P.simon ? 'Planned block' : p.name + ' · planned') +
+          '</div>' +
+          '<div class="pv-sub">' +
+          clkM(b.s) +
+          '–' +
+          clkM(b.s + b.d) +
+          ' · ' +
+          b.d +
+          'm</div>' +
+          '<ul class="pv-tasks"><li><span>' +
+          b.txt +
+          '</span></li></ul>' +
+          '<div class="pv-pace">' +
+          (p === P.simon ? 'click the block to edit' : 'scheduled by ' + p.name) +
+          '</div>'
+        )
+      }
+
+      rowsEl.addEventListener('mouseover', (e) => {
+        const el = e.target.closest('.seg,.plan')
+        if (!el) return
+        clearTimeout(hideT)
+        const p = P[el.dataset.p]
+        if (!p) return
+        if (el.classList.contains('plan')) {
+          const b = p.plans.find((x) => x.s === +el.dataset.s)
+          if (!b) return
+          pop.innerHTML = planPop(p, b)
+        } else {
+          const g = p.segs.find((x) => x.s === +el.dataset.s)
+          if (!g) return
+          pop.innerHTML = sessionPop(p, g)
+        }
+        pop.classList.remove('inter')
+        const r = el.getBoundingClientRect()
+        placePop(r.left + r.width / 2, r.top)
+      })
+      rowsEl.addEventListener('mouseout', (e) => {
+        if (e.target.closest('.seg,.plan')) hideT = setTimeout(hidePop, 140)
+      })
+
+      /* click / tap: edit own plan · inspect any bar · plan on empty time */
+      rowsEl.addEventListener('click', (e) => {
+        const mine = e.target.closest('.plan.mine')
+        if (mine) {
+          e.stopPropagation()
+          const b = P.simon.plans.find((x) => x.s === +mine.dataset.s)
+          if (!b) return
+          pop.innerHTML =
+            '<div class="pv-head">Planned block</div>' +
+            '<div class="pv-sub">' +
+            clkM(b.s) +
+            '–' +
+            clkM(b.s + b.d) +
+            ' · ' +
+            b.d +
+            'm</div>' +
+            '<ul class="pv-tasks"><li><span>' +
+            b.txt +
+            '</span></li></ul>' +
+            '<button class="pv-remove" id="pvrm">Remove block</button>'
+          pop.classList.add('inter')
+          const r = mine.getBoundingClientRect()
+          placePop(r.left + r.width / 2, r.top + 18)
+          $('#pvrm').addEventListener('click', () => {
+            P.simon.plans = P.simon.plans.filter((x) => x !== b)
+            const t = P.simon.tasks.find((t) => t.txt === b.txt)
+            if (t) t.plannedAt = null
+            hidePop()
+            renderRows()
+            renderRail()
+            refreshNowLine(P.simon)
+          })
+          return
+        }
+        const otherPlan = e.target.closest('.plan')
+        if (otherPlan) {
+          e.stopPropagation()
+          const p = P[otherPlan.dataset.p]
+          const b = p.plans.find((x) => x.s === +otherPlan.dataset.s)
+          if (!b) return
+          pop.innerHTML = planPop(p, b)
+          pop.classList.remove('inter')
+          const r = otherPlan.getBoundingClientRect()
+          placePop(r.left + r.width / 2, r.top)
+          return
+        }
+        const seg = e.target.closest('.seg')
+        if (seg) {
+          e.stopPropagation()
+          const p = P[seg.dataset.p]
+          const g = p.segs.find((x) => x.s === +seg.dataset.s)
+          if (!g) return
+          pop.innerHTML = sessionPop(p, g)
+          pop.classList.remove('inter')
+          const r = seg.getBoundingClientRect()
+          placePop(r.left + r.width / 2, r.top)
+          return
+        }
+        const trk = e.target.closest('.tl-track.me')
+        if (!trk || e.target.closest('.cdot')) return
+        e.stopPropagation()
+        const rect = trk.getBoundingClientRect()
+        const frac = (e.clientX - rect.left) / rect.width
+        let m = Math.round((t0m + frac * (t1m() - t0m)) / 15) * 15
+        m = Math.max(m, Math.ceil(vtm() / 15) * 15)
+        openPlanPop(m, e)
+      })
+
+      let planState = null
+      function openPlanPop(m, e) {
+        planState = { m, dur: 60, taskIdx: null }
+        const open = P.simon.tasks
+          .map((t, i) => ({ t, i }))
+          .filter((x) => !x.t.done && !x.t.plannedAt)
+        pop.innerHTML =
+          '<div class="pv-head">Plan a block · <span class="mono" style="font-weight:500">' +
+          clkM(m) +
+          '</span></div>' +
+          '<div class="pv-sub">snapped to 15m</div>' +
+          (open.length
+            ? '<div class="pv-opts">' +
+              open
+                .map(
+                  (x) =>
+                    '<div class="pv-opt" data-i="' +
+                    x.i +
+                    '"><i></i><span>' +
+                    x.t.txt +
+                    '</span></div>'
+                )
+                .join('') +
+              '</div>'
+            : '') +
+          '<input class="pv-input" id="pvin" placeholder="or type a new task…"/>' +
+          '<div class="pv-durs">' +
+          [30, 45, 60, 90, 120]
+            .map(
+              (d) =>
+                '<span class="pill' +
+                (d === 60 ? ' on' : '') +
+                '" data-d="' +
+                d +
+                '">' +
+                (d >= 60 ? d / 60 + 'h' : d + 'm') +
+                '</span>'
+            )
+            .join('') +
+          '</div>' +
+          '<button class="pv-btn" id="pvok">Add to timeline</button>'
+        pop.classList.add('inter')
+        placePop(e.clientX, e.clientY)
+        pop.querySelectorAll('.pv-opt').forEach((o) =>
+          o.addEventListener('click', () => {
+            planState.taskIdx = +o.dataset.i
+            pop.querySelectorAll('.pv-opt').forEach((x) => x.classList.toggle('sel', x === o))
+            $('#pvin').value = ''
+          })
+        )
+        pop.querySelectorAll('.pill').forEach((pl) =>
+          pl.addEventListener('click', () => {
+            planState.dur = +pl.dataset.d
+            pop.querySelectorAll('.pill').forEach((x) => x.classList.toggle('on', x === pl))
+          })
+        )
+        const commit = () => {
+          const txt = $('#pvin').value.trim()
+          if (txt) {
+            P.simon.tasks.push(T(txt, { plannedAt: m }))
+          } else if (planState.taskIdx != null) {
+            P.simon.tasks[planState.taskIdx].plannedAt = m
+          } else return
+          const t = txt ? P.simon.tasks[P.simon.tasks.length - 1] : P.simon.tasks[planState.taskIdx]
+          P.simon.plans.push({ s: m, d: planState.dur, txt: t.txt })
+          hidePop()
+          renderRows()
+          renderRail()
+          refreshNowLine(P.simon)
+        }
+        $('#pvok').addEventListener('click', commit)
+        $('#pvin').addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') commit()
+        })
+        $('#pvin').focus()
+      }
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#pop')) hidePop()
+      })
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') hidePop()
+      })
+      $('.center').addEventListener('scroll', hidePop)
+
+      /* ============ presence ============ */
+      const order = () =>
+        Object.values(P)
+          .filter(isLive)
+          .sort((a, b) => liveSeg(a).s - liveSeg(b).s)
+      function nowLine(p) {
+        const shared = p === P.simon ? p.tasks.filter((t) => t.shared) : p.tasks
+        if (!shared.length) return IC.lock + ' private list'
+        const undone = shared.filter((t) => !t.done)
+        if (!undone.length) return IC.check + ' all ' + shared.length + ' done'
+        const pl = undone.find((t) => t.plannedAt != null)
+        if (pl) return '<span class="chip">' + clkM(pl.plannedAt) + '</span>' + pl.txt
+        return 'next · ' + undone[0].txt
+      }
+      function cardHTML(p) {
+        const g = liveSeg(p),
+          tot = p.tasks.length,
+          dn = doneCnt(p)
+        return (
+          '<div class="prow">' +
+          '<span class="avatar on" style="background:' +
+          p.color +
+          '26;color:' +
+          p.color +
+          '">' +
+          p.name[0] +
+          '</span>' +
+          '<div class="pname"><p>' +
+          p.name +
+          '</p><span>since ' +
+          clkM(g.s) +
+          '</span></div>' +
+          '<span class="modeic">' +
+          MODE[g.mode].ic +
+          '</span>' +
+          '<span class="ptime" data-t>–</span></div>' +
+          '<div class="pnow" data-now>' +
+          nowLine(p) +
+          '</div>' +
+          (tot
+            ? '<div class="ptasks"><div class="pbar"><i data-b style="width:' +
+              (dn / tot) * 100 +
+              '%"></i></div><span data-c>' +
+              dn +
+              '/' +
+              tot +
+              '</span></div>'
+            : '') +
+          (vtm() - g.s < 2 ? '<span class="fresh">just joined</span>' : '')
+        )
+      }
+      function renderPresence() {
+        const stack = $('#stack')
+        stack.innerHTML = ''
+        const live = order()
+        if (!live.length) {
+          stack.innerHTML =
+            '<div style="border:1px dashed var(--line);border-radius:13px;padding:26px 18px;text-align:center;color:var(--t3);font-size:12.5px;line-height:1.7">The room is quiet.<br>Join the study voice channel to open it.</div>'
+          return
+        }
+        live.forEach((p) => {
+          const d = document.createElement('div')
+          d.className = 'pcard'
+          d.innerHTML = cardHTML(p)
+          p.card = {
+            root: d,
+            t: d.querySelector('[data-t]'),
+            b: d.querySelector('[data-b]'),
+            c: d.querySelector('[data-c]'),
+            now: d.querySelector('[data-now]'),
+          }
+          stack.appendChild(d)
+        })
+      }
+      function refreshNowLine(p) {
+        if (p.card && p.card.now) p.card.now.innerHTML = nowLine(p)
+      }
+      function updatePresence() {
+        Object.values(P).forEach((p) => {
+          if (!p.card || !p.card.t) return
+          const g = liveSeg(p)
+          if (!g) {
+            p.card = null
+            return
+          }
+          p.card.t.textContent = durS(vtm() - g.s)
+          const tot = p.tasks.length,
+            dn = doneCnt(p)
+          if (tot && p.card.b) {
+            p.card.b.style.width = (dn / tot) * 100 + '%'
+            p.card.c.textContent = dn + '/' + tot
+          }
+        })
+      }
+
+      /* ============ week (under the day) ============ */
+      const monday = (() => {
+        const d = new Date(DAY)
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+        d.setHours(0, 0, 0, 0)
+        return d
+      })()
+      const todayIdx = (DAY.getDay() + 6) % 7
+      const PASTW = [412, 348, 296, 405, 371, 132, 88]
+      const YOUW = [86, 112, 0, 74, 95, 40, 0]
+      function buildWeek() {
+        const todayMin = Math.round(focusToday())
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday)
+          d.setDate(monday.getDate() + i)
+          return {
+            lab: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            n: d.getDate(),
+            min: i < todayIdx ? PASTW[i] : i === todayIdx ? todayMin : null,
+            today: i === todayIdx,
+          }
+        })
+        const max = Math.max(...days.map((x) => x.min || 0), 1)
+        const roomTot = days.reduce((a, x) => a + (x.min || 0), 0)
+        $('#wkdays').innerHTML = days
+          .map(
+            (x) =>
+              '<div class="wk-col' +
+              (x.today ? ' today' : '') +
+              '">' +
+              '<div class="wk-barwrap">' +
+              (x.min != null
+                ? '<div class="wk-bar' +
+                  (x.today ? ' today' : '') +
+                  '" style="height:' +
+                  Math.max(4, (x.min / max) * 100) +
+                  '%"></div>'
+                : '<div class="wk-bar empty"></div>') +
+              '</div>' +
+              '<div class="wk-dlab">' +
+              x.lab +
+              ' ' +
+              x.n +
+              '</div>' +
+              '<div class="wk-hrs">' +
+              (x.min != null ? durM(x.min) : '—') +
+              '</div></div>'
+          )
+          .join('')
+        $('#wktot').innerHTML = 'room total <b>' + durM(roomTot) + '</b> · last week 38h 10m'
+
+        const youW = YOUW.slice()
+        youW[todayIdx] = todayMin
+        const board = [
+          { name: 'Maya', color: '#b3a7e8', streak: 12, w: [170, 127, 210, 95, 60, 0, 40] },
+          { name: 'starbuckswifi', color: '#8fb8d9', streak: 9, w: [140, 38, 120, 160, 75, 0, 66] },
+          { name: 'Simon M', color: '#d9a05b', streak: 6, w: youW, you: 1 },
+          { name: 'Ana', color: '#e89aa6', streak: 4, w: [0, 84, 150, 60, 95, 30, 0] },
+          { name: 'Noor', color: '#e0a1c4', streak: 3, w: [0, 29, 80, 120, 45, 0, 55] },
+          { name: 'Leo', color: '#8fd9c9', streak: 2, w: [0, 63, 90, 40, 110, 25, 0] },
+          { name: 'Kai', color: '#e8c07a', streak: 1, w: [0, 25, 70, 55, 35, 0, 20] },
+          { name: 'Mei', color: '#c9a8d9', streak: 1, w: [0, 12, 40, 30, 20, 0, 15] },
+        ]
+        $('#board').innerHTML = board
+          .map((b, i) => {
+            const tot = b.w.slice(0, todayIdx + 1).reduce((a, v) => a + v, 0)
+            return (
+              '<div class="wk-row' +
+              (b.you ? ' you' : '') +
+              '">' +
+              '<span class="rk">#' +
+              (i + 1) +
+              '</span>' +
+              '<span class="avatar" style="background:' +
+              b.color +
+              '26;color:' +
+              b.color +
+              '">' +
+              b.name[0] +
+              '</span>' +
+              '<div class="wk-name"><p>' +
+              b.name +
+              '</p>' +
+              (b.you ? '<span class="youtag">you</span>' : '') +
+              '</div>' +
+              '<div class="spark">' +
+              b.w
+                .map((v, j) =>
+                  j > todayIdx
+                    ? '<span class="sp" style="height:6%;opacity:.35"></span>'
+                    : '<span class="sp' +
+                      (j === todayIdx ? ' hi' : '') +
+                      '" style="height:' +
+                      Math.max(8, (v / 220) * 100) +
+                      '%"></span>'
+                )
+                .join('') +
+              '</div>' +
+              '<span class="wk-num">' +
+              durM(tot) +
+              '</span>' +
+              '<span class="wk-num">' +
+              b.streak +
+              'd</span></div>'
+            )
+          })
+          .join('')
+      }
+
+      /* ============ month heatmap (rail) ============ */
+      const LV = [
+        0, 1, 0, 2, 1, 0, 1, 2, 3, 2, 1, 2, 3, 2, 1, 3, 2, 0, 1, 2, 4, 3, 2, 1, 2, 3, 4, 2, 1, 2, 1,
+      ]
+      function buildMonth() {
+        const y = DAY.getFullYear(),
+          mo = DAY.getMonth()
+        const mname = DAY.toLocaleDateString('en-US', { month: 'long' })
+        const dim = new Date(y, mo + 1, 0).getDate()
+        const today = DAY.getDate()
+        const off = (new Date(y, mo, 1).getDay() + 6) % 7
+        const lv = LV.slice(0, dim)
+        lv[today - 1] = Math.min(4, Math.floor(focusToday() / 90))
+        let cells = ''
+        for (let i = 0; i < off; i++) cells += '<div></div>'
+        lv.forEach((v, i) => {
+          const d = i + 1
+          cells +=
+            '<div class="mo2-cell' +
+            (v ? ' l' + v : '') +
+            (d === today ? ' today' : '') +
+            (d > today ? ' fut' : '') +
+            '">' +
+            d +
+            '</div>'
+        })
+        const act = lv.slice(0, today).filter((v) => v > 0).length
+        let streak = 0
+        for (let i = today - 1; i >= 0 && lv[i] > 0; i--) streak++
+        const tot = lv.reduce((a, v) => a + v, 0) * 47,
+          best = Math.max(...lv) * 47
+        $('#mohead').textContent = 'Your ' + mname
+        $('#mogrid').innerHTML =
+          ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+            .map((w) => '<div class="mo2-wd">' + w + '</div>')
+            .join('') + cells
+        $('#mostats').innerHTML =
+          '<div><b>' +
+          durM(tot) +
+          '</b><span>total</span></div>' +
+          '<div><b>' +
+          act +
+          '</b><span>active days</span></div>' +
+          '<div><b>' +
+          streak +
+          'd</b><span>streak</span></div>' +
+          '<div><b>' +
+          durM(best) +
+          '</b><span>best day</span></div>'
+      }
+
+      /* ============ rail tasks ============ */
+      function renderRail() {
+        const me = P.simon
+        $('#tasks').innerHTML = me.tasks
+          .map((t, i) => {
+            const chip =
+              t.plannedAt != null
+                ? '<span class="tchip">→ ' + clkM(t.plannedAt) + '</span>'
+                : t.done && t.doneAt != null
+                  ? '<span class="donetime">' + clkM(t.doneAt) + '</span>'
+                  : ''
+            return (
+              '<div class="task' +
+              (t.done ? ' done' : '') +
+              '" data-i="' +
+              i +
+              '">' +
+              '<span class="cb">' +
+              IC.check +
+              '</span>' +
+              '<span class="txt">' +
+              t.txt +
+              chip +
+              '</span>' +
+              '<span class="eye' +
+              (t.shared ? ' on' : '') +
+              '" title="' +
+              (t.shared ? 'shared with the room' : 'private') +
+              '">' +
+              IC.eye +
+              '</span></div>'
+            )
+          })
+          .join('')
+        $('#tasks')
+          .querySelectorAll('.task')
+          .forEach((el) => {
+            const i = +el.dataset.i,
+              t = me.tasks[i]
+            el.querySelector('.cb').addEventListener('click', () => {
+              if (!t.done) {
+                t.done = true
+                t.doneAt = Math.round(vtm())
+              } else {
+                t.done = false
+                t.doneAt = null
+              }
+              renderRail()
+              renderRows()
+              refreshNowLine(me)
+            })
+            el.querySelector('.eye').addEventListener('click', () => {
+              t.shared = !t.shared
+              renderRail()
+              refreshNowLine(me)
+            })
+          })
+      }
+      function addTaskRail() {
+        const v = $('#taskin').value.trim()
+        if (!v) return
+        P.simon.tasks.push(T(v))
+        $('#taskin').value = ''
+        renderRail()
+        refreshNowLine(P.simon)
+      }
+      $('#taskadd').addEventListener('click', addTaskRail)
+      $('#taskin').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTaskRail()
+      })
+
+      /* ============ summary & stats ============ */
+      function updateSummary() {
+        const live = order()
+        if (!live.length) {
+          $('#bignum').classList.add('quiet')
+          $('#bignum').textContent = 'the room is quiet'
+          $('#bigmeta').innerHTML = 'today\u2019s sessions are still on the record below'
+          $('#presn').textContent = '· 0'
+          return
+        }
+        $('#bignum').classList.remove('quiet')
+        const shared = live.reduce((a, p) => a + (vtm() - liveSeg(p).s), 0)
+        const s = Math.floor(shared * 60),
+          h = Math.floor(s / 3600),
+          m = Math.floor((s % 3600) / 60)
+        $('#bignum').innerHTML =
+          (h ? h + 'h ' : '') + pad(m) + 'm <span class="sec">' + pad(s % 60) + 's</span>'
+        const opened = Math.min(...live.map((p) => liveSeg(p).s))
+        $('#bigmeta').innerHTML =
+          '<b>' + live.length + ' studying together</b> · room opened ' + clkM(opened)
+        $('#presn').textContent = '· ' + live.length
+        const f = focusToday(),
+          pct = Math.min(100, Math.round((f / GOAL) * 100))
+        $('#goalfill').style.width = pct + '%'
+        const gt = $('#goaltext'),
+          hit = f >= GOAL
+        gt.classList.toggle('hit', hit)
+        gt.innerHTML = hit
+          ? 'room goal · <b>reached — 15h ✓</b> · now counting past it (' + durM(f) + ')'
+          : 'room goal · <b>' + durM(f) + ' / 15h</b> · ' + pct + '% there'
+      }
+      function updateStats() {
+        const st = standing()
+        $('#stStand').innerHTML =
+          '#' +
+          st.rank +
+          ' of ' +
+          st.n +
+          (st.ahead
+            ? ' · <span class="gap">' +
+              durM(st.ahead.m - st.m) +
+              '</span> behind ' +
+              st.ahead.p.name
+            : ' · leading')
+        $('#stPeople').textContent = Object.keys(P).length
+        $('#stTasks').textContent = Object.values(P).reduce((a, p) => a + doneCnt(p), 0)
+      }
+
+      /* ============ the afternoon's script ============ */
+      function taskDone(id, txt) {
+        const p = P[id]
+        if (!p || !isLive(p)) return
+        const t = txt
+          ? p.tasks.find((x) => x.txt === txt && !x.done)
+          : p.tasks.find((x) => !x.done && !x.plannedAt) || p.tasks.find((x) => !x.done)
+        if (!t) return
+        t.done = true
+        t.doneAt = Math.round(vtm())
+        renderRows()
+        refreshNowLine(p)
+      }
+      function join(id, mode) {
+        const p = P[id]
+        if (isLive(p)) return
+        p.segs.push({ s: Math.round(vtm()), e: null, mode: mode || 'cam' })
+        renderPresence()
+        renderRows()
+      }
+      function leave(id) {
+        const p = P[id],
+          g = liveSeg(p)
+        if (!g) return
+        g.e = Math.round(vtm())
+        if (p.card) {
+          const c = p.card
+          c.root.classList.add('leaving')
+          setTimeout(() => c.root.remove(), 320)
+          p.card = null
+        }
+        renderRows()
+      }
+      const script = [
+        [2, () => taskDone('mei')],
+        [5, () => taskDone('noor', 'Watch lecture 8')],
+        [8, () => taskDone('kai')],
+        [11, () => join('elena', 'screen')],
+        [14, () => taskDone('maya', 'Problem set 6')],
+        [17, () => taskDone('ana', 'Read 2 papers')],
+        [20, () => leave('star')],
+        [23, () => join('tomas', 'voice')],
+        [26, () => taskDone('noor', 'Notes: lecture 8')],
+        [29, () => taskDone('leo', 'Grind leetcode — round 2')],
+        [32, () => leave('maya')],
+        [36, () => join('dex', 'voice')],
+        [40, () => leave('kai')],
+        [46, () => join('priya', 'voice')],
+        [52, () => join('maya', 'cam')],
+        [60, () => join('jules', 'screen')],
+      ]
+      let nextAmbient = 8
+      const vt0m0 = (vt0 - midnight) / 60000
+      function runScript() {
+        while (script.length && vt >= vt0 + MS(script[0][0])) script.shift()[1]()
+        if (!script.length && vtm() >= vt0m0 + nextAmbient) {
+          nextAmbient += 5 + Math.random() * 6
+          const cands = order().filter((p) => p.id !== 'simon' && p.tasks.some((t) => !t.done))
+          if (cands.length) {
+            const p = cands[Math.floor(Math.random() * cands.length)]
+            taskDone(p.id, p.tasks.find((t) => !t.done).txt)
+          }
+        }
+      }
+
+      /* ============ clock controls ============ */
+      document.querySelectorAll('.clockctl [data-sp]').forEach((b) => {
+        b.addEventListener('click', () => {
+          speed = +b.dataset.sp
+          paused = false
+          document
+            .querySelectorAll('.clockctl [data-sp]')
+            .forEach((x) => x.classList.toggle('on', x === b))
+          setPauseIcon()
+        })
+      })
+      function setPauseIcon() {
+        $('#pauseBtn').innerHTML = paused
+          ? '<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>'
+          : '<svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>'
+      }
+      $('#pauseBtn').addEventListener('click', () => {
+        paused = !paused
+        setPauseIcon()
+      })
+
+      /* ============ boot & loop ============ */
+      $('#hdate').textContent = DAY.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })
+      $('#youav').style.background = P.simon.color + '26'
+      $('#youav').style.color = P.simon.color
+      buildWeek()
+      buildMonth()
+      renderPresence()
+      renderRows()
+      renderGrid()
+      renderRail()
+      setPauseIcon()
+
+      let lastReal = performance.now(),
+        lastMin = Math.floor(vtm())
+      function frame(nowReal) {
+        const dt = Math.min(nowReal - lastReal, 100)
+        lastReal = nowReal
+        if (!paused) {
+          vt += dt * speed
+          runScript()
+        }
+        const mi = Math.floor(vtm())
+        if (mi !== lastMin) {
+          lastMin = mi
+          buildWeek()
+          buildMonth()
+        }
+        renderGrid()
+        updateSummary()
+        updatePresence()
+        updateRows()
+        updateStats()
+        const g = liveSeg(P.simon)
+        $('#youtime').textContent = g ? durS(vtm() - g.s) : '—'
+        requestAnimationFrame(frame)
+      }
+      requestAnimationFrame(frame)
+    </script>
+  </body>
+</html>

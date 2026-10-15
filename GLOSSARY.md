@@ -82,8 +82,9 @@ _Avoid_: Move, event
 ## Tasks
 
 **Task**:
-An item on a member's private study list — something they mean to get done. The
-member owns its title; only the open/done counts are shared with the room.
+An item on a member's study list — something they mean to get done. The member
+owns its title; the open/done counts and, since ADR-0005, the task titles on a
+live Session card are shared with the room.
 _Avoid_: Todo, item, ticket
 
 **Open**:

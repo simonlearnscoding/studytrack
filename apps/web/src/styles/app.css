@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 @import '@clerk/ui/themes/shadcn.css';
 
 /* Fonts — self-hosted via @fontsource. The design uses Space Grotesk
@@ -138,12 +139,17 @@ body {
   @apply bg-background font-sans text-foreground antialiased;
 }
 
-/* Scrollbars — slim, neutral, inset. The track stays transparent so the shell's
-   backdrop shows through, and the thumb is carved in with a transparent border
-   plus a content-box clip so the bar reads lighter than its groove. Firefox
-   takes the standardized properties; WebKit/Blink the ::-webkit parts. */
+/* Scrollbars — slim, neutral, inset, and only painted while scrolling (the
+   `.is-scrolling` flag is set on <html> by useScrollVisibility). The track stays
+   transparent so the shell's backdrop shows through, and the thumb is carved in
+   with a transparent border plus a content-box clip. Firefox takes the
+   standardized properties; WebKit/Blink the ::-webkit parts. */
 html {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+html.is-scrolling {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
@@ -157,13 +163,17 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb);
+  background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
   border-radius: 999px;
 }
 
-::-webkit-scrollbar-thumb:hover {
+html.is-scrolling ::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+}
+
+html.is-scrolling ::-webkit-scrollbar-thumb:hover {
   background-color: var(--scrollbar-thumb-hover);
 }
 
