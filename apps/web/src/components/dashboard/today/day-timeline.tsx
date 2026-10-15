@@ -134,10 +134,13 @@ export function DayTimeline({
             </div>
             <div className="min-w-0 flex-1 overflow-hidden pb-4">
               <div ref={mirrorRef} className="relative" style={{ width: axis.widthPx }}>
+                {/* the same night bands as the track, tappable with a thumb and
+                    sharing the desktop expansion choice */}
+                <BandLayer bands={bands} hidden={hidden} onToggle={onToggleBand} />
                 {/* the now-line through the whole pinned lane — full height so
                     the pill (opaque) just paints over its top, seam-free */}
                 <div
-                  className="bg-primary absolute top-0 bottom-0 w-[1.5px]"
+                  className="bg-primary absolute top-0 bottom-0 z-[2] w-[1.5px]"
                   style={{ left: now }}
                 />
                 <div className="relative h-[30px]">
@@ -157,7 +160,7 @@ export function DayTimeline({
                     </span>
                   ))}
                   <span
-                    className="bg-primary-tint text-primary absolute top-0 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap"
+                    className="bg-primary-tint text-primary absolute top-0 z-[3] -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap"
                     style={{ left: now }}
                   >
                     {nowLabel}
@@ -196,15 +199,7 @@ export function DayTimeline({
             {/* the night bands — thin, labelled collapsed strips at both ends.
                 Clicking one grows it to real scale and widens the axis; clicking
                 the slim handle that replaces it folds it back. */}
-            {bands.map(({ segment, offsetPx }) => (
-              <NightBand
-                key={segment.side}
-                segment={segment}
-                offsetPx={offsetPx}
-                hiddenCount={hidden[segment.side]}
-                onToggle={onToggleBand}
-              />
-            ))}
+            <BandLayer bands={bands} hidden={hidden} onToggle={onToggleBand} />
 
             {/* hour gridlines */}
             {axis.ticks.map((t) => (
@@ -289,6 +284,32 @@ export function DayTimeline({
   )
 }
 
+// The night bands, so the desktop track and the pinned mobile mirror render the
+// exact same strips and share one toggle.
+function BandLayer({
+  bands,
+  hidden,
+  onToggle,
+}: {
+  bands: { segment: NightBandSegment; offsetPx: number }[]
+  hidden: Record<BandSide, number>
+  onToggle: (side: BandSide) => void
+}) {
+  return (
+    <>
+      {bands.map(({ segment, offsetPx }) => (
+        <NightBand
+          key={segment.side}
+          segment={segment}
+          offsetPx={offsetPx}
+          hiddenCount={hidden[segment.side]}
+          onToggle={onToggle}
+        />
+      ))}
+    </>
+  )
+}
+
 const BAND_HANDLE_PX = 24
 
 // A night band: collapsed it is a tap-sized labelled strip that opens on click;
@@ -313,7 +334,7 @@ function NightBand({
         aria-label={`Show the ${segment.label} night${hiddenCount > 0 ? `, ${hiddenCount} hidden` : ''}`}
         aria-expanded={false}
         onClick={() => onToggle(segment.side)}
-        className="absolute inset-y-0 z-[1] flex cursor-pointer items-center justify-center overflow-hidden border-x border-white/[0.05] bg-white/[0.02] transition-colors hover:bg-white/[0.06]"
+        className="absolute inset-y-0 z-0 flex cursor-pointer items-center justify-center overflow-hidden border-x border-white/[0.05] bg-white/[0.02] transition-colors hover:bg-white/[0.06]"
         style={{ left: offsetPx, width: segment.widthPx }}
       >
         <span className="text-label pointer-events-none font-mono whitespace-nowrap [writing-mode:vertical-rl]">
