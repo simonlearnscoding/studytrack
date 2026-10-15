@@ -101,6 +101,28 @@ describe('dailyTotals.rollupDay', () => {
     })
   })
 
+  it('counts a screen-share partial as Deep focus, matching camera', async () => {
+    const t = makeTest()
+    const start = DAY_START + 2 * H
+    await seedSession(t, {
+      discordId: 'ada',
+      startedAt: start,
+      endedAt: start + 30 * M,
+      partials: [{ mode: 'screenShare', startedAt: start, endedAt: start + 30 * M }],
+    })
+
+    await t.mutation(internal.dailyTotals.rollupDay, { dayStart: DAY_START })
+
+    const rows = await totals(t)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      memberKey: 'ada',
+      studyMs: 30 * M,
+      deepFocusMs: 30 * M,
+      totalMs: 30 * M,
+    })
+  })
+
   it('adds a Pause to Total time only', async () => {
     const t = makeTest()
     const start = DAY_START + 1 * H

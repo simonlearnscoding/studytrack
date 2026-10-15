@@ -6,8 +6,13 @@ import type { LeaderboardTotal } from './types'
 // The board shows the top ten — enough to be useful, short enough to read.
 export const MAX_LEADERBOARD_ROWS = 10
 
-// Camera modes are the "Deep focus" evidence (see GLOSSARY).
-const DEEP_FOCUS_MODES: ReadonlySet<StudyMode> = new Set(['camera', 'cameraAndScreenShare'])
+// Camera or screen share are the "Deep focus" evidence (see GLOSSARY). They count
+// equally — only the timeline's visual ladder separates a both-on partial.
+const DEEP_FOCUS_MODES: ReadonlySet<StudyMode> = new Set([
+  'camera',
+  'screenShare',
+  'cameraAndScreenShare',
+])
 
 export function isDeepFocus(partial: { mode: StudyMode }): boolean {
   return DEEP_FOCUS_MODES.has(partial.mode)

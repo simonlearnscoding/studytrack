@@ -229,6 +229,21 @@ describe('leaderboard.getBoards', () => {
     expect(boards.today[0]).toMatchObject({ deepFocusMs: 30 * M, totalMs: 30 * M, online: true })
   })
 
+  it('counts a screen-share-only session as Deep focus', async () => {
+    const t = makeTest()
+    await addSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'screenShare',
+      startedAt: NOW - 30 * M,
+      endedAt: NOW,
+    })
+
+    const boards = await t.query(api.leaderboard.getBoards, queryArgs())
+
+    expect(boards.today[0]).toMatchObject({ name: 'Ada', deepFocusMs: 30 * M, totalMs: 30 * M })
+  })
+
   it('caps every board at ten and orders by Deep focus', async () => {
     const t = makeTest()
     for (let i = 0; i < 12; i++) {

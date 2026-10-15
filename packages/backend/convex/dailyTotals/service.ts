@@ -133,9 +133,9 @@ type MemberTotal = {
 }
 
 // The Day's totals, keyed by the shared member key. Study time is every
-// non-`break` partial; Deep focus is the camera modes; Total time is a session's
-// whole span, counted only for sessions that have study time in the Day, so a
-// member with only Pauses produces no row.
+// non-`break` partial; Deep focus is the camera or screen-share modes; Total time
+// is a session's whole span, counted only for sessions that have study time in
+// the Day, so a member with only Pauses produces no row.
 async function sumMembers(
   ctx: MutationCtx,
   partials: Doc<'sessionPartial'>[],

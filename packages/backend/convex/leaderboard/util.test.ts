@@ -73,6 +73,22 @@ describe('todaysTotals', () => {
     expect(totals).toMatchObject({ discordId: 'ada', deepFocusMs: 30 * M, totalMs: 1 * H })
   })
 
+  it('counts screen share as Deep focus, but not voice, manual or break', () => {
+    const ada = member({
+      discordId: 'ada',
+      sessions: [
+        session([
+          partial({ mode: 'screenShare', startedAt: 0, endedAt: 15 * M }),
+          partial({ mode: 'voice', startedAt: 15 * M, endedAt: 30 * M }),
+          partial({ mode: 'manual', startedAt: 30 * M, endedAt: 45 * M }),
+          partial({ mode: 'break', startedAt: 45 * M, endedAt: 1 * H }),
+        ]),
+      ],
+    })
+    const [totals] = todaysTotals([ada], 0, 1 * H)
+    expect(totals).toMatchObject({ deepFocusMs: 15 * M })
+  })
+
   it('clips a session that straddled midnight to the Day', () => {
     const start = DAY_START - 30 * M
     const ada = member({
