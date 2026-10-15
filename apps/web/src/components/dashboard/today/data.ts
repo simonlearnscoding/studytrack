@@ -5,8 +5,6 @@
 
 export const live = true // you are in a session — flips hero + mobile ordering
 
-export const NOW = 72 // now-line position, % of axis — computed from data in prod
-
 /* ------------------------------------------------------------------ */
 
 export type Presence = {
@@ -30,148 +28,6 @@ export const presence: Presence[] = [
   },
   { initials: 'K', color: '#e8c07a', name: 'Kai', time: '45m', now: '→ 15:15 Chapter 5 exercises' },
   { initials: 'N', color: '#e0a1c4', name: 'Noor', time: '29m', now: null },
-]
-
-export type Hour = { pct: number; label: string }
-
-// contract: sticky-left axis — first session floored to the hour, right edge grows.
-// Full day 06:00–24:00; hourly in prod, every 2h here for skeleton legibility.
-export const hours: Hour[] = [
-  { pct: 0, label: '06:00' },
-  { pct: 11, label: '08:00' },
-  { pct: 22, label: '10:00' },
-  { pct: 33, label: '12:00' },
-  { pct: 44, label: '14:00' },
-  { pct: 56, label: '16:00' },
-  { pct: 67, label: '18:00' },
-  { pct: 78, label: '20:00' },
-  { pct: 89, label: '22:00' },
-  { pct: 100, label: '24:00' },
-]
-
-export type TimelineBar = { left: number; width: number; mode: string; live?: boolean }
-export type TimelinePlan = { left: number; width: number; label: string }
-export type TimelineRow = {
-  name: string
-  you?: boolean
-  live: boolean
-  sub: string
-  tail: string
-  bars: TimelineBar[]
-  plans?: TimelinePlan[]
-  dots: number[]
-}
-
-// contract: one row per person · one bar per session · dots at doneAt.
-// Your row pinned only while live or holding upcoming plans.
-export const timeline: TimelineRow[] = [
-  {
-    name: 'Simon M',
-    you: true,
-    live: true,
-    sub: '1h 32m',
-    tail: '#3 · 1h 32m',
-    bars: [{ left: 33, width: NOW - 33, mode: 'cam', live: true }],
-    plans: [{ left: 78, width: 9, label: 'Problem set 3' }],
-    dots: [41],
-  },
-  {
-    name: 'Maya',
-    live: true,
-    sub: '2h 41m',
-    tail: '2h 41m',
-    bars: [{ left: 8, width: NOW - 8, mode: 'cam', live: true }],
-    dots: [16, 28, 44, 52],
-  },
-  {
-    name: 'Ana',
-    live: true,
-    sub: '1h 44m',
-    tail: '1h 44m',
-    bars: [{ left: 21, width: NOW - 21, mode: 'screen', live: true }],
-    dots: [30, 42],
-  },
-  {
-    name: 'Leo',
-    live: true,
-    sub: '1h 23m',
-    tail: '1h 23m',
-    bars: [{ left: 25, width: NOW - 25, mode: 'voice', live: true }],
-    dots: [37],
-  },
-  {
-    name: 'Noor',
-    live: true,
-    sub: '2h 05m',
-    tail: '2h 05m',
-    bars: [{ left: 15, width: NOW - 15, mode: 'screen', live: true }],
-    dots: [24, 39, 58],
-  },
-  {
-    name: 'Kai',
-    live: true,
-    sub: '52m',
-    tail: '52m',
-    bars: [{ left: 58, width: NOW - 58, mode: 'voice', live: true }],
-    dots: [63],
-  },
-  {
-    name: 'Priya',
-    live: false,
-    sub: '1h 40m ×2',
-    tail: '1h 40m ×2',
-    bars: [
-      { left: 6, width: 8, mode: 'cam' },
-      { left: 33, width: 12, mode: 'voice' },
-    ],
-    dots: [8, 38, 45],
-  },
-  {
-    name: 'Tomas',
-    live: false,
-    sub: '1h 12m',
-    tail: '1h 12m',
-    bars: [{ left: 12, width: 13, mode: 'voice' }],
-    dots: [15, 20],
-  },
-  {
-    name: 'Ben',
-    live: false,
-    sub: '2h 18m ×2',
-    tail: '2h 18m ×2',
-    bars: [
-      { left: 4, width: 10, mode: 'cam' },
-      { left: 30, width: 16, mode: 'voice' },
-    ],
-    dots: [7, 22, 36, 44],
-  },
-  {
-    name: 'Sofia',
-    live: false,
-    sub: '1h 55m',
-    tail: '1h 55m',
-    bars: [{ left: 28, width: 22, mode: 'screen' }],
-    dots: [33, 47],
-  },
-  {
-    name: 'Diego',
-    live: false,
-    sub: '1h 07m ×2',
-    tail: '1h 07m ×2',
-    bars: [
-      { left: 10, width: 9, mode: 'voice' },
-      { left: 40, width: 11, mode: 'cam' },
-    ],
-    dots: [13, 45],
-  },
-  {
-    name: 'Hana',
-    live: false,
-    sub: '3h 02m',
-    tail: '3h 02m',
-    bars: [{ left: 20, width: 28, mode: 'cam' }],
-    dots: [26, 34, 41, 48, 55, 60],
-  },
 ]
 
 export type WeekDay = { label: string; hrs?: string; h?: number; today?: boolean }
@@ -335,22 +191,6 @@ export const quote = 'Discipline is just love for your future self.'
 /** section-label pattern — promote to the `.text-label` utility when tokens land */
 export const label =
   'text-[10.5px] font-semibold uppercase tracking-[0.16em] text-subtle-foreground'
-
-/** live bar quality per Discord mode — visual only, never a statistic */
-export const segLive: Record<string, string> = {
-  cam: 'bg-primary shadow-[0_0_9px_rgb(52_211_153/0.35)]', // glow → token
-  screen:
-    'bg-[repeating-linear-gradient(-55deg,rgb(52_211_153/0.85)_0_4px,rgb(52_211_153/0.3)_4px_8px)]',
-  voice: 'bg-primary/40',
-  page: 'bg-primary/10 border border-primary/55',
-}
-
-export const segEnded: Record<string, string> = {
-  cam: 'bg-white/[0.14]',
-  screen: 'bg-white/[0.14]',
-  voice: 'bg-white/[0.08]',
-  page: 'bg-transparent border border-white/20',
-}
 
 export const heatLevel = [
   '',

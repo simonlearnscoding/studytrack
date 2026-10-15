@@ -1,12 +1,14 @@
+import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
+import { useEffect, useRef, type RefObject } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
-import { useEffect, useRef } from 'react'
 import { LiveDot } from '../live-dot'
-import { label, segEnded, segLive, type Hour, type TimelineRow } from './data'
+import { BAR_LIVE, barClass } from './bar-style'
+import { label } from './data'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
 const legend = [
   { label: 'cam', swatch: 'bg-primary h-1 w-3 rounded-full' },
-  { label: 'screen', swatch: `h-1 w-3 rounded-full ${segLive.screen}` },
+  { label: 'screen', swatch: `h-1 w-3 rounded-full ${BAR_LIVE.screenShare}` },
   { label: 'voice', swatch: 'bg-primary/40 h-1 w-3 rounded-full' },
   { label: 'tracked', swatch: 'border-primary/55 bg-primary/10 h-1.5 w-3 rounded-[2px] border' },
   { label: 'planned', swatch: 'border-primary/55 h-[7px] w-3 rounded-[2px] border border-dashed' },
@@ -19,21 +21,23 @@ const legend = [
 // Names + hours live in a pinned column; only the track area scrolls sideways, so
 // you can run the timeline out past the viewport without losing whose row is whose.
 export function DayTimeline({
-  hours,
-  now,
+  window: axis,
   rows,
+  nowLabel,
+  scrollerRef,
 }: {
-  hours: Hour[]
-  now: number
-  rows: TimelineRow[]
+  window: TimelineWindow
+  rows: TimelineRowVM[]
+  nowLabel: string
+  scrollerRef: RefObject<HTMLDivElement | null>
 }) {
   const you = rows.find((r) => r.you)
+  const now = axis.nowPx
 
   // <lg the page scrolls, so the "you" lane can't live inside the sideways
   // scroller — a sticky child of overflow-x-auto only sticks to that box, never
   // to the page. It is rendered as its own bar under the site header, and this
   // mirror keeps its labels + track panned in lockstep with the real scroller.
-  const scrollerRef = useRef<HTMLDivElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const scroller = scrollerRef.current
@@ -42,9 +46,10 @@ export function DayTimeline({
     const sync = () => {
       mirror.style.transform = `translateX(${-scroller.scrollLeft}px)`
     }
+    sync()
     scroller.addEventListener('scroll', sync, { passive: true })
     return () => scroller.removeEventListener('scroll', sync)
-  }, [you])
+  }, [you, scrollerRef])
 
   return (
     <section>
@@ -88,30 +93,34 @@ export function DayTimeline({
               </div>
             </div>
             <div className="min-w-0 flex-1 overflow-hidden pb-4">
-              <div ref={mirrorRef} className="relative min-w-[40rem]">
+              <div ref={mirrorRef} className="relative" style={{ width: axis.widthPx }}>
                 {/* the now-line through the whole pinned lane — full height so
                     the pill (opaque) just paints over its top, seam-free */}
                 <div
                   className="bg-primary absolute top-0 bottom-0 w-[1.5px]"
-                  style={{ left: `${now}%` }}
+                  style={{ left: now }}
                 />
                 <div className="relative h-[30px]">
-                  {hours.map((h) => (
+                  {axis.ticks.map((t) => (
                     <span
-                      key={h.label}
+                      key={t.label}
                       className={`absolute bottom-0 font-mono text-[10px] whitespace-nowrap text-white/45 ${
-                        h.pct === 0 ? '' : h.pct === 100 ? '-translate-x-full' : '-translate-x-1/2'
+                        t.leftPx === 0
+                          ? ''
+                          : t.leftPx === axis.widthPx
+                            ? '-translate-x-full'
+                            : '-translate-x-1/2'
                       }`}
-                      style={{ left: `${h.pct}%` }}
+                      style={{ left: t.leftPx }}
                     >
-                      {h.label}
+                      {t.label}
                     </span>
                   ))}
                   <span
                     className="bg-primary-tint text-primary absolute top-0 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap"
-                    style={{ left: `${now}%` }}
+                    style={{ left: now }}
                   >
-                    now · 18:58
+                    {nowLabel}
                   </span>
                 </div>
                 <div className="flex h-6 items-center">
@@ -128,7 +137,7 @@ export function DayTimeline({
         <div className="flex shrink-0 flex-col gap-3.5 pt-6 max-lg:pt-0">
           {rows.map((row) => (
             <div
-              key={row.name}
+              key={row.key}
               className={`flex h-6 w-40 items-center gap-1.5 lg:w-44 lg:pr-2 ${row.you ? 'max-lg:hidden lg:sticky lg:top-19 lg:z-[5] lg:h-[4.75rem] lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur' : ''}`}
             >
               <RowName row={row} />
@@ -143,13 +152,13 @@ export function DayTimeline({
           ref={scrollerRef}
           className="min-w-0 flex-1 overflow-x-auto pt-6 pb-2 max-lg:pt-0 lg:overflow-x-clip"
         >
-          <div className="relative min-w-[40rem] lg:min-w-0">
+          <div className="relative" style={{ width: axis.widthPx }}>
             {/* hour gridlines */}
-            {hours.map((h) => (
+            {axis.ticks.map((t) => (
               <div
-                key={h.label}
+                key={t.label}
                 className="absolute top-5 bottom-2 w-px bg-white/[0.05]"
-                style={{ left: `${h.pct}%` }}
+                style={{ left: t.leftPx }}
               />
             ))}
 
@@ -163,19 +172,20 @@ export function DayTimeline({
                   covered by the bar, so each band draws its own segment at `now`.
                   Full-height: the pill paints over its top, so no seam regardless
                   of how the pill's font metrics round. */}
-              <div
-                className="bg-primary absolute top-0 bottom-0 w-[1.5px]"
-                style={{ left: `${now}%` }}
-              />
-              {hours.map((h) => (
+              <div className="bg-primary absolute top-0 bottom-0 w-[1.5px]" style={{ left: now }} />
+              {axis.ticks.map((t) => (
                 <span
-                  key={h.label}
-                  className={`absolute top-0 lg:top-3 font-mono text-[10px] whitespace-nowrap text-white/45 ${
-                    h.pct === 0 ? '' : h.pct === 100 ? '-translate-x-full' : '-translate-x-1/2'
+                  key={t.label}
+                  className={`absolute top-0 font-mono text-[10px] whitespace-nowrap text-white/45 lg:top-3 ${
+                    t.leftPx === 0
+                      ? ''
+                      : t.leftPx === axis.widthPx
+                        ? '-translate-x-full'
+                        : '-translate-x-1/2'
                   }`}
-                  style={{ left: `${h.pct}%` }}
+                  style={{ left: t.leftPx }}
                 >
-                  {h.label}
+                  {t.label}
                 </span>
               ))}
             </div>
@@ -185,15 +195,15 @@ export function DayTimeline({
                 <lg the pill rides in the pinned lane. */}
             <div
               className="bg-primary absolute -top-0.5 bottom-1.5 z-[3] w-[1.5px]"
-              style={{ left: `${now}%` }}
+              style={{ left: now }}
             />
             {/* the pill rides a zero-width rail at `now` — `left` here is plain
                 absolute positioning, so `lg:sticky` below only pins it vertically
                 and -translate-x-1/2 keeps it centered on the line. z-auto rail:
                 no stacking context, so the pill's z-[7] still beats the strip. */}
-            <div className="absolute inset-y-0 w-0 max-lg:hidden" style={{ left: `${now}%` }}>
+            <div className="absolute inset-y-0 w-0 max-lg:hidden" style={{ left: now }}>
               <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap lg:sticky lg:top-19 lg:-mt-4 z-[7]">
-                now · 18:58
+                {nowLabel}
               </span>
             </div>
 
@@ -206,10 +216,7 @@ export function DayTimeline({
               <div className="mb-3.5 flex h-6 items-center max-lg:hidden lg:sticky lg:top-25 lg:z-[6] lg:h-13 lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur">
                 {/* the now-line's segment through the lane — it meets the live
                     bar's leading edge, so the lane reads as the line's origin */}
-                <div
-                  className="bg-primary absolute inset-y-0 w-[1.5px]"
-                  style={{ left: `${now}%` }}
-                />
+                <div className="bg-primary absolute inset-y-0 w-[1.5px]" style={{ left: now }} />
                 <RowTrack row={you} />
               </div>
             )}
@@ -217,7 +224,7 @@ export function DayTimeline({
               {rows
                 .filter((row) => !row.you)
                 .map((row) => (
-                  <div key={row.name} className="flex h-6 items-center">
+                  <div key={row.key} className="flex h-6 items-center">
                     <RowTrack row={row} />
                   </div>
                 ))}
@@ -231,7 +238,7 @@ export function DayTimeline({
 
 // The name cell's contents — shared by the pinned names column (lg) and the
 // mobile lane that pins under the site header.
-function RowName({ row }: { row: TimelineRow }) {
+function RowName({ row }: { row: TimelineRowVM }) {
   return (
     <>
       {row.live && <LiveDot className="h-1.5 w-1.5 text-primary" />}
@@ -243,48 +250,29 @@ function RowName({ row }: { row: TimelineRow }) {
           you
         </span>
       )}
-      <span className="shrink-0 font-mono text-[11px] text-white/60">
-        {row.you && <span className="text-primary">{row.tail.split(' · ')[0]}</span>}
-        {row.you ? ' · ' + row.tail.split(' · ').slice(1).join(' · ') : row.tail}
-      </span>
+      <span className="shrink-0 font-mono text-[11px] text-white/60">{row.tail}</span>
     </>
   )
 }
 
 // One person's track bar — shared by the scrolling list and the mobile pinned lane.
-function RowTrack({ row }: { row: TimelineRow }) {
+function RowTrack({ row }: { row: TimelineRowVM }) {
   return (
     <div
       className={`relative w-full rounded-full bg-white/[0.035] ${row.you ? 'h-3 cursor-crosshair' : 'h-2.5'}`}
     >
-      {row.plans?.map((pl) => (
-        <span
-          key={pl.left}
-          className="absolute -top-4 truncate text-[10px] text-white/50"
-          style={{ left: `${pl.left}%` }}
-        >
-          {pl.label}
-        </span>
-      ))}
-      {row.plans?.map((pl) => (
-        <div
-          key={pl.left}
-          className="border-primary/50 bg-primary/5 absolute -top-[3px] -bottom-[3px] rounded-md border-[1.5px] border-dashed"
-          style={{ left: `${pl.left}%`, width: `${pl.width}%` }}
-        />
-      ))}
-      {row.bars.map((b, i) => (
+      {row.bars.map((bar, i) => (
         <div
           key={i}
-          className={`absolute top-0 bottom-0 rounded-full ${b.live ? segLive[b.mode] : segEnded[b.mode]}`}
-          style={{ left: `${b.left}%`, width: `${b.width}%` }}
+          className={`absolute top-0 bottom-0 rounded-full ${barClass(bar.mode, bar.live)}`}
+          style={{ left: bar.leftPx, width: bar.widthPx }}
         />
       ))}
-      {row.dots?.map((d) => (
+      {row.dots.map((dot, i) => (
         <span
-          key={d}
+          key={i}
           className="border-primary/75 bg-background absolute top-1/2 z-[3] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px]"
-          style={{ left: `${d}%` }}
+          style={{ left: dot.leftPx }}
         />
       ))}
       {row.you && (

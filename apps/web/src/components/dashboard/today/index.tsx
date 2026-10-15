@@ -9,26 +9,13 @@
  */
 
 import { ConsistencyBoard } from './consistency-board'
-import { DayTimeline } from './day-timeline'
 import { Hero } from './hero'
 import { MonthCalendar } from './month-calendar'
 import { PresenceRail } from './presence-rail'
 import { Quote } from './quote'
 import { TaskPane } from './task-pane'
-import {
-  board,
-  heat,
-  hero,
-  hours,
-  live,
-  month,
-  monthBoard,
-  NOW,
-  presence,
-  quote,
-  tasks,
-  timeline,
-} from './data'
+import { board, heat, hero, live, month, monthBoard, presence, quote, tasks } from './data'
+import { TimelineSection } from './timeline-section'
 
 export function TodayLayout() {
   // below xl it sits full-width in the main column; xl+ keeps it in the rail
@@ -58,7 +45,7 @@ export function TodayLayout() {
           className={`flex min-h-0 flex-col gap-6 max-lg:gap-5 max-lg:overflow-visible lg:overflow-y-auto ${live ? 'max-lg:order-3' : 'max-lg:order-2'}`}
         >
           <Hero {...hero} />
-          <DayTimeline hours={hours} now={NOW} rows={timeline} />
+          <TimelineSection />
           <div className="flex flex-col gap-6">
             <div className="xl:hidden">{monthCalendar}</div>
             <div className="lg:hidden xl:block">
