@@ -188,16 +188,23 @@ export function DayTimeline({
             </div>
 
             {/* contract: tracks only; the name column is the pinned sibling.
-                a shadcn Popover hangs off each bar (session details) in prod */}
+                a shadcn Popover hangs off each bar (session details) in prod.
+                Your track-row is a sibling OUTSIDE the z-[2] rows column — inside
+                it, the lane's z-[6] would be trapped under the now-line (z-[3])
+                and the line would paint through the lane's blur. */}
+            {you && (
+              <div className="mb-3.5 flex h-6 items-center max-lg:hidden lg:sticky lg:top-25 lg:z-[6] lg:h-13 lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur">
+                <RowTrack row={you} />
+              </div>
+            )}
             <div className="relative z-[2] flex flex-col gap-3.5">
-              {rows.map((row) => (
-                <div
-                  key={row.name}
-                  className={`flex h-6 items-center ${row.you ? 'max-lg:hidden lg:sticky lg:top-25 lg:z-[6] lg:h-13 lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur' : ''}`}
-                >
-                  <RowTrack row={row} />
-                </div>
-              ))}
+              {rows
+                .filter((row) => !row.you)
+                .map((row) => (
+                  <div key={row.name} className="flex h-6 items-center">
+                    <RowTrack row={row} />
+                  </div>
+                ))}
             </div>
           </div>
         </div>
