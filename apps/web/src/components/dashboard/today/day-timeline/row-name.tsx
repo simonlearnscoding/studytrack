@@ -1,0 +1,21 @@
+import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import { LiveDot } from '../../live-dot'
+
+// The name cell's contents — shared by the pinned names column (lg) and the
+// mobile lane that pins under the site header.
+export function RowName({ row }: { row: TimelineRowVM }) {
+  return (
+    <>
+      {row.live && <LiveDot className="h-1.5 w-1.5 text-primary" />}
+      <p className={`min-w-0 truncate text-xs ${row.live ? 'text-white/80' : 'text-white/35'}`}>
+        {row.name}
+      </p>
+      {row.you && (
+        <span className="border-primary/30 text-primary shrink-0 rounded border px-1 text-[9px] tracking-wider">
+          you
+        </span>
+      )}
+      <span className="shrink-0 font-mono text-[11px] text-white/60">{row.tail}</span>
+    </>
+  )
+}
