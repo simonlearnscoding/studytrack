@@ -60,17 +60,23 @@ export function DayTimeline({
     bandOffset += segment.widthPx
   }
 
-  // <lg the page scrolls, so the "you" lane can't live inside the sideways
-  // scroller — a sticky child of overflow-x-auto only sticks to that box, never
-  // to the page. It is rendered as its own bar under the site header, and this
-  // mirror keeps its labels + track panned in lockstep with the real scroller.
+  // Sticky children of overflow-x-auto only stick to that box, never to the
+  // page — and a horizontal scroll container captures vertical sticky too. So
+  // neither pinned lane can live inside the sideways scroller: the mobile lane
+  // (<lg) and the desktop bar (lg) both render outside it, and these mirrors
+  // keep their labels + tracks panned in lockstep with the real scroller.
   const mirrorRef = useRef<HTMLDivElement>(null)
+  const desktopMirrorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const scroller = scrollerRef.current
-    const mirror = mirrorRef.current
-    if (!scroller || !mirror) return
+    const mirrors = [mirrorRef.current, desktopMirrorRef.current].filter(
+      (el): el is HTMLDivElement => el !== null
+    )
+    if (!scroller || mirrors.length === 0) return
     const sync = () => {
-      mirror.style.transform = `translateX(${-scroller.scrollLeft}px)`
+      for (const mirror of mirrors) {
+        mirror.style.transform = `translateX(${-scroller.scrollLeft}px)`
+      }
     }
     sync()
     scroller.addEventListener('scroll', sync, { passive: true })
@@ -188,96 +194,107 @@ export function DayTimeline({
           ))}
         </div>
 
-        {/* track area — fluid on lg+ (full day at a glance, no scroll), scrolls on mobile.
-            lg uses clip, not overflow-hidden: it trims the 1px ruler overhang without
-            becoming a scroll container, so the sticky "now" pill sticks to the page. */}
-        <div
-          ref={scrollerRef}
-          className={`min-w-0 flex-1 pt-6 pb-2 max-lg:pt-0 ${
-            axis.overflow ? 'overflow-x-auto' : 'overflow-x-clip'
-          }`}
-        >
-          <div className="relative min-h-10" style={{ width: axis.widthPx }}>
-            {/* the night bands — thin, labelled collapsed strips at both ends.
-                Clicking one grows it to real scale and widens the axis; clicking
-                the slim handle that replaces it folds it back. */}
-            <BandLayer bands={bands} hidden={hidden} onToggle={onToggleBand} />
-
-            {/* hour gridlines */}
-            {axis.ticks.map((t) => (
+        {/* track column: the pinned you-bar (lg) OUTSIDE the sideways scroller,
+            then the scroller itself. overflow-x-auto captures vertical sticky
+            descendants, so anything that must pin to the page can never live
+            inside it — the bar mirrors the axis through a transform instead. */}
+        <div className="flex min-w-0 flex-1 flex-col pt-6 max-lg:pt-0">
+          {/* lg pinned bar: hour strip + "now" pill + your lane, stacked as one
+              band under the hero (0..4.75rem) with the same bg + blur. Its axis
+              copy is panned by the mirror effect, and overflow-x-clip trims the
+              overhang without creating a scroll container — so the pill may
+              still poke above the bar and nothing sticky lives inside. */}
+          <div className="sticky top-19 z-[6] max-lg:hidden overflow-x-clip bg-background/80 backdrop-blur">
+            <div ref={desktopMirrorRef} className="relative" style={{ width: axis.widthPx }}>
+              {/* the night bands, tappable here too — same strips, same toggle */}
+              <BandLayer bands={bands} hidden={hidden} onToggle={onToggleBand} />
+              {/* the now-line through the whole bar, run 0.875rem past the
+                  bottom so it bridges the gap to the scroller's own line below
+                  and reads as one line from pill to the last row */}
               <div
-                key={t.label}
-                className="absolute top-5 bottom-2 w-px bg-white/[0.05]"
-                style={{ left: t.leftPx }}
+                className="bg-primary absolute inset-y-0 -bottom-3.5 w-[1.5px]"
+                style={{ left: now }}
               />
-            ))}
-
-            {/* hour labels — pinned ladder on lg: hero (0..4.75rem) → this strip +
-                the "now" pill (4.75..6.25rem) → your lane (6.25..9.5rem). Every band
-                carries the same bg + blur and pins flush against the one above, so
-                the stack reads as a single element while the list scrolls under.
-                <lg they ride in the pinned lane above instead. */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-[4] h-px max-lg:hidden lg:sticky lg:top-19 lg:h-6 lg:bg-background/80 lg:backdrop-blur">
-              {/* the now-line, faked through this band: the real line (z-[3]) is
-                  covered by the bar, so each band draws its own segment at `now`.
-                  Full-height: the pill paints over its top, so no seam regardless
-                  of how the pill's font metrics round. */}
-              <div className="bg-primary absolute top-0 bottom-0 w-[1.5px]" style={{ left: now }} />
-              {axis.ticks.map((t) => (
-                <span
-                  key={t.label}
-                  className={`absolute top-0 font-mono text-[10px] whitespace-nowrap text-white/45 lg:top-3 ${
-                    t.leftPx === 0
-                      ? ''
-                      : t.leftPx === axis.widthPx
-                        ? '-translate-x-full'
-                        : '-translate-x-1/2'
-                  }`}
-                  style={{ left: t.leftPx }}
-                >
-                  {t.label}
-                </span>
-              ))}
-            </div>
-
-            {/* now-line — every live bar ends here. z-[3]: above the rows (z-[2]),
-                below every band of the pinned bar so it never crosses it.
-                <lg the pill rides in the pinned lane. */}
-            <div
-              className="bg-primary absolute -top-0.5 bottom-1.5 z-[3] w-[1.5px]"
-              style={{ left: now }}
-            />
-            {/* the pill rides a zero-width rail at `now` — `left` here is plain
-                absolute positioning, so `lg:sticky` below only pins it vertically
-                and -translate-x-1/2 keeps it centered on the line. z-auto rail:
-                no stacking context, so the pill's z-[7] still beats the strip. */}
-            <div className="absolute inset-y-0 w-0 max-lg:hidden" style={{ left: now }}>
-              <span className="bg-primary-tint text-primary absolute -top-4 -translate-x-1/2 block w-max rounded-md px-1.5 py-px leading-none font-mono text-[10px] font-semibold whitespace-nowrap lg:sticky lg:top-19 lg:-mt-4 z-[7]">
-                {nowLabel}
-              </span>
-            </div>
-
-            {/* contract: tracks only; the name column is the pinned sibling.
-                a shadcn Popover hangs off each bar (session details) in prod.
-                Your track-row is a sibling OUTSIDE the z-[2] rows column — inside
-                it, the lane's z-[6] would be trapped under the now-line (z-[3])
-                and the line would paint through the lane's blur. */}
-            {you && (
-              <div className="mb-3.5 flex h-6 items-center max-lg:hidden lg:sticky lg:top-25 lg:z-[6] lg:h-13 lg:items-start lg:pt-6 lg:bg-background/80 lg:backdrop-blur">
-                {/* the now-line's segment through the lane — it meets the live
-                    bar's leading edge, so the lane reads as the line's origin */}
-                <div className="bg-primary absolute inset-y-0 w-[1.5px]" style={{ left: now }} />
-                <RowTrack row={you} />
-              </div>
-            )}
-            <div className="relative z-[2] flex flex-col gap-3.5">
-              {rows
-                .filter((row) => !row.you)
-                .map((row) => (
-                  <div key={row.key} className="flex h-6 items-center">
-                    <RowTrack row={row} />
-                  </div>
+              {/* hour labels */}
+              <div className="relative h-6">
+                {axis.ticks.map((t) => (
+                  <span
+                    key={t.label}
+                    className={`absolute top-3 font-mono text-[10px] whitespace-nowrap text-white/45 ${
+                      t.leftPx === 0
+                        ? ''
+                        : t.leftPx === axis.widthPx
+                          ? '-translate-x-full'
+                          : '-translate-x-1/2'
+                    }`}
+                    style={{ left: t.leftPx }}
+                  >
+                    {t.label}
+                  </span>
                 ))}
+                {/* the "now" pill — opaque, so it seams out the line's top */}
+                <span
+                  className="bg-primary-tint text-primary absolute -top-4 z-[7] block w-max -translate-x-1/2 rounded-md px-1.5 py-px font-mono text-[10px] leading-none font-semibold whitespace-nowrap"
+                  style={{ left: now }}
+                >
+                  {nowLabel}
+                </span>
+              </div>
+              {/* your lane — the line's segment meets the live bar's leading
+                  edge, so the lane reads as the line's origin */}
+              {you && (
+                <div className="flex h-13 items-start pt-6">
+                  <RowTrack row={you} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* track area — fluid on lg+ when the axis fits (overflow-x-clip trims
+              the 1px ruler overhang without becoming a scroll container), scrolls
+              when it doesn't. Safe now: nothing sticky lives inside. */}
+          <div
+            ref={scrollerRef}
+            className={`min-w-0 pb-2 ${you ? 'lg:mt-3.5' : ''} ${
+              axis.overflow ? 'overflow-x-auto' : 'overflow-x-clip'
+            }`}
+          >
+            <div className="relative min-h-10" style={{ width: axis.widthPx }}>
+              {/* the night bands — thin, labelled collapsed strips at both ends.
+                  Clicking one grows it to real scale and widens the axis; clicking
+                  the slim handle that replaces it folds it back. */}
+              <BandLayer bands={bands} hidden={hidden} onToggle={onToggleBand} />
+
+              {/* hour gridlines */}
+              {axis.ticks.map((t) => (
+                <div
+                  key={t.label}
+                  className="absolute top-5 bottom-2 w-px bg-white/[0.05]"
+                  style={{ left: t.leftPx }}
+                />
+              ))}
+
+              {/* now-line — every live bar ends here; the bar above draws its own
+                  segment, so this one spans the rows only. z-[3]: above the rows
+                  (z-[2]), below the pinned bar so it never crosses it. */}
+              <div
+                className="bg-primary absolute top-0 bottom-1.5 z-[3] w-[1.5px]"
+                style={{ left: now }}
+              />
+
+              {/* contract: tracks only; the name column is the pinned sibling.
+                  a shadcn Popover hangs off each bar (session details) in prod.
+                  Your track lives in the pinned bar above; on <lg the mobile
+                  lane owns it instead. */}
+              <div className="relative z-[2] flex flex-col gap-3.5">
+                {rows
+                  .filter((row) => !row.you)
+                  .map((row) => (
+                    <div key={row.key} className="flex h-6 items-center">
+                      <RowTrack row={row} />
+                    </div>
+                  ))}
+              </div>
             </div>
           </div>
         </div>
