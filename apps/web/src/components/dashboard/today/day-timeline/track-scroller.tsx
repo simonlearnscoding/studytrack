@@ -61,7 +61,10 @@ export function TrackScroller({
         axis.overflow ? 'overflow-x-auto' : 'overflow-x-clip'
       }`}
     >
-      <div className="relative min-h-10" style={{ width: axis.widthPx }}>
+      {/* a quiet room should not collapse the timeline: keep at least the
+          height of a handful of lanes so the axis, grid and now-line stay
+          legible even when only one or two people are on the track */}
+      <div className="relative min-h-56" style={{ width: axis.widthPx }}>
         {/* the room's strip carries the "0–6" label; the fold control lives on
             the pinned ruler above, so each surface shows one thing */}
         <BandLayer
