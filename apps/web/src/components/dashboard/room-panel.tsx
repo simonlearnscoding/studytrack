@@ -82,9 +82,7 @@ function Section({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {title}
-        </h2>
+        <h2 className="text-label">{title}</h2>
         <span className="rounded-full bg-secondary px-2 text-[11px] leading-5 tabular-nums text-muted-foreground">
           {members.length}
         </span>
@@ -108,10 +106,7 @@ export function RoomPanelSkeleton() {
       <RoomHeader />
       <div className="flex flex-col gap-3">
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-[112px] animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none"
-          />
+          <div key={i} className="card-surface skeleton h-[112px]" />
         ))}
       </div>
     </div>

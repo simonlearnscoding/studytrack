@@ -40,7 +40,7 @@ export function MonthCalendar({
             key={i}
             type="button"
             onClick={() => selectDay(i)}
-            className={`flex aspect-[1.5] cursor-pointer items-end rounded-md border border-white/[0.04] p-1 font-mono text-[8px] text-white/25 ${heatLevel[v]} ${i === selectedIndex ? 'ring-primary text-primary ring-1' : ''} ${i > todayIndex ? 'border-dashed opacity-45' : ''}`}
+            className={`flex aspect-[1.2] cursor-pointer items-end rounded-md border border-white/[0.04] p-1 font-mono text-[8px] text-white/25 ${heatLevel[v]} ${i === selectedIndex ? 'ring-primary text-primary ring-1' : ''} ${i > todayIndex ? 'border-dashed opacity-45' : ''}`}
           >
             {i + 1}
           </button>

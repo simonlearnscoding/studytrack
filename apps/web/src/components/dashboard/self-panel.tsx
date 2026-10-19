@@ -7,10 +7,11 @@ import { useState } from 'react'
 import { Button } from '~/components/ui/button'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
+import { LiveDot } from './live-dot'
 import { TaskList } from './tasks/task-list'
 
 // The personal rail: the manual time tracker (start/stop; the live elapsed figure
-// ticks against the client clock, never the server's) and the private task list.
+// ticks against the client clock, never the server's) and today's task list.
 // Personal stats live on the room's member card now, not here.
 export function SelfPanel() {
   const { user } = useUser()
@@ -43,10 +44,8 @@ export function SelfPanel() {
   return (
     <div className="flex flex-col gap-6 lg:h-full">
       <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          You
-        </h2>
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="text-label">You</h2>
+        <div className="card-surface p-4">
           <div className="flex items-center gap-3">
             <SelfAvatar name={name} image={mounted ? (user?.imageUrl ?? undefined) : undefined} />
             <p className="truncate text-sm font-medium text-foreground">{name ?? 'You'}</p>
@@ -133,10 +132,10 @@ function ManualActive({
   return (
     <>
       <div className="flex items-center gap-2 text-mode-manual">
-        <Pulse />
+        <LiveDot />
         <span className="text-sm font-medium">Tracking manually</span>
       </div>
-      <div className="mt-3 font-mono text-2xl font-semibold tabular-nums text-foreground">
+      <div className="mt-3 font-mono text-metric font-semibold tabular-nums text-foreground">
         {formatDuration(elapsedMs)}
       </div>
       <Button variant="outline" className="mt-3 w-full" onClick={onStop} disabled={pending}>
@@ -155,7 +154,7 @@ function DiscordActive() {
   return (
     <>
       <div className="flex items-center gap-2 text-primary">
-        <Pulse />
+        <LiveDot />
         <span className="text-sm font-medium">Studying in Discord</span>
       </div>
       <Button variant="outline" className="mt-3 w-full" disabled>
@@ -166,20 +165,11 @@ function DiscordActive() {
   )
 }
 
-function Pulse() {
-  return (
-    <span className="relative flex h-2 w-2">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60 motion-reduce:hidden" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
-    </span>
-  )
-}
-
 function TrackerSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="h-4 w-32 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
-      <div className="h-9 w-full animate-pulse rounded-lg bg-secondary motion-reduce:animate-none" />
+      <div className="skeleton h-4 w-32 rounded" />
+      <div className="skeleton h-9 w-full rounded-lg" />
     </div>
   )
 }

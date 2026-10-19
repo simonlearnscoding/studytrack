@@ -24,9 +24,7 @@ function Home() {
 function Welcome() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-bold tracking-tight text-foreground">
-        Track study time in your Discord
-      </h1>
+      <h1 className="text-display">Track study time in your Discord</h1>
       <p className="max-w-prose text-muted-foreground">Sign in to see who is studying right now.</p>
       <div className="flex gap-3">
         <SignInButton mode="modal">

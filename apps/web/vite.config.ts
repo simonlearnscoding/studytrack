@@ -16,6 +16,6 @@ export default defineConfig({
     tsConfigPaths({ projects: ['./tsconfig.json'] }),
     tanstackStart(),
     nitro(),
-    viteReact(),
+    viteReact({ compiler: true }),
   ],
 })

@@ -1,16 +1,12 @@
-import type {
-  BandSide,
-  TimelineRowVM,
-  TimelineWindow,
-} from '@studytrack/backend/convex/timeline/types'
+import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
 import type { RefObject } from 'react'
-import { PinnedDesktopBar } from './desktop-bar'
+import { PinnedDesktopBar, type PlanDrag } from './desktop-bar'
 import { PinnedMobileLane } from './mobile-lane'
 import { NamesColumn } from './names-column'
+import { nightBands } from './night-bands'
 import { TrackLegend } from './track-legend'
 import { TrackScroller } from './track-scroller'
 import { useCentreOnNow } from './use-centre-on-now'
-import { useNightBands } from './use-night-bands'
 
 // The day timeline: one axis, seen through three synced surfaces.
 //
@@ -29,18 +25,25 @@ export function DayTimeline({
   rows,
   nowLabel,
   scrollerRef,
+  locked,
   onToggleBand,
+  onPlanDrag,
 }: {
   window: TimelineWindow
   rows: TimelineRowVM[]
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
-  onToggleBand: (side: BandSide) => void
+  locked: boolean
+  onToggleBand: () => void
+  onPlanDrag?: (span: PlanDrag) => void
 }) {
   const yourRow = rows.find((row) => row.you)
-  const { bands, hidden } = useNightBands(axis, rows)
-  useCentreOnNow(scrollerRef, axis)
-  const surface = { axis, bands, hidden, onToggleBand }
+  const { bands, hidden } = nightBands(axis, rows)
+  // A band is open (by click or by the clock): the revealed night is at the axis
+  // start, so the view opens on its beginning.
+  const bandExpanded = bands.length > 0 && !bands[0].segment.collapsed
+  useCentreOnNow(scrollerRef, axis, bandExpanded)
+  const surface = { axis, bands, hidden, locked, onToggleBand }
 
   return (
     <section>
@@ -65,6 +68,7 @@ export function DayTimeline({
             row={yourRow}
             nowLabel={nowLabel}
             scrollerRef={scrollerRef}
+            onPlanDrag={onPlanDrag}
           />
           <TrackScroller surface={surface} rows={rows} scrollerRef={scrollerRef} />
         </div>

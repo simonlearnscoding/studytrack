@@ -9,7 +9,7 @@ export function ErrorScreen({ error, reset }: ErrorComponentProps) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-red-400">Something went wrong</h1>
+      <h1 className="text-display text-red-400">Something went wrong</h1>
       <pre className="max-h-96 overflow-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-xs text-red-300">
         {detail}
       </pre>

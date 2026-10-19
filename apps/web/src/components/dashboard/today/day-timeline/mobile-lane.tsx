@@ -11,7 +11,7 @@ import { useMirrorScroll } from './use-mirror-scroll'
 // as their own full-bleed bar (same surface recipe as the header: bg + blur +
 // border-b, no gap above) while the room scrolls under.
 export function PinnedMobileLane({
-  surface: { axis, bands, hidden, onToggleBand },
+  surface: { axis, bands, hidden, locked, onToggleBand },
   row,
   nowLabel,
   scrollerRef,
@@ -38,7 +38,7 @@ export function PinnedMobileLane({
           <div ref={mirrorRef} className="relative" style={{ width: axis.widthPx }}>
             {/* the same night bands as the track, tappable with a thumb and
                 sharing the desktop expansion choice */}
-            <BandLayer bands={bands} hidden={hidden} onToggle={onToggleBand} />
+            <BandLayer bands={bands} hidden={hidden} locked={locked} onToggle={onToggleBand} />
             {/* the now-line through the whole lane — full height so the pill
                 (opaque) just paints over its top, seam-free */}
             <NowLine left={now} className="top-0 bottom-0 z-[2]" />

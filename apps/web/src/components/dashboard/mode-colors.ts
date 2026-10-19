@@ -1,4 +1,5 @@
 import type { DashboardPartial } from '@studytrack/backend/convex/sessions/types'
+import { Mic, Monitor, MonitorPlay, PenLine, Video, type LucideIcon } from 'lucide-react'
 
 type StudyMode = DashboardPartial['mode']
 
@@ -12,6 +13,26 @@ export const MODE_BAR: Record<StudyMode, string> = {
   voice: 'bg-mode-voice',
   manual: 'bg-mode-manual',
   break: 'bg-transparent',
+}
+
+// The same colour as a text utility, for a mode icon. A break carries no colour.
+export const MODE_TEXT: Record<StudyMode, string> = {
+  cameraAndScreenShare: 'text-mode-cam-screen',
+  camera: 'text-mode-cam',
+  screenShare: 'text-mode-screen',
+  voice: 'text-mode-voice',
+  manual: 'text-mode-manual',
+  break: '',
+}
+
+// One icon per Study mode, colour-matched via MODE_TEXT. A break has no icon — it
+// is the absence of a mode, not a way of studying.
+export const MODE_ICON: Record<Exclude<StudyMode, 'break'>, LucideIcon> = {
+  cameraAndScreenShare: MonitorPlay,
+  camera: Video,
+  screenShare: Monitor,
+  voice: Mic,
+  manual: PenLine,
 }
 
 export const MODE_LABEL: Record<StudyMode, string> = {

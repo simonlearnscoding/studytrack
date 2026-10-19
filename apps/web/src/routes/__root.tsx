@@ -11,7 +11,9 @@ import { shadcn } from '@clerk/ui/themes'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
 import type { ConvexReactClient } from 'convex/react'
+import { MetricToggle } from '~/components/dashboard/metric-toggle'
 import { useMounted } from '~/hooks/use-mounted'
+import { useQuoteOfTheDay } from '~/hooks/use-quote-of-the-day'
 import { useScrollVisibility } from '~/hooks/use-scroll-visibility'
 import { useDateStore } from '~/state/date.store'
 // Side-effect import (not `?url`): Start discovers the stylesheet from the
@@ -46,9 +48,14 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { isSignedIn } = useAuth()
   const selectedDate = useDateStore((state) => state.selectedDate)
+  const selectDate = useDateStore((state) => state.selectDate)
   // The date is derived from the client clock, so gate it behind mount to keep
   // the server HTML and the first client paint identical.
   const mounted = useMounted()
+  // Assume today until the client clock exists, for the same reason.
+  const isToday = !mounted || isSameDay(selectedDate, new Date())
+  // The header's quote of the day, from Convex (null until signed in / fetched).
+  const quote = useQuoteOfTheDay()
   useScrollVisibility()
   return (
     <html lang="en" className="dark">
@@ -77,18 +84,49 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                       day: 'numeric',
                     }).format(selectedDate)
                   ) : (
-                    <span className="inline-block h-3 w-28 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                    <span className="skeleton inline-block h-3 w-28 rounded" />
                   )}
                 </span>
-                <h1 className="ml-3 font-semibold max-lg:ml-2.5">Today</h1>
+                {isToday ? (
+                  <h1 className="ml-3 font-semibold max-lg:ml-2.5">Today</h1>
+                ) : (
+                  <button
+                    type="button"
+                    title="Back to today"
+                    aria-label="Back to today"
+                    onClick={() => selectDate(new Date())}
+                    className="ml-3 cursor-pointer font-semibold text-foreground/50 transition-colors hover:text-foreground max-lg:ml-2.5"
+                  >
+                    Today
+                  </button>
+                )}
               </div>
+              {quote && (
+                <p className="hidden min-w-0 truncate border-l border-border pl-4 font-serif text-sm italic text-muted-foreground lg:block">
+                  &ldquo;{quote.text}&rdquo;{' '}
+                  <span className="not-italic">&mdash; {quote.author}</span>
+                </p>
+              )}
             </div>
-            {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
+            <div className="flex shrink-0 items-center gap-2.5">
+              {/* the metric switch is global and always visible — it fronts the
+                  numbers where the dashboard is browsable, signed in or not */}
+              <MetricToggle />
+              {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
+            </div>
           </div>
         </header>
         <main className="w-full">{children}</main>
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
   )
 }

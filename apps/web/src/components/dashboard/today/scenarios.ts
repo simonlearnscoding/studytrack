@@ -223,7 +223,31 @@ export const SCENARIOS = {
     me: 'user-0',
     now: at(7, 30),
     dayStart: DAY_START,
-    members: room(4, at(7, 30), 2),
+    // Hand-written, not `room()`: the room helper bases everyone at 08:00, which
+    // is *after* this clock, so generated sessions would start in the future and
+    // draw as bars projecting forward from the now-line.
+    members: [
+      member({
+        i: 0,
+        name: 'Maya',
+        sessions: [session('you', [partial('you', 'camera', at(6, 15), null)])],
+      }),
+      member({
+        i: 1,
+        name: 'Ana',
+        sessions: [session('ana', [partial('ana', 'screenShare', at(6, 0), at(7, 0))])],
+      }),
+      member({
+        i: 2,
+        name: 'Leo',
+        sessions: [session('leo', [partial('leo', 'voice', at(6, 45), null)])],
+      }),
+      member({
+        i: 3,
+        name: 'Kai',
+        sessions: [session('kai', [partial('kai', 'camera', at(6, 30), at(7, 10))])],
+      }),
+    ],
   },
   night: {
     label: 'Small hours, now 03:00 (night expands)',
@@ -263,7 +287,7 @@ export const SCENARIOS = {
     ],
   },
   late: {
-    label: 'After 22:00, now 22:15 (evening expands)',
+    label: 'Late evening, now 22:15 (evening at full scale)',
     me: 'user-0',
     now: at(22, 15),
     dayStart: DAY_START,

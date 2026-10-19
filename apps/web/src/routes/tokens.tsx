@@ -19,7 +19,7 @@ function Tokens() {
     <div className="mx-auto w-full max-w-4xl space-y-12 px-4 py-12 sm:px-6">
       <header className="space-y-2">
         <p className="text-label">Design tokens</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Token swatches</h1>
+        <h1 className="text-display">Token swatches</h1>
         <p className="text-muted-foreground">
           Temporary review route. Surface stack, text ladder, actions, states.
         </p>
@@ -86,7 +86,7 @@ function Tokens() {
       <section className="space-y-4">
         <h2 className="text-label">Mono — tabular numerals</h2>
         <div className="space-y-1 rounded-xl border border-border bg-card p-6">
-          <p className="font-mono text-4xl tabular-nums text-foreground">01:23:45 · 07:08:09</p>
+          <p className="font-mono text-clock tabular-nums text-foreground">01:23:45 · 07:08:09</p>
           <p className="font-mono text-sm text-muted-foreground">
             1111111111 0000000000 8888888888
           </p>

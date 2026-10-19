@@ -51,9 +51,7 @@ function VariantA({
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          In a session now
-        </h2>
+        <h2 className="text-label">In a session now</h2>
         {online.length === 0 ? (
           <p className="text-sm text-muted-foreground/70">No one is in a session right now.</p>
         ) : (
@@ -82,7 +80,7 @@ function VariantB({
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col items-center gap-3">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="text-label">
           <span className="font-semibold text-foreground tabular-nums">{online.length}</span>{' '}
           {online.length === 1 ? 'person' : 'people'} studying now
         </p>
@@ -101,9 +99,7 @@ function VariantB({
 function VariantC({ members, now }: { members: DashboardMember[]; now: number }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        Today
-      </h2>
+      <h2 className="text-label">Today</h2>
       {members.map((m) =>
         m.online ? (
           <InlineCard key={m.discordId} member={m} now={now} />
@@ -208,7 +204,7 @@ function HeroCard({ member, now }: { member: DashboardMember; now: number }) {
       <div className="flex items-center gap-4">
         <Avatar member={member} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold text-foreground">{name(member)}</p>
+          <p className="text-title truncate text-foreground">{name(member)}</p>
           <div className="mt-1 flex items-center gap-2">
             <ModeChip member={member} />
             {elapsed !== null && (
@@ -275,9 +271,7 @@ function OnlineDot() {
 function UnifiedList({ members, now }: { members: DashboardMember[]; now: number }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        Today
-      </h2>
+      <h2 className="text-label">Today</h2>
       <div className="flex flex-col gap-3">
         {members.map((m) => (
           <article

@@ -30,8 +30,8 @@ export function DashboardShell({
         className={cn(
           'relative flex flex-col gap-10 px-4 py-8 sm:px-6 lg:grid lg:gap-0 lg:p-0',
           left !== undefined
-            ? 'lg:grid-cols-[18rem_minmax(0,1fr)_20rem]'
-            : 'lg:grid-cols-[minmax(0,1fr)_20rem]'
+            ? 'lg:grid-cols-[18rem_minmax(0,1fr)_18rem]'
+            : 'lg:grid-cols-[minmax(0,1fr)_18rem]'
         )}
       >
         {left !== undefined && (
@@ -39,7 +39,7 @@ export function DashboardShell({
             {left}
           </nav>
         )}
-        <section className="order-2 min-w-0 lg:order-none lg:px-8 lg:py-8">{room}</section>
+        <section className="order-2 min-w-0 lg:order-none lg:px-4 lg:py-8">{room}</section>
         <aside
           className={cn(
             'flex min-w-0 flex-col gap-6 lg:order-none lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:overflow-y-auto lg:border-l lg:border-border lg:bg-card/50 lg:p-6',

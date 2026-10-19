@@ -4,8 +4,9 @@ import {
   memberFocusMs,
   memberSpanTotalMs,
 } from '@studytrack/backend/convex/sessions/metrics'
-import { formatDuration, memberTotalMs } from '@studytrack/backend/convex/sessions/util'
+import { formatDurationHM, memberTotalMs } from '@studytrack/backend/convex/sessions/util'
 import { cn } from '~/lib/utils'
+import { LiveDot } from './live-dot'
 import { MemberTimeline } from './member-timeline'
 
 export function MemberCard({
@@ -18,12 +19,12 @@ export function MemberCard({
   now: number
 }) {
   const name = member.name ?? member.discordId
-  const total = formatDuration(memberTotalMs(member, now))
+  const total = formatDurationHM(memberTotalMs(member, now))
   const sessions = member.sessions.length
   const focus = focusRate(memberFocusMs(member, now), memberSpanTotalMs(member, now))
 
   return (
-    <article className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-muted-foreground/30">
+    <article className="card-surface p-4 transition-colors hover:border-muted-foreground/30">
       <div className="flex items-center gap-3">
         <MemberAvatar name={name} image={member.image} online={member.online} />
         <div className="min-w-0 flex-1">
@@ -37,7 +38,7 @@ export function MemberCard({
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-mono text-lg font-semibold tabular-nums text-foreground">
+          <div className="font-mono text-metric font-semibold tabular-nums text-foreground">
             {total}
           </div>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">today</div>
@@ -53,10 +54,7 @@ export function MemberCard({
 function StudyingPill() {
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary ring-1 ring-inset ring-primary/25">
-      <span className="relative flex h-1.5 w-1.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70 motion-reduce:hidden" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-      </span>
+      <LiveDot className="h-1.5 w-1.5" />
       Studying
     </span>
   )
