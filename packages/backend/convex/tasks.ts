@@ -1,16 +1,21 @@
 import { mutation, query } from './_generated/server'
 import {
+  clearActive as clearActiveTask,
   createTask,
+  getActive as readActive,
   listMine as readMine,
   removeTask,
   renameTask,
+  setActive as setActiveTask,
   toggleTask,
 } from './tasks/service'
 import {
+  clearActiveArgs,
   createTaskArgs,
   listMineArgs,
   removeTaskArgs,
   renameTaskArgs,
+  setActiveTaskArgs,
   toggleTaskArgs,
 } from './tasks/types'
 
@@ -24,7 +29,7 @@ export const listMine = query({
 export const create = mutation({
   args: createTaskArgs.fields,
   handler: async (ctx, args) => {
-    await createTask(ctx, args.title)
+    await createTask(ctx, args.title, args.plannedAt)
   },
 })
 
@@ -46,5 +51,24 @@ export const remove = mutation({
   args: removeTaskArgs.fields,
   handler: async (ctx, args) => {
     await removeTask(ctx, args.taskId)
+  },
+})
+
+export const getActive = query({
+  args: {},
+  handler: async (ctx) => readActive(ctx),
+})
+
+export const setActive = mutation({
+  args: setActiveTaskArgs.fields,
+  handler: async (ctx, args) => {
+    await setActiveTask(ctx, args.taskId)
+  },
+})
+
+export const clearActive = mutation({
+  args: clearActiveArgs.fields,
+  handler: async (ctx) => {
+    await clearActiveTask(ctx)
   },
 })

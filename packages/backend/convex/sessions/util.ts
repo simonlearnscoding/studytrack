@@ -1,8 +1,9 @@
 import type {
-  DashboardCompletedTask,
   DashboardMember,
   DashboardPartial,
   DashboardSession,
+  DashboardSessionTask,
+  SessionTaskSource,
 } from './types'
 
 // The dashboard's "today" is one shared calendar day in this timezone, so every
@@ -50,20 +51,56 @@ export function sessionContainsCompletedAt(
   )
 }
 
-// Attach each completed task to the session whose span contains it. A member's
+// Attach each session's deduped task union: tasks explicitly planned into it,
+// then tasks finished while it was running, each appearing at most once. A member's
 // sessions never overlap (re-entering within 30 minutes continues the same
-// session), so a task lands on at most one session; a task completed in a gap
-// between sessions lands on none.
+// session), so a completion binds to at most one. Planned entries come first in
+// creation order (oldest first); finished-only entries follow by completion time.
 export function attachTasksToSessions(
   sessions: DashboardSession[],
-  tasks: DashboardCompletedTask[]
+  tasks: SessionTaskSource[]
 ): DashboardSession[] {
   return sessions.map((session) => ({
     ...session,
-    tasks: tasks
-      .filter((task) => sessionContainsCompletedAt(session, task.completedAt))
-      .sort((a, b) => a.completedAt - b.completedAt),
+    tasks: tasksForSession(session, tasks),
   }))
+}
+
+function tasksForSession(
+  session: Pick<DashboardSession, 'id' | 'startedAt' | 'endedAt'>,
+  tasks: SessionTaskSource[]
+): DashboardSessionTask[] {
+  const planned: DashboardSessionTask[] = tasks
+    .filter((task) => task.plannedSessionId === session.id)
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .map((task) => ({
+      id: task.id,
+      title: task.title,
+      planned: true,
+      // Planned-only stays null even if the task is Done elsewhere; only a
+      // completion inside this session's span marks it finished here.
+      completedAt:
+        task.completedAt !== null && sessionContainsCompletedAt(session, task.completedAt)
+          ? task.completedAt
+          : null,
+    }))
+
+  const finishedOnly: DashboardSessionTask[] = tasks
+    .filter(
+      (task) =>
+        task.plannedSessionId !== session.id &&
+        task.completedAt !== null &&
+        sessionContainsCompletedAt(session, task.completedAt)
+    )
+    .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0))
+    .map((task) => ({
+      id: task.id,
+      title: task.title,
+      planned: false,
+      completedAt: task.completedAt,
+    }))
+
+  return [...planned, ...finishedOnly]
 }
 
 // Compact duration with seconds, so a live total visibly ticks each second:

@@ -187,6 +187,8 @@ function toRow(
     }
 
     for (const task of session.tasks) {
+      // Planned-only entries carry no instant and are not dots.
+      if (task.completedAt === null) continue
       const hit = segmentAt(window.segments, toMinute(task.completedAt, dayStart))
       if (!hit) continue
       if (isHidden(hit.segment)) hiddenInsideBand = true

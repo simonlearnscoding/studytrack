@@ -1,8 +1,8 @@
 # studytrack — data model
 
 **In short:** the Convex schema — `users`, `session`, `sessionPartial`, the
-derived `dailyTotal` (one member's totals per Day) and `task`. Source of truth:
-`packages/backend/convex/schema.ts`.
+derived `dailyTotal` (one member's totals per Day) and `task` (a member's plan).
+Source of truth: `packages/backend/convex/schema.ts`.
 
 Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 
@@ -14,6 +14,7 @@ Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 - `session`: `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, status)
 - `sessionPartial`: `by_sessionId` (sessionId, status) · `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, startedAt) · `by_startedAt` (startedAt)
 - `dailyTotal`: `by_dayStart` (dayStart) · `by_memberKey` (memberKey, dayStart)
+- `task`: `by_userId` (userId) · `by_userId_plannedAt` (userId, plannedAt) · `by_userId_completedAt` (userId, completedAt) · `by_plannedSessionId` (plannedSessionId)
 
 A **session** is the whole sitting; its **partials** are the stretches of constant
 voice state. A partial's `mode` is one of `voice`, `camera`, `screenShare`,
@@ -43,6 +44,8 @@ erDiagram
         string name "optional"
         string image "optional"
         number createdAt
+        Id activeTaskId FK "optional, the one active task"
+        number activeSince "optional, set with the pointer"
     }
 
     session {
@@ -71,8 +74,22 @@ erDiagram
         number durationMs "optional"
     }
 
+    task {
+        Id _id PK
+        number _creationTime
+        Id userId FK
+        string title
+        boolean done
+        number completedAt "optional, cleared on reopen"
+        number plannedAt "Europe/Zurich Day start"
+        Id plannedSessionId FK "optional, planned into this Session"
+    }
+
     users ||--o{ session : "userId, once the Discord account is linked"
     session ||--o{ sessionPartial : "sessionId"
+    users ||--o{ task : "userId"
+    users ||--o| task : "activeTaskId"
+    session ||--o{ task : "plannedSessionId"
 ```
 
 ## Derived (ST-11)
@@ -96,8 +113,31 @@ erDiagram
 `dayStart` is derivable from `_creationTime`; `memberKey` soft-links to `users`
 (it is not a hard foreign key).
 
-## Tasks (ST-5, shipped)
+## Tasks (ST-5, ST-27)
 
-The `task` table holds each member's private list: `title`, `done`,
-`completedAt` (optional), owner `userId`. Only counts are shared with the room
-(see `docs/adr/0002`). Rename/delete landed in ST-16.
+The `task` table is each member's plan. Task content is public (ADR-0007): titles,
+the active task and the up-next suggestion show in the room without a per-task
+privacy flag. Only the owner writes.
+
+- `plannedAt` is the Europe/Zurich Day the task is planned for — always a day
+  start, never a time. `listMine({ dayStart })` reads exactly that Day, newest
+  first by `_creationTime`.
+- `plannedSessionId` is an explicit plan into a real Session, not inferred from
+  time overlap. A Session card shows one deduped entry per task: `planned` and/or
+  its `completedAt` when the task was finished inside that Session. A task
+  planned in one Session and finished in another appears in both, with different
+  state.
+- `done`/`completedAt` are the completion state; `completedAt` is cleared on
+  reopen. It is also what binds a completion to the Session whose span contains
+  it. Reopening removes the task from that Session's finished set.
+- The member's one active task lives on `users.activeTaskId`, with `activeSince`,
+  not on the task row. It clears when the task is completed, deleted, or
+  explicitly cleared; creating or completing other work never moves it. Active is
+  user-level, not Session-scoped (Session-scoped clearing is deferred until real
+  tracking exists).
+- Up-next is derived, never stored: the first Open task below the active row in
+  the newest-first Day list, or the newest Open task when none is active. It
+  never auto-starts.
+
+Rename/delete landed in ST-16. Day planning and the active pointer landed in
+ST-27.

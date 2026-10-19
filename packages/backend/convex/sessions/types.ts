@@ -14,13 +14,25 @@ export type DashboardPartial = {
   endedAt: number | null
 }
 
-// A task a member completed while a session was running, exposed to the room
-// (ADR-0007: task content is public). Carries the title and the instant it was
-// marked done — the two fields the session-card read needs.
-export type DashboardCompletedTask = {
+// A task a session should show, exposed to the room (ADR-0007: task content is
+// public). `planned` marks an explicit plan into this session; `completedAt` is
+// scoped to this session and stays null for a planned-only entry, even when the
+// task is Done elsewhere.
+export type DashboardSessionTask = {
   id: Id<'task'>
   title: string
-  completedAt: number
+  planned: boolean
+  completedAt: number | null
+}
+
+// The task facts the session union needs from the Day reads: the explicit plan
+// link, the completion instant, and creation order for planned entries.
+export type SessionTaskSource = {
+  id: Id<'task'>
+  title: string
+  createdAt: number
+  plannedSessionId: Id<'session'> | null
+  completedAt: number | null
 }
 
 // One sitting belonging to a member today.
@@ -30,8 +42,9 @@ export type DashboardSession = {
   startedAt: number
   endedAt: number | null
   partials: DashboardPartial[]
-  // Tasks completed while this session was running, bound by time (see ./util).
-  tasks: DashboardCompletedTask[]
+  // The deduped union of tasks planned into and finished in this session (see
+  // ./util). Each task appears at most once.
+  tasks: DashboardSessionTask[]
 }
 
 // One card on the dashboard: a person's whole day.

@@ -1,12 +1,12 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type {
-  DashboardCompletedTask,
   DashboardMember,
   DashboardPartial,
   DashboardSession,
+  SessionTaskSource,
 } from './types'
-import { attachTasksToSessions } from './util'
+import { attachTasksToSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
 
@@ -50,7 +50,7 @@ export async function getTodaysActivitiesForDashboard(
     if (!identity) return []
   }
   const members = await groupTodaysMembers(ctx, dayStart)
-  return await attachCompletedTasks(ctx, members)
+  return await attachDayTasks(ctx, members, dayStart)
 }
 
 // The shared day-window read, without any auth: everyone who studied today (or is
@@ -171,33 +171,54 @@ function toDashboardPartial(partial: Doc<'sessionPartial'>): DashboardPartial {
   }
 }
 
-// Bind each member's completed tasks to the session they were finished during.
-// Only done tasks carry a `completedAt` to bind with; open tasks never appear.
-// The read is newest-first and bounded so today's completions survive a long
-// history; task content is public, so the title rides along (ADR-0007).
-async function attachCompletedTasks(
+// Bind each member's Day tasks to their sessions. Two indexed reads replace the
+// old newest-first scan: the Day's plan (by `plannedAt`) and the Day's completions
+// (by `completedAt`), so an old task finished today still shows. Both are bounded;
+// task content is public, so titles ride along (ADR-0007).
+async function attachDayTasks(
   ctx: QueryCtx,
-  members: DashboardMember[]
+  members: DashboardMember[],
+  dayStart: number
 ): Promise<DashboardMember[]> {
+  const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
+
   return await Promise.all(
     members.map(async (member) => {
       const userId = member.userId
       if (!userId) return member
 
-      const tasks = await ctx.db
-        .query('task')
-        .withIndex('by_userId', (q) => q.eq('userId', userId))
-        .order('desc')
-        .take(MAX_TASKS_PER_MEMBER)
+      const [planned, completed] = await Promise.all([
+        ctx.db
+          .query('task')
+          .withIndex('by_userId_plannedAt', (q) => q.eq('userId', userId).eq('plannedAt', dayStart))
+          .order('desc')
+          .take(MAX_TASKS_PER_MEMBER),
+        ctx.db
+          .query('task')
+          .withIndex('by_userId_completedAt', (q) =>
+            q.eq('userId', userId).gte('completedAt', dayStart).lt('completedAt', dayEnd)
+          )
+          .order('desc')
+          .take(MAX_TASKS_PER_MEMBER),
+      ])
 
-      const completed: DashboardCompletedTask[] = tasks.flatMap((task) =>
-        task.done && task.completedAt !== undefined
-          ? [{ id: task._id, title: task.title, completedAt: task.completedAt }]
-          : []
-      )
-      if (completed.length === 0) return member
+      // A task planned and finished today arrives from both reads; keep one row.
+      const byId = new Map(planned.map((task) => [task._id, task]))
+      for (const task of completed) byId.set(task._id, task)
+      const sources: SessionTaskSource[] = [...byId.values()].map(toSessionTaskSource)
+      if (sources.length === 0) return member
 
-      return { ...member, sessions: attachTasksToSessions(member.sessions, completed) }
+      return { ...member, sessions: attachTasksToSessions(member.sessions, sources) }
     })
   )
+}
+
+function toSessionTaskSource(task: Doc<'task'>): SessionTaskSource {
+  return {
+    id: task._id,
+    title: task.title,
+    createdAt: task._creationTime,
+    plannedSessionId: task.plannedSessionId ?? null,
+    completedAt: task.completedAt ?? null,
+  }
 }

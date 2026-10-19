@@ -4,13 +4,16 @@ import { studyMode } from './bot/types'
 
 export default defineSchema({
   // A person. Created by the bot from the Discord id when first seen; the Clerk
-  // sign-in later fills in `clerkUserId` and the profile fields.
+  // sign-in later fills in `clerkUserId` and the profile fields. `activeTaskId`
+  // is the member's one NOW pointer, with the instant it became active.
   users: defineTable({
     clerkUserId: v.optional(v.string()),
     discordId: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     createdAt: v.number(),
+    activeTaskId: v.optional(v.id('task')),
+    activeSince: v.optional(v.number()),
   })
     .index('by_clerkUserId', ['clerkUserId'])
     .index('by_discordId', ['discordId']),
@@ -71,14 +74,22 @@ export default defineSchema({
 
   // An item on a member's study list. Task content is public (docs/adr/0007):
   // titles, the active task and the up-next suggestion all show in the room.
-  // Only the owner writes it. `completedAt` is set when the task is marked done
-  // and cleared when it is reopened.
+  // Only the owner writes it. `plannedAt` is the Europe/Zurich Day the task is
+  // planned for (always a day start, never a time). `completedAt` is set when the
+  // task is marked done and cleared when it is reopened. `plannedSessionId` is an
+  // explicit "planned into this Session" link, set only with `plannedAt`.
   task: defineTable({
     userId: v.id('users'),
     title: v.string(),
     done: v.boolean(),
     completedAt: v.optional(v.number()),
-  }).index('by_userId', ['userId']),
+    plannedAt: v.number(),
+    plannedSessionId: v.optional(v.id('session')),
+  })
+    .index('by_userId', ['userId'])
+    .index('by_userId_plannedAt', ['userId', 'plannedAt'])
+    .index('by_userId_completedAt', ['userId', 'completedAt'])
+    .index('by_plannedSessionId', ['plannedSessionId']),
 
   // The motivational quote shown in the site header, one per local Day. A cron
   // fetches it from ZenQuotes once a Day and stores it here, so readers never hit

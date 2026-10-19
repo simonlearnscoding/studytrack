@@ -1,14 +1,17 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 
-// Shared view over the owner's tasks for today, consumed by the rail's task
-// widget; one reactive Convex query, no duplicated state.
+// Shared view over the owner's tasks for the viewed Day, consumed by the rail's
+// task widget; one reactive Convex query, no duplicated state. Creating a task
+// plans it for that Day, so the component never has to carry the Day itself.
 export function useMyTasks(dayStart: number) {
   const tasks = useQuery(api.tasks.listMine, { dayStart })
-  const create = useMutation(api.tasks.create)
+  const createTask = useMutation(api.tasks.create)
   const toggle = useMutation(api.tasks.toggle)
   const rename = useMutation(api.tasks.rename)
   const remove = useMutation(api.tasks.remove)
+
+  const create = (args: { title: string }) => createTask({ ...args, plannedAt: dayStart })
 
   const done = tasks?.filter((task) => task.done).length ?? 0
   const total = tasks?.length ?? 0

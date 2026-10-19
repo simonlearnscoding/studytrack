@@ -44,6 +44,7 @@ const session = (
   tasks: tasks.map((t, i) => ({
     id: `t${i}` as Id<'task'>,
     title: t.title,
+    planned: false,
     completedAt: at(t.atMin),
   })),
 })
@@ -166,6 +167,14 @@ describe('toTimelineRows', () => {
       { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'camera', live: false },
     ])
     expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2, title: 'Read' }])
+  })
+
+  it('does not draw a dot for a planned-only task', () => {
+    const planned = session([partial('voice', 360, 420)])
+    planned.tasks = [{ id: 't1' as Id<'task'>, title: 'Planned', planned: true, completedAt: null }]
+
+    const rows = toTimelineRows([member(0, 'Me', [planned])], input())
+    expect(rows[0].dots).toEqual([])
   })
 
   it('marks a running partial live and extends it to now', () => {

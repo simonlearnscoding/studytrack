@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
 import type {
-  DashboardCompletedTask,
   DashboardMember,
   DashboardPartial,
   DashboardSession,
+  DashboardSessionTask,
+  SessionTaskSource,
 } from './types'
 import {
   DASHBOARD_TIME_ZONE,
@@ -47,7 +48,7 @@ function session(partials: DashboardPartial[], overrides: Partial<DashboardSessi
     startedAt: 0,
     endedAt: null,
     partials,
-    tasks: [] as DashboardCompletedTask[],
+    tasks: [] as DashboardSessionTask[],
     ...overrides,
   }
 }
@@ -149,15 +150,33 @@ describe('sessionContainsCompletedAt', () => {
 })
 
 describe('attachTasksToSessions', () => {
-  function task(overrides: Partial<DashboardCompletedTask> = {}): DashboardCompletedTask {
-    return { id: 't1' as Id<'task'>, title: 'Read a chapter', completedAt: 0, ...overrides }
+  function task(overrides: Partial<SessionTaskSource> = {}): SessionTaskSource {
+    return {
+      id: 't1' as Id<'task'>,
+      title: 'Read a chapter',
+      createdAt: 0,
+      plannedSessionId: null,
+      completedAt: null,
+      ...overrides,
+    }
   }
 
-  it('binds each task to the session whose span contains its completion', () => {
-    const sessions = [
-      session([], { id: 's1' as Id<'session'>, startedAt: 1 * H, endedAt: 2 * H }),
-      session([], { id: 's2' as Id<'session'>, startedAt: 3 * H, endedAt: 4 * H }),
-    ]
+  const sessions = [
+    session([], { id: 's1' as Id<'session'>, startedAt: 1 * H, endedAt: 2 * H }),
+    session([], { id: 's2' as Id<'session'>, startedAt: 3 * H, endedAt: 4 * H }),
+  ]
+
+  it('shows a planned-only task as planned with no completion instant', () => {
+    const tasks = [task({ plannedSessionId: 's1' as Id<'session'> })]
+
+    const bound = attachTasksToSessions(sessions, tasks)
+    expect(bound[0].tasks).toEqual([
+      { id: 't1' as Id<'task'>, title: 'Read a chapter', planned: true, completedAt: null },
+    ])
+    expect(bound[1].tasks).toEqual([])
+  })
+
+  it('binds a finished task to the session whose span contains its completion', () => {
     const tasks = [
       task({ id: 't1' as Id<'task'>, title: 'First', completedAt: 90 * M }),
       task({ id: 't2' as Id<'task'>, title: 'Second', completedAt: 3 * H + 10 * M }),
@@ -169,15 +188,71 @@ describe('attachTasksToSessions', () => {
     expect(bound[1].tasks.map((t) => t.title)).toEqual(['Second'])
   })
 
-  it('orders a session tasks by completion time', () => {
-    const sessions = [session([], { id: 's1' as Id<'session'>, startedAt: 1 * H, endedAt: 4 * H })]
+  it('shows a task planned and finished in the same session once, with both states', () => {
+    const tasks = [task({ plannedSessionId: 's1' as Id<'session'>, completedAt: 90 * M })]
+
+    const bound = attachTasksToSessions(sessions, tasks)
+    expect(bound[0].tasks).toHaveLength(1)
+    expect(bound[0].tasks[0]).toMatchObject({ planned: true, completedAt: 90 * M })
+  })
+
+  it('shows a task planned in one session and finished in another in both', () => {
+    const tasks = [task({ plannedSessionId: 's1' as Id<'session'>, completedAt: 3 * H + 10 * M })]
+
+    const bound = attachTasksToSessions(sessions, tasks)
+    expect(bound[0].tasks).toEqual([
+      { id: 't1' as Id<'task'>, title: 'Read a chapter', planned: true, completedAt: null },
+    ])
+    expect(bound[1].tasks).toEqual([
+      {
+        id: 't1' as Id<'task'>,
+        title: 'Read a chapter',
+        planned: false,
+        completedAt: 3 * H + 10 * M,
+      },
+    ])
+  })
+
+  it('drops a completion that falls in a gap between sessions', () => {
+    const tasks = [task({ completedAt: 2 * H + 30 * M })]
+
+    const bound = attachTasksToSessions(sessions, tasks)
+    expect(bound[0].tasks).toEqual([])
+    expect(bound[1].tasks).toEqual([])
+  })
+
+  it('keeps a reopened planned task as planned-only', () => {
+    const tasks = [task({ plannedSessionId: 's1' as Id<'session'>, completedAt: null })]
+
+    const bound = attachTasksToSessions(sessions, tasks)
+    expect(bound[0].tasks[0]).toMatchObject({ planned: true, completedAt: null })
+  })
+
+  it('orders planned entries by creation, then finished-only entries by completion', () => {
     const tasks = [
-      task({ id: 't1' as Id<'task'>, title: 'Later', completedAt: 3 * H }),
-      task({ id: 't2' as Id<'task'>, title: 'Earlier', completedAt: 2 * H }),
+      task({
+        id: 't1' as Id<'task'>,
+        title: 'Planned first',
+        createdAt: 1,
+        plannedSessionId: 's1' as Id<'session'>,
+      }),
+      task({
+        id: 't2' as Id<'task'>,
+        title: 'Planned second',
+        createdAt: 2,
+        plannedSessionId: 's1' as Id<'session'>,
+      }),
+      task({ id: 't3' as Id<'task'>, title: 'Finished later', completedAt: 110 * M }),
+      task({ id: 't4' as Id<'task'>, title: 'Finished earlier', completedAt: 70 * M }),
     ]
 
     const bound = attachTasksToSessions(sessions, tasks)
-    expect(bound[0].tasks.map((t) => t.title)).toEqual(['Earlier', 'Later'])
+    expect(bound[0].tasks.map((t) => t.title)).toEqual([
+      'Planned first',
+      'Planned second',
+      'Finished earlier',
+      'Finished later',
+    ])
   })
 })
 
