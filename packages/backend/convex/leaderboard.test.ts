@@ -16,8 +16,11 @@ const GUILD = 'guild-1'
 // Week) is 2026-06-14 22:00 UTC. The Month starts on the 1st.
 const DAY_START = Date.UTC(2026, 5, 14, 22, 0, 0)
 const NOW = Date.UTC(2026, 5, 15, 10, 0, 0)
-const WEEK_START = DAY_START
-const MONTH_START = Date.UTC(2026, 4, 31, 22, 0, 0)
+// The focus day a Week earlier: Monday 8 June, so its Week is 8–14 June (inside
+// the current Month but before today).
+const PREV_WEEK_FOCUS = Date.UTC(2026, 5, 7, 22, 0, 0)
+// Fri 15 May: a focus day whose Week and Month both fall before today's.
+const MAY_FOCUS = Date.UTC(2026, 4, 14, 22, 0, 0)
 
 beforeAll(() => {
   process.env.BOT_SHARED_SECRET = SECRET
@@ -29,23 +32,21 @@ function makeTest() {
 
 type Test = ReturnType<typeof makeTest>
 
+// The two instants every board is computed against: focus = today by default.
+// The viewer read takes these and no secret.
+const WINDOWS = {
+  now: NOW,
+  focusDayStart: DAY_START,
+}
+
 function queryArgs(
-  overrides: Partial<{
-    secret: string
-    now: number
-    dayStart: number
-    weekStart: number
-    monthStart: number
-  }> = {}
+  overrides: Partial<{ secret: string; now: number; focusDayStart: number }> = {}
 ) {
-  return {
-    secret: SECRET,
-    now: NOW,
-    dayStart: DAY_START,
-    weekStart: WEEK_START,
-    monthStart: MONTH_START,
-    ...overrides,
-  }
+  return { secret: SECRET, ...WINDOWS, ...overrides }
+}
+
+function viewerArgs(overrides: Partial<typeof WINDOWS> = {}) {
+  return { ...WINDOWS, ...overrides }
 }
 
 async function addUser(t: Test, discordId: string, name: string) {
@@ -138,10 +139,10 @@ describe('leaderboard.getBoards', () => {
     expect(boards).toEqual({ today: [], week: [], month: [] })
   })
 
-  it('adds past Daily totals to today live time for the Week and Month', async () => {
+  it('adds today live time to the Week and Month of a focus day in the current week', async () => {
     const t = makeTest()
     await addUser(t, 'ada', 'Ada')
-    // 40m Deep focus, 1h Total earlier in the Week (Tue 9 June).
+    // 40m Deep focus, 1h Total earlier in the Month (Tue 9 June).
     await addPastDay(t, {
       discordId: 'ada',
       dayStart: Date.UTC(2026, 5, 8, 22, 0, 0),
@@ -157,15 +158,102 @@ describe('leaderboard.getBoards', () => {
       endedAt: NOW - 90 * M,
     })
 
-    // The Week started the previous Monday, so the 9 June row is inside it.
-    const boards = await t.query(
-      api.leaderboard.getBoards,
-      queryArgs({ weekStart: Date.UTC(2026, 5, 7, 22, 0, 0) })
-    )
+    // Focus = today (Mon 15 June): the Week is 15–21 June, so the 9 June row is
+    // before it; the Month (June) still contains both.
+    const boards = await t.query(api.leaderboard.getBoards, queryArgs())
 
     expect(boards.today[0]).toMatchObject({ name: 'Ada', deepFocusMs: 30 * M, totalMs: 30 * M })
-    expect(boards.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 70 * M, totalMs: 90 * M })
+    expect(boards.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 30 * M, totalMs: 30 * M })
     expect(boards.month[0]).toMatchObject({ name: 'Ada', deepFocusMs: 70 * M, totalMs: 90 * M })
+  })
+
+  it('makes the Week a pure sum and keeps the Month live for a focus day in a past week', async () => {
+    const t = makeTest()
+    await addUser(t, 'ada', 'Ada')
+    // 40m Deep focus, 1h Total on Tue 9 June — inside the focus day's Week.
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: Date.UTC(2026, 5, 8, 22, 0, 0),
+      deepFocusMs: 40 * M,
+      totalMs: 1 * H,
+    })
+    // 30m camera today (Wed 15 June, a later week in the same Month).
+    await addSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: NOW - 2 * H,
+      endedAt: NOW - 90 * M,
+    })
+
+    // Focus = Mon 8 June: the Week (8–14 June) is a pure sum, and the Month still
+    // contains today, so its live minutes are merged in.
+    const boards = await t.query(
+      api.leaderboard.getBoards,
+      queryArgs({ focusDayStart: PREV_WEEK_FOCUS })
+    )
+
+    expect(boards.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 40 * M, totalMs: 1 * H })
+    expect(boards.month[0]).toMatchObject({ name: 'Ada', deepFocusMs: 70 * M, totalMs: 90 * M })
+  })
+
+  it('makes the Week and Month pure sums for a focus day in a past Month', async () => {
+    const t = makeTest()
+    await addUser(t, 'ada', 'Ada')
+    // A row inside the focus day's May Week.
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: MAY_FOCUS,
+      deepFocusMs: 30 * M,
+      totalMs: 45 * M,
+    })
+    // A row in June, after the focus Month, which must not leak in.
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: Date.UTC(2026, 5, 8, 22, 0, 0),
+      deepFocusMs: 40 * M,
+      totalMs: 1 * H,
+    })
+    await addSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: NOW - 20 * M,
+      endedAt: NOW,
+    })
+
+    const boards = await t.query(api.leaderboard.getBoards, queryArgs({ focusDayStart: MAY_FOCUS }))
+
+    expect(boards.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 30 * M, totalMs: 45 * M })
+    expect(boards.month[0]).toMatchObject({ name: 'Ada', deepFocusMs: 30 * M, totalMs: 45 * M })
+    // Today is unaffected by the focus day.
+    expect(boards.today[0]).toMatchObject({ deepFocusMs: 20 * M })
+  })
+
+  it('returns empty Week and Month for a future focus day', async () => {
+    const t = makeTest()
+    await addUser(t, 'ada', 'Ada')
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: DAY_START - 24 * H,
+      deepFocusMs: 40 * M,
+      totalMs: 1 * H,
+    })
+    await addSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: NOW - 30 * M,
+      endedAt: NOW,
+    })
+
+    // A day in July: both its Week and Month lie wholly in the future.
+    const future = Date.UTC(2026, 6, 15, 10, 0, 0)
+    const boards = await t.query(api.leaderboard.getBoards, queryArgs({ focusDayStart: future }))
+
+    expect(boards.week).toEqual([])
+    expect(boards.month).toEqual([])
+    expect(boards.today[0]).toMatchObject({ deepFocusMs: 30 * M })
   })
 
   it('makes the Week equal Today on a Monday', async () => {
@@ -205,7 +293,7 @@ describe('leaderboard.getBoards', () => {
 
     const boards = await t.query(
       api.leaderboard.getBoards,
-      queryArgs({ weekStart: Date.UTC(2026, 5, 7, 22, 0, 0) })
+      queryArgs({ focusDayStart: PREV_WEEK_FOCUS })
     )
 
     expect(boards.today).toEqual([])
@@ -262,5 +350,51 @@ describe('leaderboard.getBoards', () => {
       expect(rows).toHaveLength(10)
       expect(rows[0].name).toBe('Member 11')
     }
+  })
+})
+
+describe('leaderboard.getBoardsForViewer', () => {
+  it('returns empty boards when unauthenticated', async () => {
+    const t = makeTest()
+    await addSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: NOW - 30 * M,
+      endedAt: NOW,
+    })
+
+    const boards = await t.query(api.leaderboard.getBoardsForViewer, viewerArgs())
+    expect(boards).toEqual({ today: [], week: [], month: [] })
+  })
+
+  it('returns the same three boards as the bot for a signed-in member', async () => {
+    const t = makeTest()
+    await addUser(t, 'ada', 'Ada')
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: Date.UTC(2026, 5, 8, 22, 0, 0),
+      deepFocusMs: 40 * M,
+      totalMs: 1 * H,
+    })
+    await addSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: NOW - 2 * H,
+      endedAt: NOW - 90 * M,
+    })
+
+    // Bot parity on the same focus day: the viewer read and the bot read agree,
+    // including the past Week as a pure sum and the live Month.
+    const args = viewerArgs({ focusDayStart: PREV_WEEK_FOCUS })
+    const viaBot = await t.query(api.leaderboard.getBoards, queryArgs(args))
+    const viaViewer = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.leaderboard.getBoardsForViewer, args)
+
+    expect(viaViewer).toEqual(viaBot)
+    expect(viaViewer.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 40 * M })
+    expect(viaViewer.month[0]).toMatchObject({ name: 'Ada', deepFocusMs: 70 * M })
   })
 })

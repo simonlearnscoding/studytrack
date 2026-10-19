@@ -2,6 +2,7 @@ import type { Id } from '../_generated/dataModel'
 import type { DashboardMember, DashboardPartial, DashboardSession } from './types'
 import { describe, expect, it } from 'vitest'
 import {
+  collectiveFocusMs,
   focusRate,
   formatCompactMs,
   memberFocusMs,
@@ -110,6 +111,54 @@ describe('memberFocusMs', () => {
       ],
     })
     expect(memberFocusMs(mine, NOW)).toBe(12 * M)
+  })
+})
+
+describe('collectiveFocusMs', () => {
+  function inRoom(id: string, partials: DashboardPartial[]): DashboardMember {
+    return member({
+      discordId: id,
+      online: true,
+      sessions: [session(partials, { status: 'active', endedAt: null })],
+    })
+  }
+
+  it('is zero for an empty room', () => {
+    expect(collectiveFocusMs([], NOW, 'focus')).toBe(0)
+  })
+
+  it('adds a second per person per second — three focusers read 3h', () => {
+    const room = [
+      inRoom('ada', [partial({ mode: 'camera', startedAt: NOW - H, endedAt: null })]),
+      inRoom('bob', [partial({ mode: 'screenShare', startedAt: NOW - H, endedAt: null })]),
+      inRoom('cy', [partial({ mode: 'cameraAndScreenShare', startedAt: NOW - H, endedAt: null })]),
+    ]
+    expect(collectiveFocusMs(room, NOW, 'focus')).toBe(3 * H)
+  })
+
+  it('counts a voice-only member at nothing under Focus, their span under Total', () => {
+    const room = [inRoom('ada', [partial({ mode: 'voice', startedAt: NOW - H, endedAt: null })])]
+    expect(collectiveFocusMs(room, NOW, 'focus')).toBe(0)
+    expect(collectiveFocusMs(room, NOW, 'total')).toBe(H)
+  })
+
+  it('ignores members with no active session', () => {
+    const gone = member({
+      sessions: [session([partial({ mode: 'camera' })], { status: 'ended' })],
+    })
+    expect(collectiveFocusMs([gone], NOW, 'focus')).toBe(0)
+  })
+
+  it('follows the metric cut across members', () => {
+    const room = [
+      inRoom('ada', [
+        partial({ mode: 'voice', startedAt: NOW - H, endedAt: NOW - 20 * M }),
+        partial({ mode: 'camera', startedAt: NOW - 20 * M, endedAt: null }),
+      ]),
+      inRoom('bob', [partial({ mode: 'voice', startedAt: NOW - H, endedAt: null })]),
+    ]
+    expect(collectiveFocusMs(room, NOW, 'focus')).toBe(20 * M)
+    expect(collectiveFocusMs(room, NOW, 'total')).toBe(2 * H)
   })
 })
 

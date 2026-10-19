@@ -80,6 +80,27 @@ export function formatDuration(ms: number): string {
   return `${seconds}s`
 }
 
+// Hours and minutes only — for Day totals, which should read steadily rather than
+// tick each second: `3h30m`, `45m`, `0m`.
+export function formatDurationHM(ms: number): string {
+  const totalMinutes = Math.floor(Math.max(0, ms) / 60_000)
+  const minutes = totalMinutes % 60
+  const hours = Math.floor(totalMinutes / 60)
+  if (hours > 0) return `${hours}h${String(minutes).padStart(2, '0')}m`
+  return `${minutes}m`
+}
+
+// A stopwatch clock — `HH:MM:SS`, always hours, always both digits: `01:23:45`,
+// `00:04:12`, `00:00:00`. For the room's shared timer, which a fast tick makes
+// read as a clock rather than a stepping count.
+export function formatDurationClock(ms: number): string {
+  const totalSeconds = Math.floor(Math.max(0, ms) / 1000)
+  const seconds = totalSeconds % 60
+  const minutes = Math.floor(totalSeconds / 60) % 60
+  const hours = Math.floor(totalSeconds / 3600)
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':')
+}
+
 // Midnight (epoch ms) of the calendar day `now` falls in, for a named timezone.
 export function startOfDay(now: number, timeZone: string): number {
   const { year, month, day } = zonedParts(now, timeZone)
@@ -117,6 +138,20 @@ export function startOfWeek(now: number, timeZone: string): number {
 export function startOfMonth(now: number, timeZone: string): number {
   const { year, month } = zonedParts(now, timeZone)
   return startOfDay(Date.UTC(year, month - 1, 1), timeZone)
+}
+
+// Monday 00:00 of the Week after `weekStart`, DST-safe. Walk seven calendar days
+// forward, then correct to local midnight. The half-open end bound of a Week.
+export function nextWeekStart(weekStart: number, timeZone: string): number {
+  const { year, month, day } = zonedParts(weekStart, timeZone)
+  return startOfDay(Date.UTC(year, month - 1, day + 7), timeZone)
+}
+
+// 00:00 on the 1st of the Month after `monthStart`. The half-open end bound of a
+// Month.
+export function nextMonthStart(monthStart: number, timeZone: string): number {
+  const { year, month } = zonedParts(monthStart, timeZone)
+  return startOfDay(Date.UTC(year, month, 1), timeZone)
 }
 
 function zonedParts(instant: number, timeZone: string) {

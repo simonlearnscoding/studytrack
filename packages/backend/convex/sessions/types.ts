@@ -15,8 +15,8 @@ export type DashboardPartial = {
 }
 
 // A task a member completed while a session was running, exposed to the room
-// (ADR-0005: task titles are public on the live card). Only the title and the
-// instant it was marked done are shared — nothing else leaves its owner.
+// (ADR-0007: task content is public). Carries the title and the instant it was
+// marked done — the two fields the session-card read needs.
 export type DashboardCompletedTask = {
   id: Id<'task'>
   title: string

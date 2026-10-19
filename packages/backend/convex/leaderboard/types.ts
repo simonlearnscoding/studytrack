@@ -22,14 +22,25 @@ export type LeaderboardBoards = {
   month: LeaderboardRow[]
 }
 
-// The bot supplies every timestamp because queries must not read the wall clock
-// (see ../sessions/util); `secret` is the shared bot secret.
+// The two instants every board is computed against: the focus day the caller
+// selected (its Europe/Zurich midnight, epoch ms) and the caller's clock. The
+// service derives today's Day and the focus day's Week and Month from these, so
+// queries never read the wall clock (see ../sessions/util).
+const boardArgs = {
+  now: v.number(),
+  focusDayStart: v.number(),
+}
+
+// The bot's read: the focus day plus the shared bot secret. It passes the focus
+// day = today, so its three boards behave exactly as before.
 export const getBoardsArgs = v.object({
   secret: v.string(),
-  now: v.number(),
-  dayStart: v.number(),
-  weekStart: v.number(),
-  monthStart: v.number(),
+  ...boardArgs,
 })
 
+// The web's read of the same three lists for a signed-in member. No secret — the
+// service gates it on the Clerk identity instead.
+export const getBoardsForViewerArgs = v.object(boardArgs)
+
 export type GetBoardsArgs = Infer<typeof getBoardsArgs>
+export type GetBoardsForViewerArgs = Infer<typeof getBoardsForViewerArgs>

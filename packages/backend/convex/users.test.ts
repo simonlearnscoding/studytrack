@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from './_generated/api'
 import schema from './schema'
 
@@ -56,5 +56,57 @@ describe('users.upsertFromClerk', () => {
     const rows = await t.run(async (ctx) => await ctx.db.query('users').collect())
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ clerkUserId: 'clerk-2', name: 'Bob' })
+  })
+})
+
+describe('users.me dev impersonation', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  it('returns the named seeded member signed-out when DEV_AUTH_BYPASS is on', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('users', {
+        discordId: 'dev-1',
+        clerkUserId: 'clerk-dev-1',
+        name: 'Dev',
+        createdAt: Date.now(),
+      })
+    })
+
+    vi.stubEnv('DEV_AUTH_BYPASS', '1')
+    vi.stubEnv('DEV_IMPERSONATE_DISCORD_ID', 'dev-1')
+    expect(await t.query(api.users.me, {})).toMatchObject({
+      discordId: 'dev-1',
+      name: 'Dev',
+    })
+  })
+
+  it('falls back to the Clerk id, then null', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('users', {
+        clerkUserId: 'clerk-dev-2',
+        name: 'Clerk',
+        createdAt: Date.now(),
+      })
+    })
+
+    vi.stubEnv('DEV_AUTH_BYPASS', '1')
+    vi.stubEnv('DEV_IMPERSONATE_DISCORD_ID', '')
+    vi.stubEnv('DEV_IMPERSONATE_CLERK_USER_ID', 'clerk-dev-2')
+    expect(await t.query(api.users.me, {})).toMatchObject({ name: 'Clerk' })
+
+    vi.stubEnv('DEV_IMPERSONATE_CLERK_USER_ID', '')
+    expect(await t.query(api.users.me, {})).toBeNull()
+  })
+
+  it('stays null signed-out without DEV_AUTH_BYPASS', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('users', { discordId: 'dev-1', createdAt: Date.now() })
+    })
+
+    vi.stubEnv('DEV_IMPERSONATE_DISCORD_ID', 'dev-1')
+    expect(await t.query(api.users.me, {})).toBeNull()
   })
 })

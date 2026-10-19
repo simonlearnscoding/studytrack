@@ -10,8 +10,12 @@ import {
   DASHBOARD_TIME_ZONE,
   attachTasksToSessions,
   formatDuration,
+  formatDurationClock,
+  formatDurationHM,
   memberTotalMs,
   nextDayStart,
+  nextMonthStart,
+  nextWeekStart,
   partialDurationMs,
   previousDayStart,
   sessionContainsCompletedAt,
@@ -192,6 +196,35 @@ describe('formatDuration', () => {
   })
 })
 
+describe('formatDurationHM', () => {
+  it('formats hours and minutes, dropping seconds', () => {
+    expect(formatDurationHM(3 * H + 30 * M + 5 * 1000)).toBe('3h30m')
+  })
+
+  it('drops hours when under an hour', () => {
+    expect(formatDurationHM(45 * M + 12 * 1000)).toBe('45m')
+  })
+
+  it('rounds down partial minutes, and zero as 0m', () => {
+    expect(formatDurationHM(5 * 1000)).toBe('0m')
+    expect(formatDurationHM(0)).toBe('0m')
+  })
+})
+
+describe('formatDurationClock', () => {
+  it('formats hours, minutes and seconds as HH:MM:SS', () => {
+    expect(formatDurationClock(3 * H + 30 * M + 5 * 1000)).toBe('03:30:05')
+  })
+
+  it('keeps both digits under an hour', () => {
+    expect(formatDurationClock(45 * M + 12 * 1000)).toBe('00:45:12')
+  })
+
+  it('shows zero as 00:00:00', () => {
+    expect(formatDurationClock(0)).toBe('00:00:00')
+  })
+})
+
 describe('startOfDay', () => {
   it('resolves local midnight in summer (UTC+2)', () => {
     const now = Date.UTC(2026, 5, 15, 10, 0, 0) // 12:00 Zurich
@@ -260,5 +293,34 @@ describe('startOfMonth', () => {
   it('resolves the 1st across the fall-back change', () => {
     const now = Date.UTC(2026, 9, 25, 10, 0, 0)
     expect(startOfMonth(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 8, 30, 22, 0, 0))
+  })
+})
+
+describe('nextWeekStart', () => {
+  it('is the Monday midnight seven days later', () => {
+    const week = startOfWeek(Date.UTC(2026, 5, 17, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(week).toBe(Date.UTC(2026, 5, 14, 22, 0, 0))
+    expect(nextWeekStart(week, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 21, 22, 0, 0))
+  })
+
+  it('crosses the spring-forward change without drifting', () => {
+    const week = startOfWeek(Date.UTC(2026, 2, 23, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(week).toBe(Date.UTC(2026, 2, 22, 23, 0, 0))
+    const next = nextWeekStart(week, DASHBOARD_TIME_ZONE)
+    expect(next).toBe(Date.UTC(2026, 2, 29, 22, 0, 0))
+    expect(next - week).toBe(7 * 24 * H - H)
+  })
+})
+
+describe('nextMonthStart', () => {
+  it('is the 1st of the next Month', () => {
+    const month = startOfMonth(Date.UTC(2026, 5, 15, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(month).toBe(Date.UTC(2026, 4, 31, 22, 0, 0))
+    expect(nextMonthStart(month, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 30, 22, 0, 0))
+  })
+
+  it('rolls over the year boundary', () => {
+    const month = startOfMonth(Date.UTC(2026, 11, 10, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    expect(nextMonthStart(month, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 11, 31, 23, 0, 0))
   })
 })

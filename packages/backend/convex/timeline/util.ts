@@ -1,10 +1,11 @@
 import type { DashboardMember } from '../sessions/types'
-import { formatDuration, memberTotalMs } from '../sessions/util'
+import { memberFocusMs } from '../sessions/metrics'
+import { formatDurationHM, memberTotalMs } from '../sessions/util'
 import type {
-  BandSide,
   ExpansionState,
   TimelineBarVM,
   TimelineDotVM,
+  TimelineMetric,
   TimelineRowVM,
   TimelineSegment,
   TimelineTick,
@@ -14,20 +15,23 @@ import { DAY_MINUTES } from './types'
 
 const MINUTE_MS = 60_000
 
-// The fixed full-scale window (LD-1 / the expansion spec): 05:00–22:00, with
-// 00:00–05:00 and 22:00–24:00 drawn as collapsible night bands at the ends.
-export const CORE_START_MIN = 5 * 60
-export const CORE_END_MIN = 22 * 60
+// The fixed full-scale window (LD-1 / the expansion spec): 06:00–24:00, with
+// 00:00–06:00 drawn as one collapsible night band before it. The evening runs
+// at full scale to midnight — two drawn-on-purpose hours, no cropping to hide.
+export const CORE_START_MIN = 6 * 60
+export const CORE_END_MIN = 24 * 60
 const CORE_HOURS = (CORE_END_MIN - CORE_START_MIN) / 60
-// The axis never shrinks past this; below it the track scrolls instead.
-export const PX_PER_HOUR_FLOOR = 48
+// The axis never shrinks past this; below it the track scrolls instead. Tuned
+// down to 32 so a laptop's narrow centre column fits the day without a long
+// sideways scroll.
+export const PX_PER_HOUR_FLOOR = 32
 // The width of a squashed night band, and the hour step at which labels stop
 // colliding near the floor.
 const BAND_COLLAPSED_PX = 32
 const TICK_STEP_WIDE_MIN = 60
 const TICK_STEP_NARROW_MIN = 120
 
-const NO_EXPANSION: ExpansionState = { morning: false, evening: false }
+const NO_EXPANSION: ExpansionState = { morning: false }
 
 // A "now" expressed in minutes since the day start, the track's own measured
 // width, and which night bands the user (or the clock) has opened. `availablePx`
@@ -44,24 +48,22 @@ export type WindowInput = {
 //
 // The px/hour is decided once from the *collapsed* baseline, so expanding a band
 // never rescales the core — it keeps the scale and widens the axis (you scroll
-// more). The axis only starts scrolling once it falls past the 48px/h floor.
+// more). The axis only starts scrolling once it falls past the px-per-hour floor.
 export function resolveWindow({
   nowMin,
   availablePx,
   expansion = NO_EXPANSION,
 }: WindowInput): TimelineWindow {
-  const collapsedReserve = 2 * BAND_COLLAPSED_PX
-  const pxPerHour = Math.max(PX_PER_HOUR_FLOOR, (availablePx - collapsedReserve) / CORE_HOURS)
+  const pxPerHour = Math.max(PX_PER_HOUR_FLOOR, (availablePx - BAND_COLLAPSED_PX) / CORE_HOURS)
 
   const segments: TimelineSegment[] = [
-    bandSegment('morning', 0, CORE_START_MIN, 5 * pxPerHour, expansion.morning),
+    bandSegment(0, CORE_START_MIN, (CORE_START_MIN / 60) * pxPerHour, expansion.morning),
     {
       kind: 'core',
       startMin: CORE_START_MIN,
       endMin: CORE_END_MIN,
       widthPx: CORE_HOURS * pxPerHour,
     },
-    bandSegment('evening', CORE_END_MIN, DAY_MINUTES, 2 * pxPerHour, expansion.evening),
   ]
   const widthPx = segments.reduce((sum, segment) => sum + segment.widthPx, 0)
   const stepMin = pxPerHour >= 64 ? TICK_STEP_WIDE_MIN : TICK_STEP_NARROW_MIN
@@ -76,12 +78,15 @@ export function resolveWindow({
 }
 
 // The backend payload plus the things a live query cannot carry: the wall clock,
-// the day the payload was read against, and which member is "you".
+// the day the payload was read against, which member is "you", and which cut of
+// time the tail durations front (the site-wide metric switch — presentational
+// only; the lanes and their order stay sorted by Total).
 export type TimelineInput = {
   now: number
   dayStart: number
   me: string | null
   window: TimelineWindow
+  metric?: TimelineMetric
 }
 
 // Map the dashboard payload to positioned rows. Pure, ctx-free, no clock read —
@@ -102,20 +107,24 @@ export function toMinute(instant: number, dayStart: number): number {
   return (instant - dayStart) / MINUTE_MS
 }
 
-// Which band the clock opens on its own: before 05:00 the morning, at/after
-// 22:00 the evening. Pure — the caller latches this for the visit so crossing
-// 05:00 does not snap it shut (LD-1).
+// The hour until which the clock holds the night band open on its own. Later
+// than the band's own end (06:00): while you are plausibly still in or wrapping
+// up a morning session, the night you just lived through stays on screen. And
+// because an auto-open cannot be collapsed, this one number is also the lock —
+// the toggle turns live only once the hour has passed (LD-1 / ADR-0008).
+export const AUTO_OPEN_UNTIL_MIN = 9 * 60
+
+// Which band the clock opens on its own: while it is still early (before
+// AUTO_OPEN_UNTIL_MIN) the night band. Pure — the caller latches this for the
+// visit so crossing the hour does not snap it shut (LD-1).
 export function autoExpansionAt(nowMin: number): ExpansionState {
-  return { morning: nowMin < CORE_START_MIN, evening: nowMin >= CORE_END_MIN }
+  return { morning: nowMin < AUTO_OPEN_UNTIL_MIN }
 }
 
-// Combine the user's manual expansion with the clock's. Either one opening a
+// Combine the user's manual expansion with the clock's. Either one opening the
 // band keeps it open; a manual collapse never overrides an auto-open.
 export function mergeExpansion(manual: ExpansionState, auto: ExpansionState): ExpansionState {
-  return {
-    morning: manual.morning || auto.morning,
-    evening: manual.evening || auto.evening,
-  }
+  return { morning: manual.morning || auto.morning }
 }
 
 // The scroll offset that puts "now" at the centre of the viewport, clamped to
@@ -153,14 +162,14 @@ export function minuteToPx(segments: TimelineSegment[], minute: number): number 
 
 function toRow(
   member: DashboardMember,
-  { now, dayStart, me, window }: TimelineInput
+  { now, dayStart, me, window, metric }: TimelineInput
 ): TimelineRowVM {
   const bars: TimelineBarVM[] = []
   const dots: TimelineDotVM[] = []
-  const hidden: Record<BandSide, number> = { morning: 0, evening: 0 }
+  let hiddenCount = 0
 
   for (const session of member.sessions) {
-    const sessionHidden = new Set<BandSide>()
+    let hiddenInsideBand = false
 
     for (const partial of session.partials) {
       const startMin = toMinute(partial.startedAt, dayStart)
@@ -171,18 +180,20 @@ function toRow(
         endMin,
         (leftPx, widthPx) =>
           bars.push({ leftPx, widthPx, mode: partial.mode, live: partial.endedAt === null }),
-        (side) => sessionHidden.add(side)
+        () => {
+          hiddenInsideBand = true
+        }
       )
     }
 
     for (const task of session.tasks) {
       const hit = segmentAt(window.segments, toMinute(task.completedAt, dayStart))
       if (!hit) continue
-      if (isHidden(hit.segment)) sessionHidden.add(hit.segment.side)
-      else dots.push({ leftPx: hit.px })
+      if (isHidden(hit.segment)) hiddenInsideBand = true
+      else dots.push({ leftPx: hit.px, title: task.title })
     }
 
-    for (const side of sessionHidden) hidden[side]++
+    if (hiddenInsideBand) hiddenCount++
   }
 
   return {
@@ -191,22 +202,23 @@ function toRow(
     image: member.image,
     you: me !== null && String(member.userId) === me,
     live: member.online,
-    tail: formatDuration(memberTotalMs(member, now)),
+    tail: formatDurationHM(
+      (metric ?? 'total') === 'focus' ? memberFocusMs(member, now) : memberTotalMs(member, now)
+    ),
     bars: bars.sort((a, b) => a.leftPx - b.leftPx),
     dots: dots.sort((a, b) => a.leftPx - b.leftPx),
-    morningHidden: hidden.morning,
-    eveningHidden: hidden.evening,
+    hiddenCount,
   }
 }
 
 // Walk a minute span across the axis, emitting one bar piece per visible
-// segment and reporting each collapsed band the span crosses.
+// segment and reporting when the span crosses the collapsed band.
 function forEachVisibleSpan(
   segments: TimelineSegment[],
   startMin: number,
   endMin: number,
   addBar: (leftPx: number, widthPx: number) => void,
-  addHidden: (side: BandSide) => void
+  addHidden: () => void
 ): void {
   const lo = Math.min(startMin, endMin)
   const hi = Math.max(startMin, endMin)
@@ -216,7 +228,7 @@ function forEachVisibleSpan(
     const to = Math.min(hi, segment.endMin)
     if (to > from) {
       if (isHidden(segment)) {
-        addHidden(segment.side)
+        addHidden()
       } else {
         const span = segment.endMin - segment.startMin
         const a = offset + ((from - segment.startMin) / span) * segment.widthPx
@@ -233,7 +245,6 @@ function isHidden(segment: TimelineSegment): segment is Extract<TimelineSegment,
 }
 
 function bandSegment(
-  side: BandSide,
   startMin: number,
   endMin: number,
   expandedWidthPx: number,
@@ -241,12 +252,11 @@ function bandSegment(
 ): Extract<TimelineSegment, { kind: 'band' }> {
   return {
     kind: 'band',
-    side,
     startMin,
     endMin,
     widthPx: expanded ? expandedWidthPx : BAND_COLLAPSED_PX,
     collapsed: !expanded,
-    label: side === 'morning' ? '0–5' : '22–24',
+    label: `${Math.round(startMin / 60)}–${Math.round(endMin / 60)}`,
   }
 }
 
@@ -272,18 +282,12 @@ function segmentAt(
   return null
 }
 
-// "now" clamped onto the axis: inside a collapsed band it sits on the band's
+// "now" clamped onto the axis: inside the collapsed band it sits on the band's
 // inner edge (the core boundary) rather than disappearing.
 function resolveNowPx(segments: TimelineSegment[], nowMin: number): number {
   const hit = segmentAt(segments, nowMin)
   if (hit && !isHidden(hit.segment)) return hit.px
-  if (nowMin < CORE_START_MIN) return segments[0].widthPx
-  let offset = 0
-  for (const segment of segments) {
-    if (segment.kind === 'band' && segment.side === 'evening') return offset
-    offset += segment.widthPx
-  }
-  return offset
+  return segments[0].widthPx
 }
 
 function buildTicks(segments: TimelineSegment[], stepMin: number): TimelineTick[] {

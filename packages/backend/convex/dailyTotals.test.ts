@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test'
 import { describe, expect, it } from 'vitest'
-import { internal } from './_generated/api'
+import { api, internal } from './_generated/api'
 import { startOfDay, DASHBOARD_TIME_ZONE } from './sessions/util'
 import schema from './schema'
 import type { StudyMode } from './bot/types'
@@ -297,5 +297,130 @@ describe('dailyTotals.rollupDay', () => {
       deepFocusMs: 25 * H,
       totalMs: 25 * H,
     })
+  })
+})
+
+describe('dailyTotals.listMine', () => {
+  it('returns nothing when unauthenticated', async () => {
+    const t = makeTest()
+    expect(await t.query(api.dailyTotals.listMine, { fromDayStart: 0 })).toEqual([])
+  })
+
+  it('returns only the caller rows from fromDayStart onwards, oldest first', async () => {
+    const t = makeTest()
+    await t.run(async (ctx) => {
+      const ada = await ctx.db.insert('users', {
+        clerkUserId: 'clerk-ada',
+        discordId: 'ada',
+        name: 'Ada',
+        createdAt: DAY_START,
+      })
+      const bob = await ctx.db.insert('users', {
+        clerkUserId: 'clerk-bob',
+        discordId: 'bob',
+        name: 'Bob',
+        createdAt: DAY_START,
+      })
+      // Ada's rows, keyed by her Discord id (the rollup's member key).
+      await ctx.db.insert('dailyTotal', {
+        memberKey: 'ada',
+        discordId: 'ada',
+        userId: ada,
+        dayStart: PREV_DAY_START,
+        studyMs: 1 * H,
+        deepFocusMs: 0,
+        totalMs: 1 * H,
+      })
+      await ctx.db.insert('dailyTotal', {
+        memberKey: 'ada',
+        discordId: 'ada',
+        userId: ada,
+        dayStart: DAY_START,
+        studyMs: 2 * H,
+        deepFocusMs: 0,
+        totalMs: 2 * H,
+      })
+      // Another member's row must never surface.
+      await ctx.db.insert('dailyTotal', {
+        memberKey: 'bob',
+        discordId: 'bob',
+        userId: bob,
+        dayStart: DAY_START,
+        studyMs: 5 * H,
+        deepFocusMs: 0,
+        totalMs: 5 * H,
+      })
+    })
+
+    const rows = await t
+      .withIdentity({ subject: 'clerk-ada' })
+      .query(api.dailyTotals.listMine, { fromDayStart: DAY_START })
+    expect(rows).toEqual([{ dayStart: DAY_START, studyMs: 2 * H }])
+  })
+
+  it('keys a manual-only member by their user id', async () => {
+    const t = makeTest()
+    const userId = await t.run(
+      async (ctx) =>
+        await ctx.db.insert('users', {
+          clerkUserId: 'clerk-manual',
+          name: 'Manual',
+          createdAt: DAY_START,
+        })
+    )
+    await t.run(async (ctx) => {
+      await ctx.db.insert('dailyTotal', {
+        memberKey: String(userId),
+        userId,
+        dayStart: DAY_START,
+        studyMs: 30 * M,
+        deepFocusMs: 0,
+        totalMs: 30 * M,
+      })
+      await ctx.db.insert('dailyTotal', {
+        memberKey: 'someone-else',
+        dayStart: DAY_START,
+        studyMs: 9 * H,
+        deepFocusMs: 0,
+        totalMs: 9 * H,
+      })
+    })
+
+    const rows = await t
+      .withIdentity({ subject: 'clerk-manual' })
+      .query(api.dailyTotals.listMine, { fromDayStart: 0 })
+    expect(rows).toEqual([{ dayStart: DAY_START, studyMs: 30 * M }])
+  })
+
+  it('throws instead of truncating past the row cap', async () => {
+    const t = makeTest()
+    const userId = await t.run(
+      async (ctx) =>
+        await ctx.db.insert('users', {
+          clerkUserId: 'clerk-prolific',
+          discordId: 'prolific',
+          name: 'Prolific',
+          createdAt: DAY_START,
+        })
+    )
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 400; i++) {
+        await ctx.db.insert('dailyTotal', {
+          memberKey: 'prolific',
+          discordId: 'prolific',
+          userId,
+          dayStart: DAY_START - i * 24 * H,
+          studyMs: 1 * H,
+          deepFocusMs: 0,
+          totalMs: 1 * H,
+        })
+      }
+    })
+
+    await expect(
+      t.withIdentity({ subject: 'clerk-prolific' }).query(api.dailyTotals.listMine, {
+        fromDayStart: 0,
+      })
+    ).rejects.toThrow(/too large to read/)
   })
 })

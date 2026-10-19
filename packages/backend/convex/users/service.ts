@@ -5,11 +5,36 @@ import type { UpsertFromClerkArgs } from './types'
 // The signed-in user's row, or null.
 export async function getMe(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity()
-  if (!identity) return null
-  return await ctx.db
-    .query('users')
-    .withIndex('by_clerkUserId', (q) => q.eq('clerkUserId', identity.subject))
-    .unique()
+  if (identity) {
+    return await ctx.db
+      .query('users')
+      .withIndex('by_clerkUserId', (q) => q.eq('clerkUserId', identity.subject))
+      .unique()
+  }
+  // DEV: the local deployment runs signed-out (DEV_AUTH_BYPASS, default-backend
+  // .env.local) and may name a seeded member to stand in for the caller, so
+  // member-scoped reads (dailyTotals.listMine) can be exercised without a real
+  // sign-in. Prod sets neither variable, so this branch never runs there.
+  if (process.env.DEV_AUTH_BYPASS === '1') return await devImpersonated(ctx)
+  return null
+}
+
+async function devImpersonated(ctx: QueryCtx) {
+  const discordId = process.env.DEV_IMPERSONATE_DISCORD_ID
+  if (discordId) {
+    return await ctx.db
+      .query('users')
+      .withIndex('by_discordId', (q) => q.eq('discordId', discordId))
+      .first()
+  }
+  const clerkUserId = process.env.DEV_IMPERSONATE_CLERK_USER_ID
+  if (clerkUserId) {
+    return await ctx.db
+      .query('users')
+      .withIndex('by_clerkUserId', (q) => q.eq('clerkUserId', clerkUserId))
+      .unique()
+  }
+  return null
 }
 
 // The bot only knows the Discord id (and username), so this creates the row on

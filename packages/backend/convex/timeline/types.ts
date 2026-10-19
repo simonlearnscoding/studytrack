@@ -4,22 +4,17 @@ import type { StudyMode } from '../bot/types'
 // instead of timestamps so the adapter stays clock-agnostic and DST-free.
 export const DAY_MINUTES = 24 * 60
 
-// The two collapsed ends of the day. "morning" is 00:00–05:00, "evening" is
-// 22:00–24:00 (see LD-1 / the expansion spec).
-export type BandSide = 'morning' | 'evening'
-
-// Which night bands are open. A manual toggle persists per user; an auto-expand
-// is transient (LD-1). Both resolve to this shape.
-export type ExpansionState = Record<BandSide, boolean>
+// The one collapsed end of the day: the night before 06:00 (see LD-1 / the
+// expansion spec). The axis runs to midnight, so 22:00–24:00 is core, not a band.
+export type ExpansionState = { morning: boolean }
 
 // One slice of the horizontal axis. The core is the fixed full-scale window;
-// a band is a night end, either squashed to a thin collapsed strip or grown to
-// real scale when expanded.
+// the band is the collapsed night before it, either squashed to a thin strip or
+// grown to real scale when expanded.
 export type TimelineSegment =
   | { kind: 'core'; startMin: number; endMin: number; widthPx: number }
   | {
       kind: 'band'
-      side: BandSide
       startMin: number
       endMin: number
       widthPx: number
@@ -48,8 +43,9 @@ export type TimelineBarVM = {
   live: boolean
 }
 
-// A completed task, marked where it was ticked off.
-export type TimelineDotVM = { leftPx: number }
+// A completed task, marked where it was ticked off — it carries its title so the
+// lane can name the task at the moment it was done.
+export type TimelineDotVM = { leftPx: number; title: string }
 
 // One member's row, already positioned on the axis. No timestamps survive this
 // far — the view renders pixels only.
@@ -62,8 +58,11 @@ export type TimelineRowVM = {
   tail: string
   bars: TimelineBarVM[]
   dots: TimelineDotVM[]
-  // Counts of activity hidden inside each collapsed band (LD-13). Zero until a
-  // band is collapsed.
-  morningHidden: number
-  eveningHidden: number
+  // How many of this member's sessions are hidden inside the collapsed night
+  // band (LD-13). Zero until it collapses.
+  hiddenCount: number
 }
+
+// Which cut of study time a row's tail duration fronts: Deep focus or Total.
+// Purely presentational — lanes and their order never follow it (ST-12).
+export type TimelineMetric = 'focus' | 'total'

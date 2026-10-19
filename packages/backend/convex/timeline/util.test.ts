@@ -15,10 +15,10 @@ const DAY = Date.UTC(2026, 9, 14)
 const MIN = 60_000
 const at = (minutes: number) => DAY + minutes * MIN
 
-// 880px makes the core land exactly on the 48px/h floor: 32 + 816 + 32.
-const FLOOR_PX = 880
+// 608px makes the core land exactly on the 32px/h floor: 32 + 576.
+const FLOOR_PX = 608
 const CORE_LEFT = 32
-const PX_PER_HOUR = 48
+const PX_PER_HOUR = 32
 
 const partial = (
   mode: DashboardPartial['mode'],
@@ -72,67 +72,62 @@ const input = (over: Partial<Parameters<typeof toTimelineRows>[1]> = {}) => ({
 })
 
 describe('resolveWindow', () => {
-  it('draws a fixed core flanked by two collapsed night bands', () => {
+  it('draws a core running to midnight after one collapsed night band', () => {
     const w = resolveWindow({ nowMin: 12 * 60, availablePx: FLOOR_PX })
-    expect(w.segments).toHaveLength(3)
-    expect(w.segments[0]).toMatchObject({ kind: 'band', side: 'morning', collapsed: true })
+    expect(w.segments).toHaveLength(2)
+    expect(w.segments[0]).toMatchObject({
+      kind: 'band',
+      startMin: 0,
+      endMin: 6 * 60,
+      collapsed: true,
+      label: '0–6',
+    })
     expect(w.segments[1]).toMatchObject({
       kind: 'core',
-      startMin: 5 * 60,
-      endMin: 22 * 60,
-      widthPx: 17 * PX_PER_HOUR,
+      startMin: 6 * 60,
+      endMin: 24 * 60,
+      widthPx: 18 * PX_PER_HOUR,
     })
-    expect(w.segments[2]).toMatchObject({ kind: 'band', side: 'evening', collapsed: true })
     expect(w.widthPx).toBe(FLOOR_PX)
     expect(w.overflow).toBe(false)
   })
 
-  it('scrolls once the track falls past the 48px/h floor', () => {
+  it('scrolls once the track falls past the 32px/h floor', () => {
     const w = resolveWindow({ nowMin: 12 * 60, availablePx: 400 })
-    expect(w.segments[1]).toMatchObject({ widthPx: 17 * PX_PER_HOUR })
+    expect(w.segments[1]).toMatchObject({ widthPx: 18 * PX_PER_HOUR })
     expect(w.widthPx).toBeGreaterThan(400)
     expect(w.overflow).toBe(true)
   })
 
-  it('keeps the core scale fixed when a band expands, widening the axis', () => {
-    const collapsed = resolveWindow({ nowMin: 23 * 60, availablePx: FLOOR_PX })
+  it('keeps the core scale fixed when the band expands, widening the axis', () => {
+    const collapsed = resolveWindow({ nowMin: 12 * 60, availablePx: FLOOR_PX })
     const expanded = resolveWindow({
-      nowMin: 23 * 60,
+      nowMin: 12 * 60,
       availablePx: FLOOR_PX,
-      expansion: { morning: false, evening: true },
+      expansion: { morning: true },
     })
     expect(expanded.segments[1]).toMatchObject({ widthPx: collapsed.segments[1].widthPx })
-    expect(expanded.segments[2]).toMatchObject({ collapsed: false, widthPx: 2 * PX_PER_HOUR })
+    expect(expanded.segments[0]).toMatchObject({ collapsed: false, widthPx: 6 * PX_PER_HOUR })
     expect(expanded.widthPx).toBeGreaterThan(collapsed.widthPx)
-  })
-
-  it('expands the two ends independently', () => {
-    const onlyEvening = resolveWindow({
-      nowMin: 0,
-      availablePx: FLOOR_PX,
-      expansion: { morning: false, evening: true },
-    })
-    expect(onlyEvening.segments[0]).toMatchObject({ side: 'morning', collapsed: true })
-    expect(onlyEvening.segments[2]).toMatchObject({ side: 'evening', collapsed: false })
   })
 
   it('labels the core hours and thins out near the floor', () => {
     const w = resolveWindow({ nowMin: 12 * 60, availablePx: FLOOR_PX })
-    expect(w.ticks[0]).toEqual({ leftPx: CORE_LEFT, label: '05:00' })
-    expect(w.ticks.at(-1)).toEqual({ leftPx: CORE_LEFT + 17 * PX_PER_HOUR, label: '22:00' })
+    expect(w.ticks[0]).toEqual({ leftPx: CORE_LEFT, label: '06:00' })
+    expect(w.ticks.at(-1)).toEqual({ leftPx: CORE_LEFT + 18 * PX_PER_HOUR, label: '24:00' })
     expect(w.ticks).toHaveLength(10)
   })
 
-  it('centres now on the core, and pins it to the boundary inside a band', () => {
+  it('centres now on the core, and pins it to the boundary inside the band', () => {
     expect(resolveWindow({ nowMin: 15 * 60, availablePx: FLOOR_PX }).nowPx).toBe(
-      CORE_LEFT + 10 * PX_PER_HOUR
+      CORE_LEFT + 9 * PX_PER_HOUR
     )
-    // 03:00, morning collapsed: pinned to the morning band's inner edge.
+    // 03:00, band collapsed: pinned to the band's inner edge.
     expect(resolveWindow({ nowMin: 3 * 60, availablePx: FLOOR_PX }).nowPx).toBe(CORE_LEFT)
-    // 22:15, evening collapsed: pinned to the core's right edge.
-    expect(resolveWindow({ nowMin: 22 * 60 + 15, availablePx: FLOOR_PX }).nowPx).toBe(
-      CORE_LEFT + 17 * PX_PER_HOUR
-    )
+    // 04:00 with the band expanded: drawn at real scale inside the band.
+    expect(
+      resolveWindow({ nowMin: 4 * 60, availablePx: FLOOR_PX, expansion: { morning: true } }).nowPx
+    ).toBe(4 * PX_PER_HOUR)
   })
 })
 
@@ -164,13 +159,13 @@ describe('toTimelineRows', () => {
 
   it('positions bars and dots as axis pixels, not timestamps', () => {
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('camera', 300, 360)], [{ title: 'Read', atMin: 330 }])])],
+      [member(0, 'Me', [session([partial('camera', 360, 420)], [{ title: 'Read', atMin: 390 }])])],
       input()
     )
     expect(rows[0].bars).toEqual([
       { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'camera', live: false },
     ])
-    expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2 }])
+    expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2, title: 'Read' }])
   })
 
   it('marks a running partial live and extends it to now', () => {
@@ -179,24 +174,34 @@ describe('toTimelineRows', () => {
       input({ now: at(15 * 60) })
     )
     expect(rows[0].bars[0]).toEqual({
-      leftPx: CORE_LEFT + 9 * PX_PER_HOUR,
+      leftPx: CORE_LEFT + 8 * PX_PER_HOUR,
       widthPx: PX_PER_HOUR,
       mode: 'screenShare',
       live: true,
     })
   })
 
-  it('clips a bar at the night boundary and counts the hidden part', () => {
+  it('draws the evening hours at full scale instead of clipping them', () => {
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('voice', 21 * 60, 23 * 60)])])],
+      [member(0, 'Me', [session([partial('voice', 22 * 60, 23 * 60)])])],
       input({ now: at(23 * 60) })
     )
-    // 21:00–22:00 visible in the core; 22:00–23:00 hidden in the evening band.
     expect(rows[0].bars).toEqual([
       { leftPx: CORE_LEFT + 16 * PX_PER_HOUR, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
     ])
-    expect(rows[0].eveningHidden).toBe(1)
-    expect(rows[0].morningHidden).toBe(0)
+    expect(rows[0].hiddenCount).toBe(0)
+  })
+
+  it('clips a bar at the night boundary and counts the hidden part', () => {
+    const rows = toTimelineRows(
+      [member(0, 'Me', [session([partial('voice', 4 * 60, 7 * 60)])])],
+      input({ now: at(7 * 60) })
+    )
+    // 06:00–07:00 visible in the core; 04:00–06:00 hidden in the night band.
+    expect(rows[0].bars).toEqual([
+      { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
+    ])
+    expect(rows[0].hiddenCount).toBe(1)
   })
 
   it('counts a session (not each partial) hidden in a band', () => {
@@ -212,36 +217,29 @@ describe('toTimelineRows', () => {
       ],
       input({ now: at(3 * 60) })
     )
-    expect(rows[0].morningHidden).toBe(1)
+    expect(rows[0].hiddenCount).toBe(1)
   })
 })
 
 describe('autoExpansionAt', () => {
-  it('opens the morning before 05:00 and the evening at/after 22:00', () => {
-    expect(autoExpansionAt(3 * 60)).toEqual({ morning: true, evening: false })
-    expect(autoExpansionAt(22 * 60 + 15)).toEqual({ morning: false, evening: true })
+  it("opens the band through the morning, past the band's own 06:00 edge", () => {
+    expect(autoExpansionAt(3 * 60)).toEqual({ morning: true })
+    expect(autoExpansionAt(7 * 60)).toEqual({ morning: true })
   })
 
-  it('leaves both collapsed inside the window, including the 05:00 boundary', () => {
-    expect(autoExpansionAt(5 * 60)).toEqual({ morning: false, evening: false })
-    expect(autoExpansionAt(12 * 60)).toEqual({ morning: false, evening: false })
+  it('leaves it collapsed from the auto-open hour onward', () => {
+    expect(autoExpansionAt(9 * 60)).toEqual({ morning: false })
+    expect(autoExpansionAt(12 * 60)).toEqual({ morning: false })
   })
 })
 
 describe('mergeExpansion', () => {
-  it('opens a band when either manual or auto asks for it', () => {
-    expect(
-      mergeExpansion({ morning: false, evening: false }, { morning: true, evening: false })
-    ).toEqual({ morning: true, evening: false })
-    expect(
-      mergeExpansion({ morning: false, evening: true }, { morning: false, evening: false })
-    ).toEqual({ morning: false, evening: true })
+  it('opens the band when either manual or auto asks for it', () => {
+    expect(mergeExpansion({ morning: false }, { morning: true })).toEqual({ morning: true })
   })
 
   it('never lets a manual collapse close an auto-opened band', () => {
-    expect(
-      mergeExpansion({ morning: false, evening: false }, { morning: true, evening: true })
-    ).toEqual({ morning: true, evening: true })
+    expect(mergeExpansion({ morning: false }, { morning: true })).toEqual({ morning: true })
   })
 })
 

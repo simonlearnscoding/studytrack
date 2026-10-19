@@ -10,4 +10,8 @@ crons.interval('close stale sessions', { hours: 1 }, internal.sessions.closeStal
 // after Zurich midnight, and again each hour to absorb late stale-session closes.
 crons.cron('roll up daily totals', '1 * * * *', internal.dailyTotals.rollupRecent)
 
+// Fetch the header's motivational quote once per local Day. Runs hourly so a Day
+// missed by a failed fetch self-heals; the ensure step is idempotent.
+crons.cron('ensure daily quote', '0 * * * *', internal.quotes.ensureToday)
+
 export default crons

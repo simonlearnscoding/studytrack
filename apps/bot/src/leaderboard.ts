@@ -142,9 +142,7 @@ export async function startLeaderboard(
     const boards = await convex.query(api.leaderboard.getBoards, {
       secret,
       now,
-      dayStart,
-      weekStart,
-      monthStart,
+      focusDayStart: dayStart,
     })
     return buildLeaderboardEmbeds(boards, {
       updatedAt: now,

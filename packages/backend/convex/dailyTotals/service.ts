@@ -3,7 +3,8 @@ import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { isDeepFocus } from '../leaderboard/util'
 import { DASHBOARD_TIME_ZONE, nextDayStart, previousDayStart, startOfDay } from '../sessions/util'
-import type { DailyTotalSum } from './types'
+import { getMe } from '../users/service'
+import type { DailyTotalDay, DailyTotalSum } from './types'
 import { overlapMs } from './util'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -15,6 +16,9 @@ const TWELVE_HOURS_MS = 12 * HOUR_MS
 // silently (see ST-11); the numbers are never allowed to be quietly wrong.
 const MAX_PARTIALS_PER_DAY = 5000
 const MAX_SUM_ROWS = 10000
+// The heatmap asks for 53 weeks (371 Days), so 400 rows is headroom. A longer
+// range throws rather than truncating silently, matching the reads above.
+const MAX_MINE_ROWS = 400
 
 // Recompute one closed Day's totals for every member that studied in it.
 // Idempotent: it clears the Day's rows and inserts fresh ones, so re-running
@@ -122,6 +126,25 @@ export async function sumDailyTotals(
     byMember.set(row.memberKey, total)
   }
   return [...byMember.values()]
+}
+
+// The caller's own Daily totals from `fromDayStart` onwards, oldest first — the
+// web heatmap and Streak read (ST-13/ST-14). Private: it resolves the caller's
+// own member key (the same `discordId ?? String(userId)` rule the rollup writes
+// with) and never returns another member's rows. Returns nothing when
+// unauthenticated, like the other member reads.
+export async function listMine(ctx: QueryCtx, fromDayStart: number): Promise<DailyTotalDay[]> {
+  const user = await getMe(ctx)
+  if (!user) return []
+
+  const memberKey = user.discordId ?? String(user._id)
+  const rows = await ctx.db
+    .query('dailyTotal')
+    .withIndex('by_memberKey', (q) => q.eq('memberKey', memberKey).gte('dayStart', fromDayStart))
+    .take(MAX_MINE_ROWS)
+  if (rows.length >= MAX_MINE_ROWS) throw new Error('dailyTotals: range too large to read')
+
+  return rows.map((row) => ({ dayStart: row.dayStart, studyMs: row.studyMs }))
 }
 
 type MemberTotal = {

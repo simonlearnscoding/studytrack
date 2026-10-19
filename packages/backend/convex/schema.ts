@@ -69,13 +69,23 @@ export default defineSchema({
     .index('by_dayStart', ['dayStart'])
     .index('by_memberKey', ['memberKey', 'dayStart']),
 
-  // A private item on a member's study list. Only the owner reads or writes it;
-  // the room sees counts, never titles (see docs/adr/0002). `completedAt` is set
-  // when the task is marked done and cleared when it is reopened.
+  // An item on a member's study list. Task content is public (docs/adr/0007):
+  // titles, the active task and the up-next suggestion all show in the room.
+  // Only the owner writes it. `completedAt` is set when the task is marked done
+  // and cleared when it is reopened.
   task: defineTable({
     userId: v.id('users'),
     title: v.string(),
     done: v.boolean(),
     completedAt: v.optional(v.number()),
   }).index('by_userId', ['userId']),
+
+  // The motivational quote shown in the site header, one per local Day. A cron
+  // fetches it from ZenQuotes once a Day and stores it here, so readers never hit
+  // the network (see quotes/). `dayStart` is the local midnight (Europe/Zurich).
+  dailyQuote: defineTable({
+    dayStart: v.number(),
+    text: v.string(),
+    author: v.string(),
+  }).index('by_dayStart', ['dayStart']),
 })

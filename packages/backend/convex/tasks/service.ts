@@ -5,9 +5,9 @@ import type { Task } from './types'
 
 const MAX_TASKS = 200
 
-// The caller's tasks **created today**, newest first. Only the owner ever sees
-// these — the room gets counts elsewhere (ST-6). Tasks from earlier days stay in
-// the database but are out of view for now.
+// The caller's tasks **created today**, newest first. Task content is public
+// (docs/adr/0007), so the room may read titles; ownership still gates writes.
+// Tasks from earlier days stay in the database but are out of view for now.
 export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Task[]> {
   const user = await getMe(ctx)
   if (!user) return []

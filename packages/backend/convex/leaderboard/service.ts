@@ -3,26 +3,75 @@ import { assertBotSecret } from '../bot/util'
 import { sumDailyTotals } from '../dailyTotals/service'
 import type { DailyTotalSum } from '../dailyTotals/types'
 import { groupTodaysMembers } from '../sessions/service'
-import type { GetBoardsArgs, LeaderboardBoards, LeaderboardRow, LeaderboardTotal } from './types'
+import {
+  DASHBOARD_TIME_ZONE,
+  nextMonthStart,
+  nextWeekStart,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+} from '../sessions/util'
+import type {
+  GetBoardsArgs,
+  GetBoardsForViewerArgs,
+  LeaderboardBoards,
+  LeaderboardRow,
+  LeaderboardTotal,
+} from './types'
 import { rankTotals, todaysTotals } from './util'
 
-// The bot's leaderboard read: Today, the current Week and the current Month in
-// one round trip. It authenticates with the shared secret — it has no Clerk
-// identity — and delegates ranking to ./util. Every timestamp comes from the bot
-// because queries must not read the wall clock.
+// The bot's leaderboard read: Today, plus the Week and Month of the focus day in
+// one round trip. It passes focus = today, so the boards are the current periods.
+// It authenticates with the shared secret — it has no Clerk identity — and
+// delegates ranking to ./util. Every timestamp comes from the bot because queries
+// must not read the wall clock.
 export async function getBoards(ctx: QueryCtx, args: GetBoardsArgs): Promise<LeaderboardBoards> {
   assertBotSecret(args.secret)
+  return await buildBoards(ctx, args)
+}
 
-  const members = await groupTodaysMembers(ctx, args.dayStart)
-  const todayTotals = todaysTotals(members, args.dayStart, args.now)
+// The web's read of the same three boards, for a signed-in member. Same ranking
+// and same data as the bot's; only the gate differs. An unauthenticated caller
+// gets empty boards rather than an error, so the dashboard can show its empty
+// state without special-casing.
+export async function getBoardsForViewer(
+  ctx: QueryCtx,
+  args: GetBoardsForViewerArgs
+): Promise<LeaderboardBoards> {
+  // DEV: matches sessions.getTodaysActivitiesForDashboard — the dev deployment
+  // sets DEV_AUTH_BYPASS (packages/backend/.env.local) so /beta can be worked on
+  // signed-out. Prod never has it and keeps the identity gate.
+  if (process.env.DEV_AUTH_BYPASS !== '1') {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) return { today: [], week: [], month: [] }
+  }
+  return await buildBoards(ctx, args)
+}
+
+// The shared computation behind both reads: today's live totals per member, plus
+// the Week and Month of the focus day built from past Daily totals merged with
+// today's. Auth is the caller's concern; this is pure I/O and ranking over the
+// focus day's windows.
+async function buildBoards(
+  ctx: QueryCtx,
+  args: GetBoardsForViewerArgs
+): Promise<LeaderboardBoards> {
+  const dayStart = startOfDay(args.now, DASHBOARD_TIME_ZONE)
+  const weekStart = startOfWeek(args.focusDayStart, DASHBOARD_TIME_ZONE)
+  const weekEnd = nextWeekStart(weekStart, DASHBOARD_TIME_ZONE)
+  const monthStart = startOfMonth(args.focusDayStart, DASHBOARD_TIME_ZONE)
+  const monthEnd = nextMonthStart(monthStart, DASHBOARD_TIME_ZONE)
+
+  const members = await groupTodaysMembers(ctx, dayStart)
+  const todayTotals = todaysTotals(members, dayStart, args.now)
 
   const weekTotals = mergeTotals(
-    await sumDailyTotals(ctx, args.weekStart, args.dayStart),
-    todayTotals
+    await sumDailyTotals(ctx, weekStart, weekEnd),
+    liveIfContains(weekStart, weekEnd, dayStart, todayTotals)
   )
   const monthTotals = mergeTotals(
-    await sumDailyTotals(ctx, args.monthStart, args.dayStart),
-    todayTotals
+    await sumDailyTotals(ctx, monthStart, monthEnd),
+    liveIfContains(monthStart, monthEnd, dayStart, todayTotals)
   )
 
   return {
@@ -30,6 +79,18 @@ export async function getBoards(ctx: QueryCtx, args: GetBoardsArgs): Promise<Lea
     week: await resolveNames(ctx, rankTotals(weekTotals)),
     month: await resolveNames(ctx, rankTotals(monthTotals)),
   }
+}
+
+// Today's still-running totals are merged into a window only when that window
+// contains today's Day — so the current Week and Month stay live, while past and
+// future periods are stable sums.
+function liveIfContains(
+  windowStart: number,
+  windowEnd: number,
+  dayStart: number,
+  todayTotals: LeaderboardTotal[]
+): LeaderboardTotal[] {
+  return dayStart >= windowStart && dayStart < windowEnd ? todayTotals : []
 }
 
 // Past Daily totals plus today's live totals, summed per member. The daily rows

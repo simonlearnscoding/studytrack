@@ -174,7 +174,7 @@ function toDashboardPartial(partial: Doc<'sessionPartial'>): DashboardPartial {
 // Bind each member's completed tasks to the session they were finished during.
 // Only done tasks carry a `completedAt` to bind with; open tasks never appear.
 // The read is newest-first and bounded so today's completions survive a long
-// history, and only title + completion instant are shared (ADR-0005).
+// history; task content is public, so the title rides along (ADR-0007).
 async function attachCompletedTasks(
   ctx: QueryCtx,
   members: DashboardMember[]
