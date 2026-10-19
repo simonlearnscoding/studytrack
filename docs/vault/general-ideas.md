@@ -1,5 +1,9 @@
 # general-ideas
 
+**In short:** the owner's raw brainstorm — pomodoro timer, planning/review modes,
+task carry-over, customization, heatmaps — kept as-is. Distilled into [[Roadmap]]
+and [[Visibility-moc]].
+
 > Raw ramble, kept as-is. Formalized in [[Roadmap]] (every idea mapped there) and [[Visibility-moc]].
 
 ### Obsious improvements:

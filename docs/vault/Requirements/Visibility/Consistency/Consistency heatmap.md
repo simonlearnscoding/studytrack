@@ -1,14 +1,26 @@
 ---
 id: ST-13
-status: todo
+status: wontfix
 type: requirement
-priority: B
+priority: C
 area: requirements
 ---
 
 # ST-13 Consistency heatmap
 
+**In short:** a private calendar heatmap of your own Study time — one square per
+Day, a year at a glance, web-only, never ranked. **Parked — the month calendar on
+the redesigned dashboard (`/beta`) carries this surface for now.** See
+[[Roadmap]].
+
 #needs-triage
+
+> [!warning] Parked, for now
+> The `/beta` month calendar already renders the same idea — your own study time
+> over days, colour-coded, private — so the separate year heatmap is not being
+> built. The `dailyTotals.listMine` query specified below is still the data
+> design the calendar should eventually adopt. Revive this note if members ask
+> for the year-at-a-glance view.
 
 A calendar heatmap of your own Study time: one square per Day, a year at a
 glance, private and web only. The idea is that a truthful record of showing up

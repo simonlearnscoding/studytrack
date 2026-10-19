@@ -1,6 +1,6 @@
 ---
 id: ST-10
-status: todo
+status: in-review
 type: requirement
 priority: B
 area: requirements
@@ -8,11 +8,15 @@ area: requirements
 
 # Tasks spec
 
+**In short:** the private `task` table and its rules — add a Task, mark it Done
+(reversible, stamps `completedAt`), today-scoped reads, titles private to the
+owner. Agent detail follows.
+
 #ready-for-agent
 
-Elaborates the task stories (11–16) of [[Studytrack dashboard spec]]. Implemented
-by [[ST-5 Tasks]] (core) and [[ST-6 Task visibility]]. Vocabulary follows
-GLOSSARY.md; visibility decided by `docs/adr/0002`.
+Elaborates the task stories of the retired dashboard spec. Implemented by
+[[ST-5 Tasks]] (core). Vocabulary follows GLOSSARY.md; visibility decided by
+`docs/adr/0002`.
 
 ## Problem Statement
 
@@ -24,7 +28,7 @@ presence but not progress.
 ## Solution
 
 Every member gets a **private task list** in the self rail: add a Task, mark it
-Done, reopen it. Only the owner sees the titles. Later (ST-6), the room is shown
+Done, reopen it. Only the owner sees the titles. Later (later), the room is shown
 each member's Open/Done **counts** and a marker on the timeline at each
 completion, so the group keeps each other honest without exposing what anyone
 studies.
@@ -43,14 +47,14 @@ studies.
 10. As a member, I want my tasks from earlier days to be kept, so that nothing is lost when the day rolls over.
 11. As a member, I want an empty list to invite me to add my first task, so that I am not staring at a blank box.
 12. As a member, I want an empty title rejected, so that accidental blank rows never appear.
-13. As a member, I want to see a member's task count on their roster row (ST-6), so that effort and output sit together.
-14. As a member, I want a marker on the timeline where a task was completed (ST-6), so that I can connect a stretch of study to what it produced.
-15. As a member, I want to hover a marker to see which task was finished (ST-6), so that the timeline tells a story.
+13. As a member, I want to see a member's task count on their roster row (later), so that effort and output sit together.
+14. As a member, I want a marker on the timeline where a task was completed (later), so that I can connect a stretch of study to what it produced.
+15. As a member, I want to hover a marker to see which task was finished (later), so that the timeline tells a story.
 16. As a member, I want my task list to update live, so that ticking one off is instant.
 17. As a member, I want the board to keep working when the network is slow, so that a failed add never loses the title I typed.
 18. As a member, I want to be the only one who can change my tasks, so that nobody else can complete or reopen my work.
 19. As a member with a long list, I want it bounded and quick, so that the rail never stalls.
-20. As a member, I want edit and delete documented for later, so that a future version can fix mistakes.
+20. As a member, I want to fix mistakes by renaming or removing a task, so that a typo never lives on until midnight.
 
 ## Implementation Decisions
 
@@ -72,8 +76,11 @@ studies.
 - **Bounded reads**: the list is capped, never an unbounded scan.
 - **Done is reversible**: toggling Open→Done stamps `completedAt`; Done→Open
   clears it. There is no separate "complete" operation.
-- **Edit and delete are documented, not built**: a later version may rename a task
-  and delete an Open or Done one.
+- **Rename and delete are shipped** on top of the core: `rename` rewrites the
+  title (same empty-title rejection), `remove` hard-deletes the caller's task,
+  Open or Done. Ownership is checked on both with the same "not found" error, so
+  existence never leaks. The room-facing surface only ever carries counts, so
+  deleting never desyncs what others see.
 
 ## Testing Decisions
 
@@ -90,14 +97,13 @@ studies.
 
 ## Out of Scope
 
-- Editing a task's title; deleting tasks (Open or Done) — documented, deferred.
 - The backlog view: older, not-today tasks.
-- Room task counts and timeline markers ([[ST-6 Task visibility]]).
-- The Deep-focus leaderboard, streaks and heatmaps (ST-7/ST-8).
+- Showing the room each member's task counts and timeline markers.
+- The Deep-focus leaderboard, streaks and heatmaps.
 - Task due dates, assignment, and auto-moderation.
 
 ## Further Notes
 
 - Counts public / content private is decided in `docs/adr/0002`.
-- The "who appears in the room's counts" rule is deliberately unsettled and lives
-  in ST-6 with an `#needs-info` tag; it is not assumed here.
+- The "who appears in the room's counts" rule was left unsettled in the retired
+  ST-6; it is not assumed here.

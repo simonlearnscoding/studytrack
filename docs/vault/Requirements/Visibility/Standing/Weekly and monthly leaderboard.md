@@ -8,13 +8,17 @@ area: requirements
 
 # ST-12 Weekly and monthly leaderboard
 
+**In short:** the Discord board grows from one embed (today) to three — Today,
+This week, This month — in one bot message refreshed every minute. This is
+Standing, not a personal record. Agent detail follows.
+
 The Discord board grows from one embed to three: **Today**, **This week** and
 **This month**. All three sit in one message that the bot edits in place every
 minute. This is **Standing**: it compares members over a Period and never shows
 a member's own history.
 
 Map: [[Visibility-moc]]. Chapter: [[Standing-moc]]. Extends
-[[ST-9 Discord daily leaderboard]]; metric from [[ST-7 Leaderboard by Deep focus]].
+[[ST-9 Discord daily leaderboard]]; the Deep-focus metric is defined there.
 Vocabulary: `GLOSSARY.md` (Period, Daily total, Deep focus, Total time).
 
 ## Problem Statement
@@ -100,6 +104,41 @@ existing clear / post / edit / self-heal loop.
   until the `dailyTotals` cron runs at minute 1, the Week and Month boards leave
   out yesterday. No mitigation.
 
+# Web Period board (the /beta consistency board)
+
+The Roadmap parked web Period boards until a Review view existed; in practice
+they arrived first, as the consistency board on the redesigned dashboard
+(`/beta`): one row per member, the Week and the Month side by side.
+
+- **Decided — the board's metric is Deep focus (focus time).** The value the
+  board ranks and leads with is the same Deep-focus metric the Discord boards
+  use, not Total time, and not streak position.
+- **Decided — the metric switch is global.** One toggle in the site header
+  (`MetricToggle`), one shared store — the consistency board, the room rail's
+  time-in-session and the timeline's lane tails all follow it in one click. It
+  lives in the header, not on the board: Standing surfaces compare members, and
+  today that's the board — but the live session numbers wear the same cut of
+  time. (Grill round 2 revised the board-only first take.)
+- **Decided — ranking rule, one sentence, cut both ways.** Primary metric
+  desc, the other metric breaks ties: Deep focus then Total when Deep focus
+  leads, Total then Deep focus when Total leads. Same spirit as the Discord
+  rule ("never disagree about what counts").
+- **Decided — the switch is web-only.** The Discord boards stay
+  Deep-focus-ranked as shipped in ST-9/ST-12; revisit only if members ask for
+  it in channel.
+- **Decided — in-memory, defaults to Deep focus.** No persistence in v1; add a
+  saved preference only if the owner keeps flipping it.
+- **Decided — one read returns both metrics.** The user-facing board query
+  returns `{ member, focusMs, totalMs }` per member per period from day one, so
+  the switch is a frontend concern with no second round trip.
+- **Decided — the compact board copy is passive.** The slim leaderboard variant
+  that tucks into the left column on medium screens shows the numbers the big
+  board leads with; it carries no toggle of its own.
+- **Grill resolved 2026-10-18** — the metric question itself was born of a
+  conflict: ST-12 originally disciplined three Discord embeds, while the board's
+  placeholder data said "ranked by streak (never hours)". Deep focus wins; the
+  streak-as-ranking-key idea is dropped.
+
 ## Testing Decisions
 
 - `convex-test`, the same way as `leaderboard.test.ts`: seed `dailyTotal` rows
@@ -124,7 +163,7 @@ to prod on 2026-10-13; backend and bot suites green, the bot posts the three
 embeds. On-channel spot checks stay open (Monday=Today, a member's week sum)._
 
 - [x] `getBoards` replaces `getToday`, and the tests pass.
-- [ ] The Discord channel shows one message with three embeds that refresh every
+- [x] The Discord channel shows one message with three embeds that refresh every
       minute.
 - [ ] On a Monday, the Week board equals the Today board.
 - [ ] Spot check: a member's Week Deep focus equals the sum of their Daily totals
@@ -133,8 +172,8 @@ embeds. On-channel spot checks stay open (Monday=Today, a member's week sum)._
 
 ## Out of Scope
 
-- A web version of the Period boards. It belongs in the Review view, which is
-  not built yet. See [[Visibility-moc]].
+- A **Discord version of the metric switch**, for now — see the open questions
+  above. The web board is where the switch is being explored first.
 - Browsing past Periods ("last week's winner").
 - Personal trends on the board. That is Consistency and stays off Discord.
 - Ranking or showing Tasks.

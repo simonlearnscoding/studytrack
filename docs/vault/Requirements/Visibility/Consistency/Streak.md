@@ -8,6 +8,10 @@ area: requirements
 
 # ST-14 Streak
 
+**In short:** one number in the Focus view — how many Days in a row you have
+studied. Private, never ranked. Build after the [[Consistency heatmap]]. Trigger:
+`#needs-triage`. Agent detail follows.
+
 #needs-triage
 
 One number in the Focus view: how many Days in a row you have studied ("🔥 12

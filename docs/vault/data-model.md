@@ -1,5 +1,9 @@
 # studytrack — data model
 
+**In short:** the Convex schema — `users`, `session`, `sessionPartial`, the
+derived `dailyTotal` (one member's totals per Day) and `task`. Source of truth:
+`packages/backend/convex/schema.ts`.
+
 Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 
 `_id` and `_creationTime` are added to every table automatically by Convex.
@@ -84,7 +88,7 @@ erDiagram
         Id userId FK "optional"
         number dayStart "00:00 Europe/Zurich"
         number studyMs "non-break partials"
-        number deepFocusMs "camera / cameraAndScreenShare"
+        number deepFocusMs "camera / screenShare / cameraAndScreenShare"
         number totalMs "session span incl. Pauses"
     }
 ```

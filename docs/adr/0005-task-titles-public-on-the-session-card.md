@@ -12,3 +12,8 @@ This narrows rather than abolishes ADR-0002: the list is still the owner's to
 change, and titles are public only as a fact of the live card. An opt-out to hide
 tasks — or the session — is future fog, not built now. If the group ever grows
 beyond friends, revisit this before building the opt-out.
+
+> **Extended by ADR-0007 (2026-10-15):** content is public everywhere, not only
+> on the live card. The per-task opt-out described here as "future fog" is
+> dropped; revisit opt-out for the whole Session only, and only if the group
+> outgrows friends.

@@ -4,6 +4,11 @@ type: moc
 
 # Visibility
 
+**In short:** how studytrack shows a member their effort — four lenses (Standing,
+Consistency, Witness, Symbiosis), with one stored record under all of them
+([[Daily totals]]). Standing lives in Discord; Consistency is web-only. Agent
+detail follows.
+
 How studytrack shows a member their effort, to themselves and to the room. This
 is the **sprint map**: what we build, in what order, why, and what is
 deliberately parked. The whole-product direction is in [[Roadmap]].
@@ -21,7 +26,7 @@ two lenses share a surface.
 | **Standing**    | you vs others         | Discord (group, glanceable)      | **Decided**: extend the board        |
 | **Consistency** | you vs your past self | Web, Review view (private, deep) | **Decided**: the record              |
 | **Witness**     | others seeing you     | none                             | **Parked**: no evidence; can exhaust |
-| **Symbiosis**   | the room as one       | none                             | **Parked**: needs a record to share  |
+| **Symbiosis**   | the room as one       | Web, Focus view (opening)        | **Opening**: see [[Symbiosis-moc]]   |
 
 ## Decisions
 
@@ -40,17 +45,18 @@ two lenses share a surface.
 
 ## The sprint
 
-| #   | Ticket                                     | Chapter             | Status    | Tag           | Blocked by        |
-| --- | ------------------------------------------ | ------------------- | --------- | ------------- | ----------------- |
-| 1   | [[Daily totals]] (ST-11)                   | [[Foundation-moc]]  | in-review | —             | —                 |
-| 2   | [[Weekly and monthly leaderboard]] (ST-12) | [[Standing-moc]]    | in-review | —             | ST-11 (shipped)   |
-| 3   | [[Consistency heatmap]] (ST-13)            | [[Consistency-moc]] | todo      | #needs-triage | ST-11 + prototype |
-| 4   | [[Streak]] (ST-14)                         | [[Consistency-moc]] | todo      | #needs-triage | ST-13 shipped     |
+| #   | Ticket                                           | Chapter             | Status    | Tag | Blocked by              |
+| --- | ------------------------------------------------ | ------------------- | --------- | --- | ----------------------- |
+| 1   | [[Daily totals]] (ST-11)                         | [[Foundation-moc]]  | in-review | —   | —                       |
+| 2   | [[Weekly and monthly leaderboard]] (ST-12)       | [[Standing-moc]]    | in-review | —   | ST-11 (shipped)         |
+| 3   | [[Consistency heatmap]] (ST-13)                  | [[Consistency-moc]] | wontfix   | —   | parked (month calendar) |
+| 4   | [[Streak]] (ST-14)                               | [[Consistency-moc]] | todo      | —   | parked behind calendar  |
+| 5   | [[ST-23 Deep focus counts screen share]] (ST-23) | [[Standing-moc]]    | in-review | —   | —                       |
 
 How we judge it:
 
 - Tickets 1 and 2 answer an explicit request, so no test is needed.
-- Ticket 3 is judged by feel once it is out; no pre-registered test, no gate.
+- Ticket 3 (heatmap) is parked; the `/beta` month calendar carries the surface.
 
 ## Calls made overnight (confirmed and shipped)
 
@@ -76,6 +82,10 @@ and the glossary change below.
 - [x] **New glossary terms:** Day, Period, Daily total, Streak, Focus view,
       Review view. Consistency no longer lists "Streak" as a word to avoid; a
       Streak is now its own term.
+
+**Symbiosis chapter opened.** [[Daily totals]] gives Symbiosis the record it was
+parked for, so [[Symbiosis-moc]] now exists. Its first ticket is
+[[Collective focus time]] (ST-25), a live meter of the room's shared study.
 
 ## Parked in this area
 

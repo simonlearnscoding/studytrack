@@ -1,58 +1,36 @@
 # studytrack vault
 
 Issue tracker for studytrack. Managed with ZenNotes; see
-`docs/agents/issue-tracker.md`.
+`docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md`.
+
+**The dashboard is being redesigned.** The new frontend lives in the `/beta`
+route and hooks into the existing Convex backend unchanged. Notes that described
+the old dashboard UI (Focus view, live room, self rail, timeline markers) have
+been retired to `trash/`; this vault now tracks the **backend domain** and the
+requirements that still matter.
 
 ## Areas
 
-- [Requirements](Requirements/Requirements-moc.md)
-- [Bugs](bugs/bugs-moc.md)
-- [Visibility](Requirements/Visibility/Visibility-moc.md)
+- [Requirements](Requirements/Requirements-moc.md) — feature specs
+- [Visibility](Requirements/Visibility/Visibility-moc.md) — effort over time, backed by [[Daily totals]]
+  - [Symbiosis](Requirements/Visibility/Symbiosis/Symbiosis-moc.md) — the room as one · [[Collective focus time]] (ST-25)
 
-**Where to go next: [[Roadmap]]** (Now / Next / Later, and where every idea in
-[[general-ideas]] went).
+## Redesign (`/beta`)
 
-## Dashboard redesign
+- [[Lanes of the day]] — the day timeline
+- [[In the room]] — the presence rail · [[In the room spec]] (LD-20)
 
-Build order (each task notes its `Blocked by`). Specs:
-[[Studytrack dashboard spec]], [[Tasks spec]].
+## Backend domain (what `/beta` hooks into)
 
-1. [[ST-1 Dashboard shell]] — todo
-2. [[ST-2 Live room]] — todo
-3. [[ST-3 Manual tracking]] — done
-4. [[ST-4 Manual precedence]] — done
-5. [[ST-5 Tasks]] — in-review
-6. [[ST-6 Task visibility]] — todo · `#needs-info`
-7. [[ST-7 Leaderboard by Deep focus]] — todo (deferred)
-8. [[ST-8 Personal rail]] — todo (deferred)
+- [[data-model]] — the Convex schema; source of truth for every table
+- [[ST-5 Tasks]] · [[Tasks spec]] — the private `task` table
+- [[ST-9 Discord daily leaderboard]] — the bot's Discord board
+- [[Daily totals]] — the stored per-Day record every Visibility read sums over
 
-## Trunk (owner — next session)
+## Direction
 
-Map: [[Roadmap]]. The heart of the app, designed before it is built.
-
-1. Session feel: a `grilling` on "the soul of a shared Session", then a
-   `prototype` of the strongest candidate.
-
-See `docs/adr/0004-session-is-the-trunk.md`.
-
-## Now (shipped, in review)
-
-Merged to `spqrbot-26` and deployed to prod on 2026-10-13; awaiting the owner's
-pass. Map: [[Roadmap]].
-
-1. [[ST-15 Timeline segment rounding]]: in-review
-2. [[ST-16 Edit and delete tasks]]: in-review
-3. [[Daily totals]] (ST-11): in-review
-4. [[Weekly and monthly leaderboard]] (ST-12): in-review
-
-## Visibility
-
-Build order (each task notes its `Blocked by`). Map: [[Visibility-moc]].
-
-1. [[Daily totals]] (ST-11): in-review
-2. [[Weekly and monthly leaderboard]] (ST-12): in-review
-3. [[Consistency heatmap]] (ST-13): todo · #needs-triage
-4. [[Streak]] (ST-14): todo · #needs-triage
+- [[Roadmap]] — what to build next, and why in this order
+- [[general-ideas]] — the raw source the Roadmap is distilled from
 
 ## Conventions
 

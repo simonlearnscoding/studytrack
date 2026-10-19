@@ -4,134 +4,68 @@ type: moc
 
 # Roadmap
 
-Where studytrack goes next, and why in this order. **Now** items are what to
-pick up today (agent tickets, or the owner's next design session). **Next** items
-need one short owner session first. **Later** items are blurry on purpose; each
-says what would move it closer.
+**In short:** the live push is the **dashboard redesign** — a new frontend in the
+`/beta` route over the existing Convex backend. The backend domain it hooks into
+(Tasks, Daily totals, the Discord board, Sessions) is specified under
+[Requirements](Requirements/Requirements-moc.md). Below is what comes after, and
+why in this order.
+
+**Now** items are what to pick up today. **Next** items need one short owner
+session first. **Later** items are blurry on purpose; each says what would move
+it closer.
 
 Raw source: [[general-ideas]]. Vocabulary: `GLOSSARY.md`. Area maps:
-[[Visibility-moc]], [[Requirements-moc]], [[bugs-moc]].
+[[Visibility-moc]], [[Requirements-moc]].
 
 ## North star
 
 Members keep coming back to study _together_, in shared Sessions. Every other
-view — Visibility, Review, Plan — exists to feed that one experience. Anyone
-wondering "why did the leaderboard ship before the Session?" should read
-`docs/adr/0004-session-is-the-trunk.md`.
+view — Visibility, Review, Plan — exists to feed that one experience.
 
-## The direction in one paragraph
+## Now: the redesign
 
-Run two tracks in parallel. **Track B (owner) is the trunk:** design how a
-Session should _feel_ — the most important open question in the product, and the
-least evidenced, so it needs grilling and a prototype, not tickets. **Track A
-(agents) is the branches:** ship what already has evidence — the weekly and
-monthly boards the members asked for, plus the two obvious fixes. It is cheap,
-it is proven, and it builds the Daily totals record everything later needs.
-Then the heatmap: a look at whether a record of showing up brings people back.
+The new frontend lives in the `/beta` route and reads/writes through the backend
+the surviving specs describe:
 
-## Now: Track B, the trunk (owner — start now)
-
-The trunk runs in parallel with Track A from the start. It has no evidence, so it
-is designed before it is built.
-
-1. **Session feel.** _The most important open question in the product._ What
-   makes studying in the room feel like _one Session together_?
-   - Candidates from the ramble: a shared timer or pomodoro, timeline bars that
-     look like Sessions, and a hover card on a Session showing its duration,
-     Tasks planned and Tasks done.
-   - **Next session:** a `grilling` on "what is the soul of a shared Session".
-     Then a `prototype` of the strongest candidate, likely the shared timer,
-     shown to two or three members.
-   - **Why not tickets yet:** none of it has evidence. Building before the
-     grill risks building the wrong heart.
-
-## Now: Track A, shipped (in review)
-
-All four are implemented, merged to `spqrbot-26` and deployed to prod on
-2026-10-13, awaiting the owner's pass. They were independent, so they ran as
-parallel agent sessions in separate worktrees.
-
-2. [[ST-15 Timeline segment rounding]]: in-review. Visible polish win.
-3. [[ST-16 Edit and delete tasks]]: in-review. Promised in [[Tasks spec]].
-4. [[Daily totals]] (ST-11), then [[Weekly and monthly leaderboard]] (ST-12):
-   both in-review. ST-12 was blocked by ST-11; shipped back to back on one
-   branch. This is the main deliverable of the branches.
+- [[ST-5 Tasks]] / [[Tasks spec]] — the private `task` table.
+- [[ST-9 Discord daily leaderboard]] — the bot board (shipped).
+- [[Daily totals]] — the stored per-Day record everything else sums over.
 
 ## Next: needs one owner session first
 
-5. [[Consistency heatmap]] (ST-13): most of it is decided. One `prototype`
-   session settles the Review view placement and the colours. Judge it by feel
-   once it is out — no pre-registered test, no gate.
-6. [[Streak]] (ST-14): build it after the heatmap, if it still feels worth it.
+- **Wire the redesign dashboard to live data.** The `/beta` screen runs on
+  placeholders today; the backend it needs (Tasks ST-5, Daily totals ST-11, the
+  Period boards ST-12) is built. The web Period board's metric switch is
+  decided — see the Decided list in [[Weekly and monthly leaderboard]] — so the
+  remaining work is the authenticated read plus swapping every fixture to
+  `api.*`.
+- [[Streak]] (ST-14): parked behind the calendar — the `/beta` month calendar
+  already shows a streak token; revisit only if it feels worth it live.
 
 ## Later: parked, blurry on purpose
 
-Each item has a confidence tag, what it is, and what would move it closer.
-
-- **Parked: Navigation modes (Focus | Plan | Review).** Review starts small with
-  ST-13. Plan only comes once Planning exists.
-  - _Unlock:_ ST-13 shipping proves a second view is worth navigating to.
-- **Parked: Planning (planned Sessions).** Drag a block or a Task onto a day
-  timeline to create a planned Session. Others can join it.
-  - _Unlock:_ Session feel first, because a planned Session is only worth
-    planning if Sessions feel real.
-  - It also needs a data decision: Tasks have no "Day" today; they are scoped
-    by `_creationTime`.
-- **Parked: Task carry-over and the past-days view.** A Logseq-style scroll back
-  through past Days, pulling unfinished Tasks into today or the month.
-  - _Unlock:_ the same "Task has a Day" decision as Planning.
-  - Probably the first Plan-mode feature, because it is the owner's own proven
-    habit.
-- **Parked: Day columns (Sunsama-style kanban) and a horizontal calendar with a
-  collapsed night (Hey-style).** Interaction ideas for Plan mode.
-  - _Unlock:_ Planning exists.
-- **Parked: Session retrospective.** Planned vs actual for one Session.
-  - _Unlock:_ Planning.
-- **Parked: Points and rewards for keeping planned Sessions.**
-  - _Unlock:_ Planning, plus a grill on whether rewards fight "record over
-    score".
-- **Parked: Witness and Symbiosis surfaces.** Others seeing you; the room as one.
-  - _Unlock:_ any evidence. A public record can also become exhausting.
-- **Parked: Customization (backgrounds, themes).** Motivating, but off the
-  proven axis.
-  - _Unlock:_ members ask for it.
-- **Parked: Non-study activities.** These existed in the previous app, but they
-  dilute the study identity and would force "Session" to mean something more
-  general.
-  - _Unlock:_ members ask for it unprompted.
-
-## Where every idea in general-ideas went
-
-| Idea in [[general-ideas]]                                  | Where it lives now                                                        |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Progress bar only round at start/end                       | [[ST-15 Timeline segment rounding]] (Now)                                 |
-| Edit and delete Tasks                                      | [[ST-16 Edit and delete tasks]] (Now)                                     |
-| Common pomodoro timer                                      | Track B: Session feel                                                     |
-| Three modes: plan / review / doing; navigation             | Later: Navigation modes (Review starts with ST-13)                        |
-| Customization                                              | Later: Customization                                                      |
-| Weekly + monthly leaderboard (proven)                      | [[Weekly and monthly leaderboard]] (Now)                                  |
-| Heatmaps (proven)                                          | [[Consistency heatmap]] (Next)                                            |
-| Other activities than study                                | Later: Non-study activities                                               |
-| Past tasks, infinite scroll, carry-over                    | Later: Task carry-over                                                    |
-| Tasks for tomorrow, Sunsama kanban                         | Later: Day columns                                                        |
-| Hey calendar: horizontal scroll, hidden night              | Later: Day columns / horizontal calendar                                  |
-| Planned sessions on a timeline, drag tasks in, join others | Later: Planning                                                           |
-| Session retrospective (planned vs done)                    | Later: Session retrospective                                              |
-| Sessions as the heart; shared feel; Fiveable               | Track B: Session feel                                                     |
-| Sessions look distinct; hover stats                        | Track B: Session feel                                                     |
-| Rewards/punishment for sticking to plan                    | Later: Points and rewards                                                 |
-| Focus view: current session top-centre, rethink layout     | Track B: Session feel (the layout follows from what a Session looks like) |
-
-## Housekeeping noticed (not done; verify)
-
-- [[ST-9 Discord daily leaderboard]] is `status: todo`, but the bot board is
-  shipped (`apps/bot/src/leaderboard.ts`). It should probably be `done` or
-  `in-review`.
-- [[ST-1 Dashboard shell]] and [[ST-2 Live room]] are `todo`, but the dashboard
-  exists. Check whether they are `done` or `partial`.
+- **Consistency heatmap (ST-13).** The `/beta` month calendar replaces it for
+  now; revisit the year-at-a-glance view only if members ask. Its
+  `dailyTotals.listMine` data design survives as the calendar's data source.
+- **Common pomodoro timer.** Known to work with these members ("things I just
+  know work"); it feeds the Sessions north star directly. Would move closer once
+  the Session-feel design grills settle what a session looks like — the shared
+  timer is part of that answer, not a bolt-on.
+- **Visibility period boards on the web.** The [[Weekly and monthly leaderboard]]
+  web board exists on `/beta` as the consistency board; the Review-view home for
+  it is still parked until that view exists.
+- **Planning (planned Sessions, Task carry-over, Day columns, retrospective).**
+  Needs Session feel first, plus a "Task has a Day" decision — Tasks are scoped
+  by `_creationTime` today.
+- **Customization (backgrounds, themes), non-study activities, points/rewards,
+  Witness and Symbiosis surfaces.** Off the proven axis or without evidence;
+  each unlocks only if members ask.
+- **Multi-day timeline scroll.** [[Multi-day scroll]] — days side by side,
+  HEY-style, each a repeat of the night-plus-core unit. A re-architecture, not a
+  ticket: it retires "one day fits the laptop" and collides with the drag
+  gestures. Prototype before speccing.
 
 ## Re-read this when
 
-- The Visibility branches (ST-11…ST-16) pass review and deploy.
-- The Session-soul grill and its prototype have run — the trunk gets a direction.
+- The `/beta` frontend is hooked into the backend and in front of members.
 - The heatmap has been out for a couple of weeks.

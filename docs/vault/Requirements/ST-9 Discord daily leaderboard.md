@@ -1,6 +1,6 @@
 ---
 id: ST-9
-status: todo
+status: done
 type: requirement
 priority: B
 area: requirements
@@ -8,7 +8,14 @@ area: requirements
 
 # ST-9 Discord daily leaderboard
 
-#ready-for-agent
+**In short:** the bot keeps one self-editing embed in a Discord channel showing
+today's leaderboard, ranked by Deep focus, so members see standings where they
+already are. The board code has shipped on the bot; this note is the spec. Agent
+detail follows.
+
+**Shipped.** The bot posts and edits the board (`apps/bot/src/leaderboard.ts`),
+reading the secret-gated `leaderboard` query. `getToday` was later replaced by
+`getBoards` (Today + Week + Month) in [[Weekly and monthly leaderboard]] (ST-12).
 
 ## Problem Statement
 

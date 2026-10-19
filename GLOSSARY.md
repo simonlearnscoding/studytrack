@@ -7,7 +7,7 @@ The bot reports what Discord says; the backend decides what it means.
 
 **Session**:
 The whole sitting: from a member first joining a study channel until they leave
-voice. It stitches together every partial in between, including short breaks —
+voice. It stitches together every partial in between, including short pauses —
 re-entering within 30 minutes continues the same session.
 _Avoid_: Sitting, study session
 
@@ -57,8 +57,8 @@ The base unit every total is built from.
 _Avoid_: Focus time, hours
 
 **Deep focus**:
-Study time spent on camera — `camera` or `cameraAndScreenShare`. Treated as the
-strongest evidence of real studying.
+Study time with camera or screen share on — `camera`, `screenShare` or
+`cameraAndScreenShare`. The strongest evidence of real studying.
 _Avoid_: Cam time
 
 **Total time**:
@@ -67,10 +67,8 @@ reports as "Total time"; distinct from Study time, which never counts a pause.
 _Avoid_: Elapsed, study time
 
 **Focus rate**:
-The share of Total time spent with camera or screen share on (`camera`,
-`screenShare`, `cameraAndScreenShare` — `manual` never counts, it has no
-Discord evidence). With no session time there is no rate; the dashboard shows
-"—", never 0%.
+The share of Total time spent in Deep focus. With no session time there is no
+rate; the dashboard shows "—", never 0%.
 _Avoid_: Focus score, productivity
 
 **Voice transition**:
@@ -83,8 +81,8 @@ _Avoid_: Move, event
 
 **Task**:
 An item on a member's study list — something they mean to get done. The member
-owns its title; the open/done counts and, since ADR-0005, the task titles on a
-live Session card are shared with the room.
+owns it, but its content is public: titles, the active task and the up-next
+suggestion all show to the room (ADR-0007).
 _Avoid_: Todo, item, ticket
 
 **Open**:
@@ -119,6 +117,14 @@ The group's study as a single shared effort — the sense that the room studies
 because it studies together, not as separate people.
 _Avoid_: Community, energy, vibe, culture
 
+**Collective focus time**:
+The room's shared effort in a sitting: the time every member still in a session
+has put in, summed — each person adds a second for every second they study, so
+three people deep-focusing an hour read `3h`. Under the Focus metric it counts
+Deep focus only; under Total, every second in the room. It exists only while the
+room is occupied.
+_Avoid_: Room meter, together-time, co-presence
+
 **Day**:
 One calendar day in the shared Europe/Zurich timezone, midnight to midnight. The
 unit every period is built from; a Day is 23 or 25 hours across a DST change.
@@ -129,6 +135,18 @@ A calendar span the leaderboard is computed over: the current Day, the current
 Week (Monday to Sunday) or the current Month. Always calendar-aligned, never
 trailing — a Period resets, and that reset is the point.
 _Avoid_: Window, range, last 7 days
+
+**Focus day**:
+The Day the dashboard is focused on — the day a member selected in the month
+calendar, today by default. The board's Week and Month are the ones containing
+it, so looking back at a past day shows that day's periods.
+_Avoid_: Selected day, current day
+
+**Viewed Period**:
+The Week or Month containing the Focus day — what the consistency board shows
+when the focus day is not today. Distinct from the current Week and Month, which
+always contain today.
+_Avoid_: Selected period, shown period
 
 **Daily total**:
 One member's Study time, Deep focus and Total time for one closed Day, stored as

@@ -8,6 +8,11 @@ area: requirements
 
 # ST-11 Daily totals
 
+**In short:** one stored row per member per closed Day (Study time, Deep focus,
+Total time). The heatmap, the Streak and the weekly/monthly boards become cheap,
+bounded reads over these rows instead of rescans of raw partials. Agent detail
+follows.
+
 One stored row per member per closed Day: their Study time, Deep focus and Total
 time. Weekly and monthly boards, the heatmap and the Streak all become cheap,
 bounded reads over these rows instead of rescans of raw partials.
@@ -68,8 +73,10 @@ past Day. Readers sum the rows instead of rescanning partials.
   `session.discordId ?? String(session.userId)`. Manual sessions already carry
   the user's `discordId` (`tracking/service.ts`), so a member gets one key.
 - **Decided — what counts toward each metric.** Study time is every
-  non-`break` partial. Deep focus is the `camera` and `cameraAndScreenShare`
-  partials, using `isDeepFocus` from `leaderboard/util.ts`. Total time is the
+  non-`break` partial. Deep focus is the `camera`, `screenShare` and
+  `cameraAndScreenShare` partials (`screenShare` added in
+  [[ST-23 Deep focus counts screen share]]), using `isDeepFocus` from
+  `leaderboard/util.ts`. Total time is the
   session span with Pauses included. All three use the same definitions as the
   live dashboard and the bot.
 - **Decided — clipping.** Each partial and each session span is clipped to

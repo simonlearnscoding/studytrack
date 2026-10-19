@@ -46,6 +46,11 @@ packages/
   `cursor-default`). The shared `Button` already carries it; add it to raw
   clickable elements too.
 - Components past ~150 lines become a folder.
+- The React Compiler is on (`viteReact({ compiler: true })` in
+  `apps/web/vite.config.ts`). Do **not** add `useMemo`, `useCallback`, or
+  `React.memo` for performance — the compiler memoizes automatically. Derive
+  data with plain function calls in render; hoist truly stable functions to
+  module scope.
 
 ## Agent skills
 
@@ -67,6 +72,15 @@ Single-context: a root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
   entry + `<domain>/service.ts` + `<domain>/types.ts`; pure ctx-free decision
   helpers; exports first, helpers below; colocated tests (plain Vitest for pure
   logic, `convex-test` for I/O). Touch-only rollout — no sweeping refactors.
+
+### Design system
+
+All styling goes through tokens and named patterns in
+`apps/web/src/styles/app.css` — type roles (`text-display/title/clock/metric/
+label/body/caption`), `card-surface`, `skeleton`, `LiveDot`, and the color /
+radius / shadow tokens. Never `font-bold`, `shadow-sm` on cards, magic
+`text-[Npx]` sizes, or hand-rolled ping/pulse dots. See
+`.agents/skills/design-tokens`.
 
 ### Deploying
 
