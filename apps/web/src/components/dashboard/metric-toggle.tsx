@@ -1,7 +1,8 @@
 import { useMetricPreference } from '~/hooks/use-metric-preference'
 
-// The per-surface metric switch lives here in the site header — the one control
-// every Standing / live-session surface follows (ST-12 "Web Period board").
+// The per-surface metric switch lives on the leaderboard's range header — the
+// one control every Standing / live-session surface follows (ST-12 "Web Period
+// board").
 const metrics = ['focus', 'total'] as const
 
 export function MetricToggle() {

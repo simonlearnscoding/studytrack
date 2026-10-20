@@ -10,6 +10,7 @@
  */
 
 import { ConsistencyBoard } from './consistency-board'
+import { DayHeading } from './day-heading'
 import { Hero } from './hero'
 import { MobileTaskDock } from './mobile-task-dock'
 import { MonthCalendar } from './month-calendar'
@@ -58,6 +59,7 @@ export function TodayLayout() {
             active={queue.active?.title ?? null}
             next={queue.next?.title ?? null}
           />
+          <DayHeading now={now} />
           <TimelineSection />
           <div className="flex flex-col gap-6">
             <div className="xl:hidden">{monthCalendar}</div>
