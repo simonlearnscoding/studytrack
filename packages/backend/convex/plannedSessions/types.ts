@@ -20,6 +20,9 @@ export const updatePlanArgs = v.object({
 })
 export type UpdatePlanArgs = Infer<typeof updatePlanArgs>
 
+export const listMyPlansArgs = v.object({ dayStart: v.number() })
+export type ListMyPlansArgs = Infer<typeof listMyPlansArgs>
+
 export const removePlanArgs = v.object({ planId: v.id('plannedSession') })
 export type RemovePlanArgs = Infer<typeof removePlanArgs>
 

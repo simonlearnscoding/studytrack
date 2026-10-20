@@ -1,8 +1,23 @@
-import { mutation } from './_generated/server'
-import { createPlan, removePlan, updatePlan } from './plannedSessions/service'
-import { createPlanArgs, removePlanArgs, updatePlanArgs } from './plannedSessions/types'
+import { mutation, query } from './_generated/server'
+import {
+  createPlan,
+  listMine as listMyPlans,
+  removePlan,
+  updatePlan,
+} from './plannedSessions/service'
+import {
+  createPlanArgs,
+  listMyPlansArgs,
+  removePlanArgs,
+  updatePlanArgs,
+} from './plannedSessions/types'
 
 // Thin entry: handlers only delegate to ./plannedSessions/service.
+export const listMine = query({
+  args: listMyPlansArgs.fields,
+  handler: async (ctx, args) => listMyPlans(ctx, args.dayStart),
+})
+
 export const create = mutation({
   args: createPlanArgs.fields,
   handler: async (ctx, args) => {
