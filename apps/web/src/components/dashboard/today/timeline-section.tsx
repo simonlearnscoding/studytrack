@@ -40,7 +40,7 @@ export function TimelineSection() {
   const nowMin = toMinute(now, dayStart)
   const [manual, toggleBand] = useExpansionPreference()
   const auto = useAutoExpansion(nowMin)
-  const createOrMovePlan = useMutation(api.plannedSessions.createOrMove)
+  const createPlan = useMutation(api.plannedSessions.create)
 
   // False on the server, the first client paint, and while the live read lands —
   // the reveal commit lands the measured width and the members together, so the
@@ -75,7 +75,7 @@ export function TimelineSection() {
           locked={auto.morning}
           onToggleBand={toggleBand}
           onPlanDrag={(span) => {
-            void createOrMovePlan({
+            void createPlan({
               dayStart,
               plannedStart: dayStart + span.startMin * 60_000,
               plannedEnd: dayStart + span.endMin * 60_000,

@@ -42,13 +42,11 @@ sessions, and how it differs on mobile. Explicitly later.
   partials, so none of the Session rules (the 30-minute rejoin, Pause) apply.
   The `planned` slot on a Task is a third, separate idea (the Day/instant a task
   is pencilled for) and must not be conflated with it.
-- **One planned session at a time** (2026-10-18). A member has **at most one**
-  Planned session — the constraint is on the member, not the Day. While a plan
-  is on the lane, dragging again **moves** that plan (a patch, never a second
-  row): planning is positioning one block, not stacking blocks. This is what
-  gives a bare drag its meaning — create-vs-move never has to be guessed from
-  the gesture, because "there is already one" is the only thing that
-  distinguishes them.
+- **Several planned sessions at a time** (2026-10-20, replacing the earlier
+  one-at-a-time rule). A member may keep more than one Planned session, on the
+  same Day or across Days. Every drag **creates** a new block; there is no
+  create-vs-move guess. Overlapping plans are allowed until an edit/delete
+  gesture exists.
 - **A plan is public** (2026-10-18). Same rule as Tasks ([[0007]]): the room may
   see what you plan to do, not only that you are doing it. The read therefore
   cannot filter plans down to the signed-in member, and the block may later
@@ -56,28 +54,27 @@ sessions, and how it differs on mobile. Explicitly later.
 - **A missed plan is kept** (2026-10-18). A plan whose window passed with no
   voice evidence is not expired, swept or deleted: it stays for the rest of the
   Day and renders as **missed**, so the Day shows what you intended and did not
-  do. Nothing enforces "one at a time" by deleting — a new plan replaces the
-  row in place.
+  do.
 
 ## The model (built 2026-10-20)
 
 Planning is stored, not a DEV harness. The drag reports `{ startMin, endMin }` to
-`plannedSessions.createOrMove`, and the timeline draws the live read.
+`plannedSessions.create`, and the timeline draws the live read.
 
 - [x] **Where planned times live.** A separate `plannedSession` table (owner +
       `dayStart` + `plannedStart` + `plannedEnd`), so `session`, daily totals,
       the leaderboard and metrics keep their existing shape.
-- [x] **A create-or-move mutation** behind the drag, enforcing the past floor
-      (first 15-minute mark at or after now) and "one at a time" (upsert the
-      member's single row).
+- [x] **A create mutation** behind the drag, enforcing the past floor (first
+      15-minute mark at or after now). Each drag inserts one row, so a member can
+      keep several plans.
 - [x] **The today read.** `getTodaysActivitiesForDashboard` attaches the Day's
-      plans to `DashboardMember.plan` after the partial-first grouping, appending
-      a card for a plan-only member.
+      plans to `DashboardMember.plans` after the partial-first grouping,
+      appending a card for a plan-only member.
 - [x] **The glossary conflict.** A planned session stays outside `session`: it is
       a separate table with no partials, matching the "not a Session" definition.
 - [x] **The timeline no longer reads mocks.** It subscribes to
-      `api.sessions.getTodaysActivitiesForDashboard` and draws the stored plan as
-      a dashed block (missed when the window passed with no voice overlap).
+      `api.sessions.getTodaysActivitiesForDashboard` and draws every stored plan
+      as a dashed block (missed when the window passed with no voice overlap).
 
 ## Open questions
 

@@ -99,7 +99,7 @@ erDiagram
     users ||--o{ task : "userId"
     users ||--o| task : "activeTaskId"
     session ||--o{ task : "plannedSessionId"
-    users ||--o| plannedSession : "userId"
+    users ||--o{ plannedSession : "userId"
 ```
 
 ## Derived (ST-11)
@@ -158,12 +158,14 @@ A **planned session** is not a Session: it has no voice evidence and no
 partials. It is the dashed block on a member's lane, created by dragging across
 their own line.
 
-- `plannedSession` is one row per member (`by_userId`), so dragging again **moves**
-  the plan instead of stacking a second one.
+- `plannedSession` is one row per block, so a member may have several plans at
+  once. Dragging again **creates** another block instead of moving an existing
+  one.
 - `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
   `plannedEnd` are the instants of the block, both on the 15-minute grid.
-- The mutation refuses a start in the past and a window outside its Day. A plan
-  is public (ADR-0007), so `getTodaysActivitiesForDashboard` attaches it to the
-  member's card and appends a card for a plan-only member.
-- The timeline draws the plan as a dashed block. A plan whose window has ended
+- The mutation refuses a start in the past and a window outside its Day. Plans
+  are public (ADR-0007), so `getTodaysActivitiesForDashboard` attaches them to
+  the member's card (`plans`, oldest first) and appends a card for a plan-only
+  member.
+- The timeline draws each plan as a dashed block. A plan whose window has ended
   with no overlapping non-break voice time renders as **missed**.

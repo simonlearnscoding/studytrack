@@ -118,7 +118,7 @@ export async function groupTodaysMembers(
       image: user?.image ?? null,
       online: sessions.some((s) => s.status === 'active'),
       sessions,
-      plan: null,
+      plans: [],
     })
   }
 
@@ -216,10 +216,10 @@ async function attachDayTasks(
   )
 }
 
-// Attach each member's planned session for the Day. Plans are public (ADR-0007)
+// Attach each member's planned sessions for the Day. Plans are public (ADR-0007)
 // and are not Sessions, so a plan with no partials must still get a card:
 // members not produced by the partial-first grouping are appended as offline
-// stubs. A member has at most one plan, so a direct map is enough.
+// stubs. A member may have several plans; each one gets an entry.
 async function attachDayPlans(
   ctx: QueryCtx,
   members: DashboardMember[],
@@ -249,13 +249,17 @@ async function attachDayPlans(
         image: user?.image ?? null,
         online: false,
         sessions: [],
-        plan: null,
+        plans: [],
       }
       result.push(member)
       byUser.set(key, member)
     }
 
-    member.plan = { id: plan._id, startAt: plan.plannedStart, endAt: plan.plannedEnd }
+    member.plans.push({ id: plan._id, startAt: plan.plannedStart, endAt: plan.plannedEnd })
+  }
+
+  for (const member of result) {
+    member.plans.sort((a, b) => a.startAt - b.startAt)
   }
 
   return result

@@ -48,7 +48,7 @@ function member(overrides: Partial<DashboardMember> = {}): DashboardMember {
     image: null,
     online: false,
     sessions: [],
-    plan: null,
+    plans: [],
     ...overrides,
   }
 }

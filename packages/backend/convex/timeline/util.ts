@@ -170,12 +170,10 @@ function toRow(
   const dots: TimelineDotVM[] = []
   let hiddenCount = 0
 
-  if (member.plan) {
-    const plannedStartMin = toMinute(member.plan.startAt, dayStart)
-    const plannedEndMin = toMinute(member.plan.endAt, dayStart)
-    const missed =
-      member.plan.endAt <= now &&
-      !planHasEvidence(member.sessions, member.plan.startAt, member.plan.endAt)
+  for (const plan of member.plans) {
+    const plannedStartMin = toMinute(plan.startAt, dayStart)
+    const plannedEndMin = toMinute(plan.endAt, dayStart)
+    const missed = plan.endAt <= now && !planHasEvidence(member.sessions, plan.startAt, plan.endAt)
     forEachVisibleSpan(
       window.segments,
       plannedStartMin,

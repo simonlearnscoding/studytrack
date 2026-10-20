@@ -91,9 +91,9 @@ export default defineSchema({
     .index('by_userId_completedAt', ['userId', 'completedAt'])
     .index('by_plannedSessionId', ['plannedSessionId']),
 
-  // A member's one planned session: a future block on their own lane, not a
-  // Session (no voice evidence, no partials). The constraint is one per member,
-  // not per Day, so a new plan moves the existing row instead of stacking.
+  // A member's planned session: a future block on their own lane, not a
+  // Session (no voice evidence, no partials). A member may have several plans at
+  // once, so each drag inserts a row instead of replacing one.
   // `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
   // `plannedEnd` are the instants the block covers.
   plannedSession: defineTable({

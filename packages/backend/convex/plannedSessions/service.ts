@@ -12,9 +12,9 @@ export function planFloor(dayStart: number, now: number): number {
   return dayStart + Math.max(0, Math.ceil((now - dayStart) / PLAN_GRAIN_MS)) * PLAN_GRAIN_MS
 }
 
-// Create the caller's plan, or move the one they already have. The constraint is
-// one per member, not per Day, so there is never a second row.
-export async function createOrMovePlan(
+// Create one of the caller's plans. A member may keep several blocks on the
+// lane, so every call inserts a new row.
+export async function createPlan(
   ctx: MutationCtx,
   dayStart: number,
   plannedStart: number,
@@ -41,12 +41,5 @@ export async function createOrMovePlan(
     throw new Error('A plan cannot start in the past.')
   }
 
-  const existing = await ctx.db
-    .query('plannedSession')
-    .withIndex('by_userId', (q) => q.eq('userId', user._id))
-    .unique()
-  const window = { dayStart, plannedStart, plannedEnd }
-
-  if (existing) await ctx.db.patch(existing._id, window)
-  else await ctx.db.insert('plannedSession', { userId: user._id, ...window })
+  await ctx.db.insert('plannedSession', { userId: user._id, dayStart, plannedStart, plannedEnd })
 }

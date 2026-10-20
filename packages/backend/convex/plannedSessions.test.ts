@@ -45,7 +45,7 @@ async function rowsOf(t: Test) {
   return await t.run(async (ctx) => await ctx.db.query('plannedSession').collect())
 }
 
-describe('plannedSessions.createOrMove', () => {
+describe('plannedSessions.create', () => {
   beforeAll(() => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
@@ -56,7 +56,7 @@ describe('plannedSessions.createOrMove', () => {
 
   it('rejects an unauthenticated caller', async () => {
     const t = makeTest()
-    await expect(t.mutation(api.plannedSessions.createOrMove, plan(ADA))).rejects.toThrow(
+    await expect(t.mutation(api.plannedSessions.create, plan(ADA))).rejects.toThrow(
       /Not authenticated/
     )
   })
@@ -65,7 +65,7 @@ describe('plannedSessions.createOrMove', () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.createOrMove, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
 
     const [row] = await rowsOf(t)
     expect(row).toMatchObject({ dayStart: DAY, plannedStart: START, plannedEnd: END })
@@ -78,28 +78,30 @@ describe('plannedSessions.createOrMove', () => {
       name: 'Ada',
       online: false,
       sessions: [],
-      plan: { id: row._id, startAt: START, endAt: END },
+      plans: [{ id: row._id, startAt: START, endAt: END }],
     })
   })
 
-  it('moves the one plan instead of stacking a second row', async () => {
+  it('keeps several plans for one member', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.createOrMove, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
     await t
       .withIdentity(ADA)
-      .mutation(
-        api.plannedSessions.createOrMove,
-        plan(ADA, { start: START + 2 * H, end: END + 3 * H })
-      )
+      .mutation(api.plannedSessions.create, plan(ADA, { start: START + 2 * H, end: END + 3 * H }))
 
     const rows = await rowsOf(t)
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({
-      plannedStart: START + 2 * H,
-      plannedEnd: END + 3 * H,
-    })
+    expect(rows).toHaveLength(2)
+    expect(rows.map((row) => [row.plannedStart, row.plannedEnd])).toEqual([
+      [START, END],
+      [START + 2 * H, END + 3 * H],
+    ])
+
+    const res = await t
+      .withIdentity(ADA)
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+    expect(res[0].plans).toHaveLength(2)
   })
 
   it('refuses a window that starts in the past', async () => {
@@ -107,9 +109,7 @@ describe('plannedSessions.createOrMove', () => {
     await seedUser(t, ADA, 'Ada')
 
     await expect(
-      t
-        .withIdentity(ADA)
-        .mutation(api.plannedSessions.createOrMove, plan(ADA, { start: DAY + 11 * H }))
+      t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA, { start: DAY + 11 * H }))
     ).rejects.toThrow(/past/)
   })
 
@@ -118,9 +118,7 @@ describe('plannedSessions.createOrMove', () => {
     await seedUser(t, ADA, 'Ada')
 
     await expect(
-      t
-        .withIdentity(ADA)
-        .mutation(api.plannedSessions.createOrMove, plan(ADA, { start: START + 60_000 }))
+      t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA, { start: START + 60_000 }))
     ).rejects.toThrow(/15-minute/)
   })
 
@@ -132,7 +130,7 @@ describe('plannedSessions.createOrMove', () => {
     await expect(
       t
         .withIdentity(ADA)
-        .mutation(api.plannedSessions.createOrMove, plan(ADA, { end: dayEnd + 15 * 60_000 }))
+        .mutation(api.plannedSessions.create, plan(ADA, { end: dayEnd + 15 * 60_000 }))
     ).rejects.toThrow(/inside its Day/)
   })
 
@@ -141,7 +139,7 @@ describe('plannedSessions.createOrMove', () => {
     await seedUser(t, ADA, 'Ada')
     await seedUser(t, BOB, 'Bob')
 
-    await t.withIdentity(BOB).mutation(api.plannedSessions.createOrMove, plan(BOB))
+    await t.withIdentity(BOB).mutation(api.plannedSessions.create, plan(BOB))
 
     const res = await t
       .withIdentity(ADA)
@@ -149,7 +147,7 @@ describe('plannedSessions.createOrMove', () => {
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({
       name: 'Bob',
-      plan: { startAt: START, endAt: END },
+      plans: [{ startAt: START, endAt: END }],
     })
   })
 })
