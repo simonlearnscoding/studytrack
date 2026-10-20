@@ -68,10 +68,10 @@ export function TaskItem({
         />
       ) : (
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="flex min-w-0 items-center gap-1.5 text-sm leading-normal">
+          <p className="flex min-w-0 items-start gap-1.5 text-sm leading-normal">
             <span
               className={cn(
-                'min-w-0 truncate',
+                'min-w-0 flex-1 line-clamp-2 break-words',
                 task.done ? 'text-subtle-foreground line-through' : 'text-white/85'
               )}
             >

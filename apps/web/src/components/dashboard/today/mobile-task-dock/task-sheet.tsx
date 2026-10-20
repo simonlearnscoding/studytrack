@@ -189,7 +189,7 @@ function SheetRow({
           className="h-[34px] min-w-0 flex-1 rounded-lg border border-input bg-background/60 px-2.5 text-sm text-foreground focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
         />
       ) : (
-        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-sm leading-5">
+        <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm leading-5">
           {task.active && (
             <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
               NOW
@@ -197,7 +197,7 @@ function SheetRow({
           )}
           <span
             className={cn(
-              'min-w-0 truncate',
+              'min-w-0 flex-1 line-clamp-2 break-words',
               task.done ? 'text-subtle-foreground line-through' : 'text-foreground'
             )}
           >
