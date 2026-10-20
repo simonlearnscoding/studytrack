@@ -1,6 +1,6 @@
 import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
 import type { RefObject } from 'react'
-import { PinnedDesktopBar, type PlanDrag } from './desktop-bar'
+import { PinnedDesktopBar, type PlanDrag, type PlanResize } from './desktop-bar'
 import { PinnedMobileLane } from './mobile-lane'
 import { NamesColumn } from './names-column'
 import { nightBands } from './night-bands'
@@ -28,6 +28,7 @@ export function DayTimeline({
   locked,
   onToggleBand,
   onPlanDrag,
+  onPlanResize,
 }: {
   window: TimelineWindow
   rows: TimelineRowVM[]
@@ -36,6 +37,7 @@ export function DayTimeline({
   locked: boolean
   onToggleBand: () => void
   onPlanDrag?: (span: PlanDrag) => void
+  onPlanResize?: (resize: PlanResize) => void
 }) {
   const yourRow = rows.find((row) => row.you)
   const { bands, hidden } = nightBands(axis, rows)
@@ -69,6 +71,7 @@ export function DayTimeline({
             nowLabel={nowLabel}
             scrollerRef={scrollerRef}
             onPlanDrag={onPlanDrag}
+            onPlanResize={onPlanResize}
           />
           <TrackScroller surface={surface} rows={rows} scrollerRef={scrollerRef} />
         </div>

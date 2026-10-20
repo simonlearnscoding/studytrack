@@ -191,7 +191,7 @@ function toRow(
     const endPx = minuteToPx(window.segments, plannedEndMin)
     if (startPx === null && endPx !== null) startPx = window.segments[0].widthPx
     if (startPx !== null && endPx !== null && endPx > startPx) {
-      planBlocks.push({ startPx, endPx })
+      planBlocks.push({ id: plan.id, startPx, endPx })
     }
   }
 

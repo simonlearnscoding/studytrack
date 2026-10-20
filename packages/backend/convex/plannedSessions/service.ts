@@ -1,3 +1,4 @@
+import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../sessions/util'
 import { getMe } from '../users/service'
@@ -23,9 +24,33 @@ export async function createPlan(
   plannedStart: number,
   plannedEnd: number
 ): Promise<void> {
-  const user = await getMe(ctx)
-  if (!user) throw new Error('Not authenticated')
+  const user = await requireUser(ctx)
+  assertValidWindow(dayStart, plannedStart, plannedEnd)
+  await assertNoOverlap(ctx, user._id, dayStart, plannedStart, plannedEnd)
 
+  await ctx.db.insert('plannedSession', { userId: user._id, dayStart, plannedStart, plannedEnd })
+}
+
+// Move one edge of an owned plan. The window keeps the stored Day; only the two
+// instants change, so a plan can never be dragged onto another Day.
+export async function resizePlan(
+  ctx: MutationCtx,
+  planId: Id<'plannedSession'>,
+  plannedStart: number,
+  plannedEnd: number
+): Promise<void> {
+  const user = await requireUser(ctx)
+  const plan = await requireOwnedPlan(ctx, user, planId)
+
+  assertValidWindow(plan.dayStart, plannedStart, plannedEnd)
+  await assertNoOverlap(ctx, user._id, plan.dayStart, plannedStart, plannedEnd, plan._id)
+
+  await ctx.db.patch(plan._id, { plannedStart, plannedEnd })
+}
+
+// The window rules every write shares: inside one Day, positive, on the 15-minute
+// grid, and never starting in the past.
+function assertValidWindow(dayStart: number, plannedStart: number, plannedEnd: number): void {
   const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
   if (startOfDay(dayStart, DASHBOARD_TIME_ZONE) !== dayStart) {
     throw new Error('A plan belongs to a Day.')
@@ -43,17 +68,42 @@ export async function createPlan(
   if (plannedStart < planFloor(dayStart, Date.now())) {
     throw new Error('A plan cannot start in the past.')
   }
+}
 
-  // A new block may touch an existing one at its edges, but never overlap it.
-  // The check is per member and per Day; adjacent plans share a boundary.
+// A plan may touch another at its edges, but never overlap it. The check is per
+// member and per Day; `excludeId` lets a resize ignore the row being resized.
+async function assertNoOverlap(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  dayStart: number,
+  plannedStart: number,
+  plannedEnd: number,
+  excludeId?: Id<'plannedSession'>
+): Promise<void> {
   const existing = await ctx.db
     .query('plannedSession')
-    .withIndex('by_userId_dayStart', (q) => q.eq('userId', user._id).eq('dayStart', dayStart))
+    .withIndex('by_userId_dayStart', (q) => q.eq('userId', userId).eq('dayStart', dayStart))
     .take(MAX_PLANS_PER_MEMBER_DAY)
   const overlaps = existing.some(
-    (plan) => plannedStart < plan.plannedEnd && plannedEnd > plan.plannedStart
+    (plan) =>
+      plan._id !== excludeId && plannedStart < plan.plannedEnd && plannedEnd > plan.plannedStart
   )
   if (overlaps) throw new Error('This plan overlaps another plan.')
+}
 
-  await ctx.db.insert('plannedSession', { userId: user._id, dayStart, plannedStart, plannedEnd })
+async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
+  const user = await getMe(ctx)
+  if (!user) throw new Error('Not authenticated')
+  return user
+}
+
+// Same error for missing or someone else's plan: never leak that it exists.
+async function requireOwnedPlan(
+  ctx: MutationCtx,
+  user: Doc<'users'>,
+  planId: Id<'plannedSession'>
+): Promise<Doc<'plannedSession'>> {
+  const plan = await ctx.db.get(planId)
+  if (!plan || plan.userId !== user._id) throw new Error('Plan not found')
+  return plan
 }

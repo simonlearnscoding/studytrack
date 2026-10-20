@@ -11,6 +11,15 @@ export const createPlanArgs = v.object({
 })
 export type CreatePlanArgs = Infer<typeof createPlanArgs>
 
+// Resize one edge of an existing plan. The Day comes from the stored row, never
+// from the caller, so a plan cannot be moved across Days.
+export const resizePlanArgs = v.object({
+  planId: v.id('plannedSession'),
+  plannedStart: v.number(),
+  plannedEnd: v.number(),
+})
+export type ResizePlanArgs = Infer<typeof resizePlanArgs>
+
 // The owner's view of a planned session. Not a Session: there is no voice
 // evidence and no partials, only the window the member pencilled in.
 export type PlannedSession = {

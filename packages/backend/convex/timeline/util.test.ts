@@ -225,6 +225,7 @@ describe('toTimelineRows', () => {
     ])
     expect(rows[0].planBlocks).toEqual([
       {
+        id: 'p1',
         startPx: CORE_LEFT + 10 * PX_PER_HOUR,
         endPx: CORE_LEFT + 11 * PX_PER_HOUR,
       },
@@ -241,8 +242,8 @@ describe('toTimelineRows', () => {
     }
     const rows = toTimelineRows([planned], input())
     expect(rows[0].planBlocks).toEqual([
-      { startPx: CORE_LEFT + 7 * PX_PER_HOUR, endPx: CORE_LEFT + 8 * PX_PER_HOUR },
-      { startPx: CORE_LEFT + 10 * PX_PER_HOUR, endPx: CORE_LEFT + 11 * PX_PER_HOUR },
+      { id: 'p1', startPx: CORE_LEFT + 7 * PX_PER_HOUR, endPx: CORE_LEFT + 8 * PX_PER_HOUR },
+      { id: 'p2', startPx: CORE_LEFT + 10 * PX_PER_HOUR, endPx: CORE_LEFT + 11 * PX_PER_HOUR },
     ])
   })
 

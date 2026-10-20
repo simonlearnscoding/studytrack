@@ -5,6 +5,7 @@ import type {
 } from '@studytrack/backend/convex/timeline/types'
 import { formatClock, minuteToPx } from '@studytrack/backend/convex/timeline/util'
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -26,6 +27,11 @@ const DRAG_PX_THRESHOLD = 4
 const SNAP_MIN = 15
 
 export type PlanDrag = { startMin: number; endMin: number }
+export type PlanResize = {
+  planId: TimelinePlanBlockVM['id']
+  startMin: number
+  endMin: number
+}
 
 // The earliest pixel a plan may start: the first 15-minute mark at and after
 // "now". A plan never contains a past minute (LD-6), so this is the wall both
@@ -45,6 +51,15 @@ function snapPx(segments: TimelineWindow['segments'], px: number, floorPx: numbe
   if (minute == null) return px
   const snapped = Math.round(minute / SNAP_MIN) * SNAP_MIN
   return Math.max(minuteToPx(segments, snapped) ?? px, floorPx)
+}
+
+// One 15-minute step in pixels at this point on the axis.
+function snapStepPx(segments: TimelineWindow['segments'], px: number): number {
+  const minute = pxToMinute(segments, px)
+  if (minute == null) return 0
+  const from = minuteToPx(segments, minute)
+  const to = minuteToPx(segments, minute + SNAP_MIN)
+  return from === null || to === null ? 0 : to - from
 }
 
 // Is this pixel on top of an existing planned session? The half-open end lets a
@@ -98,12 +113,14 @@ export function PinnedDesktopBar({
   nowLabel,
   scrollerRef,
   onPlanDrag,
+  onPlanResize,
 }: {
   surface: AxisSurface
   row?: TimelineRowVM
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
   onPlanDrag?: (span: PlanDrag) => void
+  onPlanResize?: (resize: PlanResize) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -131,6 +148,18 @@ export function PinnedDesktopBar({
     fromPx: number
     toPx: number
     floorPx: number
+  } | null>(null)
+
+  // The edge being dragged on an existing plan. `edgePx` is the live snapped
+  // edge; `minPx`/`maxPx` are the legal walls captured at pointer-down.
+  const [resize, setResize] = useState<{
+    planId: TimelinePlanBlockVM['id']
+    edge: 'start' | 'end'
+    startPx: number
+    endPx: number
+    edgePx: number
+    minPx: number
+    maxPx: number
   } | null>(null)
 
   const lanePx = (event: ReactPointerEvent) => {
@@ -182,6 +211,65 @@ export function PinnedDesktopBar({
     setDrag(null)
   }
 
+  // Start dragging one edge of an existing plan. The wall on the far side is
+  // the neighbouring plan (or the axis end); the near wall is the past floor.
+  const startResize = (
+    event: ReactPointerEvent<HTMLSpanElement>,
+    block: TimelinePlanBlockVM,
+    edge: 'start' | 'end'
+  ) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return
+    event.stopPropagation()
+    const stepPx = snapStepPx(axis.segments, block.startPx)
+    if (stepPx <= 0) return
+    const floorPx = planFloorPx(axis.segments, now)
+    const others = row?.planBlocks ?? []
+    const previousEnd = others
+      .filter((other) => other.id !== block.id && other.endPx <= block.startPx)
+      .reduce((nearest, other) => Math.max(nearest, other.endPx), 0)
+    const nextStart = others
+      .filter((other) => other.id !== block.id && other.startPx >= block.endPx)
+      .reduce((nearest, other) => Math.min(nearest, other.startPx), axis.widthPx)
+    const minPx = edge === 'start' ? Math.max(floorPx, previousEnd) : block.startPx + stepPx
+    const maxPx = edge === 'end' ? Math.min(axis.widthPx, nextStart) : block.endPx - stepPx
+    if (maxPx <= minPx) return
+
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setResize({
+      planId: block.id,
+      edge,
+      startPx: block.startPx,
+      endPx: block.endPx,
+      edgePx: edge === 'start' ? block.startPx : block.endPx,
+      minPx,
+      maxPx,
+    })
+  }
+
+  const onResizeMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (!resize) return
+    const snapped = snapPx(axis.segments, lanePx(event), 0)
+    const edgePx = Math.max(resize.minPx, Math.min(snapped, resize.maxPx))
+    if (edgePx === resize.edgePx) return
+    setResize({ ...resize, edgePx })
+  }
+
+  const onResizeUp = () => {
+    if (!resize) return
+    const startPx = resize.edge === 'start' ? resize.edgePx : resize.startPx
+    const endPx = resize.edge === 'end' ? resize.edgePx : resize.endPx
+    const startMin = pxToMinute(axis.segments, startPx)
+    const endMin = pxToMinute(axis.segments, endPx)
+    if (startMin != null && endMin != null && endPx > startPx) {
+      onPlanResize?.({
+        planId: resize.planId,
+        startMin: Math.round(startMin),
+        endMin: Math.round(endMin),
+      })
+    }
+    setResize(null)
+  }
+
   // The preview snaps live, so the dashed block always sits on the grid — and
   // parks against the floor rather than sliding into the past.
   const dragLeft = drag ? snapPx(axis.segments, Math.min(drag.fromPx, drag.toPx), drag.floorPx) : 0
@@ -192,6 +280,18 @@ export function PinnedDesktopBar({
     if (!drag || dragWidth < DRAG_PX_THRESHOLD) return null
     const startMin = pxToMinute(axis.segments, dragLeft)
     const endMin = pxToMinute(axis.segments, dragLeft + dragWidth)
+    if (startMin == null || endMin == null) return null
+    return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
+  })()
+
+  const resizeLeft = resize ? (resize.edge === 'start' ? resize.edgePx : resize.startPx) : 0
+  const resizeWidth = resize
+    ? (resize.edge === 'end' ? resize.edgePx : resize.endPx) - resizeLeft
+    : 0
+  const resizeLabel = (() => {
+    if (!resize || resizeWidth <= 0) return null
+    const startMin = pxToMinute(axis.segments, resizeLeft)
+    const endMin = pxToMinute(axis.segments, resizeLeft + resizeWidth)
     if (startMin == null || endMin == null) return null
     return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
   })()
@@ -243,6 +343,36 @@ export function PinnedDesktopBar({
               onPointerCancel={() => setDrag(null)}
             >
               <RowTrack row={row} />
+              {onPlanResize &&
+                row.planBlocks.map((block) => (
+                  <Fragment key={block.id}>
+                    {(['start', 'end'] as const).map((edge) => (
+                      <span
+                        key={edge}
+                        role="separator"
+                        aria-label={`Resize plan ${edge}`}
+                        onPointerDown={(event) => startResize(event, block, edge)}
+                        onPointerMove={onResizeMove}
+                        onPointerUp={onResizeUp}
+                        onPointerCancel={() => setResize(null)}
+                        className="absolute top-0 bottom-0 z-[4] w-2 -translate-x-1/2 cursor-ew-resize rounded-full hover:bg-primary/25"
+                        style={{ left: edge === 'start' ? block.startPx : block.endPx }}
+                      />
+                    ))}
+                  </Fragment>
+                ))}
+              {resize && resizeWidth > 0 && (
+                <div
+                  className="border-primary bg-primary/15 pointer-events-none absolute inset-y-0 rounded-[2px] border border-dashed"
+                  style={{ left: resizeLeft, width: resizeWidth }}
+                >
+                  {resizeLabel && (
+                    <span className="bg-primary-tint text-primary absolute -top-4 left-0 block w-max rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap">
+                      {resizeLabel}
+                    </span>
+                  )}
+                </div>
+              )}
               {drag && dragWidth >= DRAG_PX_THRESHOLD && (
                 <div
                   className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 rounded-[2px] border border-dashed"

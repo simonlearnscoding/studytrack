@@ -182,3 +182,78 @@ describe('plannedSessions.create', () => {
     })
   })
 })
+
+describe('plannedSessions.resize', () => {
+  beforeAll(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
+  it('moves one edge of an owned plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await t.withIdentity(ADA).mutation(api.plannedSessions.resize, {
+      planId: row._id,
+      plannedStart: START + 30 * 60_000,
+      plannedEnd: END,
+    })
+
+    const [after] = await rowsOf(t)
+    expect(after).toMatchObject({ plannedStart: START + 30 * 60_000, plannedEnd: END })
+  })
+
+  it('refuses a resize that overlaps a neighbouring plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t
+      .withIdentity(ADA)
+      .mutation(api.plannedSessions.create, plan(ADA, { start: END, end: END + H }))
+    const [first] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.plannedSessions.resize, {
+        planId: first._id,
+        plannedStart: START,
+        plannedEnd: END + 30 * 60_000,
+      })
+    ).rejects.toThrow(/overlaps/)
+  })
+
+  it('refuses to resize another member plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.plannedSessions.resize, {
+        planId: row._id,
+        plannedStart: START,
+        plannedEnd: END + H,
+      })
+    ).rejects.toThrow(/Plan not found/)
+  })
+
+  it('refuses a resize that starts in the past', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.plannedSessions.resize, {
+        planId: row._id,
+        plannedStart: DAY + 11 * H,
+        plannedEnd: END,
+      })
+    ).rejects.toThrow(/past/)
+  })
+})

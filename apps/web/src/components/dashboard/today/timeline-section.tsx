@@ -41,6 +41,7 @@ export function TimelineSection() {
   const [manual, toggleBand] = useExpansionPreference()
   const auto = useAutoExpansion(nowMin)
   const createPlan = useMutation(api.plannedSessions.create)
+  const resizePlan = useMutation(api.plannedSessions.resize)
 
   // False on the server, the first client paint, and while the live read lands —
   // the reveal commit lands the measured width and the members together, so the
@@ -80,6 +81,13 @@ export function TimelineSection() {
               plannedStart: dayStart + span.startMin * 60_000,
               plannedEnd: dayStart + span.endMin * 60_000,
             }).catch((error) => console.error('[studytrack] plan change failed', error))
+          }}
+          onPlanResize={(span) => {
+            void resizePlan({
+              planId: span.planId,
+              plannedStart: dayStart + span.startMin * 60_000,
+              plannedEnd: dayStart + span.endMin * 60_000,
+            }).catch((error) => console.error('[studytrack] plan resize failed', error))
           }}
         />
       </div>

@@ -48,6 +48,11 @@ sessions, and how it differs on mobile. Explicitly later.
   the same member and Day may touch at their edges but never overlap: the
   mutation refuses an overlap, and the drag stops at the next plan in the
   direction of travel and refuses to start on top of one.
+- **Edge-drag resizes a plan** (2026-10-20). Hovering an edge of your own plan
+  changes the cursor to a horizontal resize arrow; dragging that edge moves the
+  start or end on the 15-minute grid. The same walls apply as creation: a plan
+  never starts in the past and never overlaps its neighbours. The body of a plan
+  is not draggable yet — only its two edges.
 - **A plan is public** (2026-10-18). Same rule as Tasks ([[0007]]): the room may
   see what you plan to do, not only that you are doing it. The read therefore
   cannot filter plans down to the signed-in member, and the block may later
@@ -69,6 +74,9 @@ Planning is stored, not a DEV harness. The drag reports `{ startMin, endMin }` t
       15-minute mark at or after now) and refusing an overlap with another plan
       for the same member and Day. Each drag inserts one row, so a member can
       keep several plans.
+- [x] **A resize mutation** behind the edge handles, keeping the stored Day and
+      applying the same window and overlap rules while ignoring the row being
+      resized.
 - [x] **The today read.** `getTodaysActivitiesForDashboard` attaches the Day's
       plans to `DashboardMember.plans` after the partial-first grouping,
       appending a card for a plan-only member.

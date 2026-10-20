@@ -1,3 +1,4 @@
+import type { Id } from '../_generated/dataModel'
 import type { StudyMode } from '../bot/types'
 
 // A day, in minutes from the day start (midnight). The timeline works in these
@@ -54,7 +55,11 @@ export type TimelinePlanVM = { leftPx: number; widthPx: number; missed: boolean 
 
 // A plan's visible window on the axis, used by the drag gesture as a wall: a
 // new plan may not start inside it or be dragged across it.
-export type TimelinePlanBlockVM = { startPx: number; endPx: number }
+export type TimelinePlanBlockVM = {
+  id: Id<'plannedSession'>
+  startPx: number
+  endPx: number
+}
 
 // One member's row, already positioned on the axis. No timestamps survive this
 // far — the view renders pixels only.
