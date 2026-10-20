@@ -12,7 +12,6 @@ import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
 import type { ConvexReactClient } from 'convex/react'
 import { MetricToggle } from '~/components/dashboard/metric-toggle'
-import { NotificationBell } from '~/components/notification-bell'
 import { useMounted } from '~/hooks/use-mounted'
 import { useQuoteOfTheDay } from '~/hooks/use-quote-of-the-day'
 import { useScrollVisibility } from '~/hooks/use-scroll-visibility'
@@ -114,7 +113,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               {/* the metric switch is global and always visible — it fronts the
                   numbers where the dashboard is browsable, signed in or not */}
               <MetricToggle />
-              <NotificationBell />
               {isSignedIn ? <UserButton /> : <SignInButton mode="modal" />}
             </div>
           </div>
