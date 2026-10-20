@@ -7,11 +7,13 @@ export function TaskAction({
   label,
   onClick,
   accent = false,
+  danger = false,
   children,
 }: {
   label: string
   onClick: () => void
   accent?: boolean
+  danger?: boolean
   children: ReactNode
 }) {
   return (
@@ -21,9 +23,11 @@ export function TaskAction({
       onClick={onClick}
       className={cn(
         'flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors',
-        accent
-          ? 'text-primary hover:bg-primary-tint'
-          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+        danger
+          ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+          : accent
+            ? 'text-primary hover:bg-primary-tint'
+            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
       )}
     >
       {children}

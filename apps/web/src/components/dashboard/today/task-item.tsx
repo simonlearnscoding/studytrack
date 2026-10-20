@@ -42,7 +42,7 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0',
+        'group flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0',
         task.active && 'rounded-md bg-primary/[0.06]'
       )}
     >
@@ -98,7 +98,7 @@ export function TaskItem({
       )}
 
       {!editing && (
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="pointer-events-none flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           {!task.done &&
             (task.active ? (
               <TaskAction label="Stop working" onClick={onClear}>
@@ -112,7 +112,7 @@ export function TaskItem({
           <TaskAction label="Rename task" onClick={startEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
-          <TaskAction label="Delete task" onClick={onRemove}>
+          <TaskAction label="Delete task" onClick={onRemove} danger>
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
         </div>

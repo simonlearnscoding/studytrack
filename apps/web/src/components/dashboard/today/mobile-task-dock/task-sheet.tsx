@@ -226,7 +226,7 @@ function SheetRow({
           <TaskAction label="Rename task" onClick={startEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
-          <TaskAction label="Delete task" onClick={onRemove}>
+          <TaskAction label="Delete task" onClick={onRemove} danger>
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
         </div>
