@@ -44,7 +44,7 @@ describe('tasks.listMine', () => {
     expect(await t.query(api.tasks.listMine, { dayStart: DAY })).toEqual([])
   })
 
-  it('returns exactly the selected Day, newest first', async () => {
+  it('returns exactly the selected Day, oldest first, with new tasks at the bottom', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'First')
@@ -53,7 +53,7 @@ describe('tasks.listMine', () => {
     await create(t, ADA, 'Tomorrow', TOMORROW)
 
     const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
-    expect(tasks.map((task) => task.title)).toEqual(['Second', 'First'])
+    expect(tasks.map((task) => task.title)).toEqual(['First', 'Second'])
     expect(tasks[0]).toMatchObject({
       done: false,
       completedAt: null,
@@ -87,8 +87,8 @@ describe('tasks.listMine', () => {
 
     const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
     expect(tasks).toHaveLength(200)
-    expect(tasks[0].title).toBe('Task 200')
-    expect(tasks.at(-1)?.title).toBe('Task 1')
+    expect(tasks[0].title).toBe('Task 1')
+    expect(tasks.at(-1)?.title).toBe('Task 200')
     expect(tasks.some((task) => task.title === 'Task 0')).toBe(false)
   })
 

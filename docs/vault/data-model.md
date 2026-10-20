@@ -120,8 +120,8 @@ the active task and the up-next suggestion show in the room without a per-task
 privacy flag. Only the owner writes.
 
 - `plannedAt` is the Europe/Zurich Day the task is planned for — always a day
-  start, never a time. `listMine({ dayStart })` reads exactly that Day, newest
-  first by `_creationTime`.
+  start, never a time. `listMine({ dayStart })` reads exactly that Day, oldest
+  first by `_creationTime`, so a new task lands at the bottom.
 - `plannedSessionId` is an explicit plan into a real Session, not inferred from
   time overlap. A Session card shows one deduped entry per task: `planned` and/or
   its `completedAt` when the task was finished inside that Session. A task
@@ -136,8 +136,8 @@ privacy flag. Only the owner writes.
   user-level, not Session-scoped (Session-scoped clearing is deferred until real
   tracking exists).
 - Up-next is derived, never stored: the first Open task below the active row in
-  the newest-first Day list, or the newest Open task when none is active. It
-  never auto-starts.
+  the oldest-first Day list, or the first Open task when none is active. It never
+  auto-starts.
 
 Rename/delete landed in ST-16. Day planning and the active pointer landed in
 ST-27.

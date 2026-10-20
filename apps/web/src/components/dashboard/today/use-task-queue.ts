@@ -115,8 +115,8 @@ function toQueueTask(task: Task, active: boolean): QueueTask {
   }
 }
 
-// The first Open task below the active row, or the newest Open task when nothing
-// is active. Never wraps back to the top.
+// The first Open task below the active row, or the first Open task in the
+// oldest-first list when nothing is active. Never wraps back to the top.
 function upNext(tasks: QueueTask[]): QueueTask | undefined {
   const activeIndex = tasks.findIndex((task) => task.active && !task.done)
   return tasks.slice(activeIndex + 1).find((task) => !task.done)

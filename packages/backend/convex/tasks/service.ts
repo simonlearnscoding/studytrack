@@ -6,20 +6,23 @@ import type { ActiveTask, Task } from './types'
 
 const MAX_TASKS = 200
 
-// The caller's tasks **planned for one Day**, newest first. Task content is public
-// (docs/adr/0007), so the room may read titles; ownership still gates writes. The
-// caller supplies the Day start, so the query never reads the wall clock.
+// The caller's tasks **planned for one Day**, oldest first so a new task lands at
+// the bottom of the list. Task content is public (docs/adr/0007), so the room may
+// read titles; ownership still gates writes. The caller supplies the Day start,
+// so the query never reads the wall clock.
 export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Task[]> {
   const user = await getMe(ctx)
   if (!user) return []
 
+  // Read newest-first so the cap keeps the most recent tasks, then flip for the
+  // display order.
   const tasks = await ctx.db
     .query('task')
     .withIndex('by_userId_plannedAt', (q) => q.eq('userId', user._id).eq('plannedAt', dayStart))
     .order('desc')
     .take(MAX_TASKS)
 
-  return tasks.map(toTask)
+  return tasks.reverse().map(toTask)
 }
 
 // Add a task planned for the Day the caller is viewing. Rejects an empty title.
