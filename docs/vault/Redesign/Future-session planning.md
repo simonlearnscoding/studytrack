@@ -54,6 +54,10 @@ sessions, and how it differs on mobile. Explicitly later.
   whole block with its duration frozen. Both gestures follow the same walls:
   no start in the past, no overlap, no crossing midnight. The block itself moves
   optimistically — there is no separate "before" outline.
+- **Clicking a block opens one shared detail popup** (2026-10-20). A planned
+  block and a real session both open the same read-only popup: member, time
+  window, duration, and the session's tasks. Rename, delete and planning tasks
+  into a plan hang off this same surface later.
 - **A plan is public** (2026-10-18). Same rule as Tasks ([[0007]]): the room may
   see what you plan to do, not only that you are doing it. The read therefore
   cannot filter plans down to the signed-in member, and the block may later

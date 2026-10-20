@@ -1,4 +1,4 @@
-import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import type { TimelineBarVM, TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
 import { useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { NowLine } from './axis-markers'
 import { BandLayer } from './night-band'
@@ -19,33 +19,57 @@ export function TrackScroller({
   surface: { axis, bands, hidden, locked, onToggleBand },
   rows,
   scrollerRef,
+  onSessionClick,
 }: {
   surface: AxisSurface
   rows: TimelineRowVM[]
   scrollerRef: RefObject<HTMLDivElement | null>
+  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
 }) {
   const hasYourRow = rows.some((row) => row.you)
 
   // Mouse drag-to-pan. Pointer capture keeps the drag alive outside the box;
   // interactive children (band handles) opt out via the closest('button') check.
-  const pan = useRef<{ pointerId: number; lastX: number } | null>(null)
+  // A press that does not pan is a click on the session bar it started on.
+  const pan = useRef<{
+    pointerId: number
+    lastX: number
+    startX: number
+    moved: boolean
+    sessionId: TimelineBarVM['sessionId'] | null
+  } | null>(null)
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     if ((event.target as HTMLElement).closest('button')) return
-    pan.current = { pointerId: event.pointerId, lastX: event.clientX }
+    const bar = (event.target as HTMLElement).closest<HTMLElement>('[data-session-id]')
+    pan.current = {
+      pointerId: event.pointerId,
+      lastX: event.clientX,
+      startX: event.clientX,
+      moved: false,
+      sessionId: (bar?.dataset.sessionId as TimelineBarVM['sessionId'] | undefined) ?? null,
+    }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = pan.current
     if (!drag || drag.pointerId !== event.pointerId) return
+    if (Math.abs(event.clientX - drag.startX) > 4) drag.moved = true
     const scroller = scrollerRef.current
     if (scroller) scroller.scrollLeft -= event.clientX - drag.lastX
     drag.lastX = event.clientX
   }
 
   const endPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = pan.current
+    if (drag?.pointerId !== event.pointerId) return
+    if (!drag.moved && drag.sessionId) onSessionClick?.(drag.sessionId)
+    pan.current = null
+  }
+
+  const cancelPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (pan.current?.pointerId !== event.pointerId) return
     pan.current = null
   }
@@ -56,7 +80,7 @@ export function TrackScroller({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPan}
-      onPointerCancel={endPan}
+      onPointerCancel={cancelPan}
       className={`min-w-0 cursor-grab pb-2 select-none active:cursor-grabbing ${
         axis.overflow ? 'overflow-x-auto' : 'overflow-x-clip'
       }`}

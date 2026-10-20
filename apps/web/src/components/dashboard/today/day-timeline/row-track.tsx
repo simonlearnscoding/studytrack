@@ -1,4 +1,8 @@
-import type { TimelinePlanVM, TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import type {
+  TimelineBarVM,
+  TimelinePlanVM,
+  TimelineRowVM,
+} from '@studytrack/backend/convex/timeline/types'
 import { Fragment } from 'react'
 import { barClass } from '../bar-style'
 
@@ -26,9 +30,11 @@ const DOT_LABEL_MAX = 160
 export function RowTrack({
   row,
   planOverride,
+  onSessionClick,
 }: {
   row: TimelineRowVM
   planOverride?: PlanOverride | null
+  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
 }) {
   const overridden = planOverride
     ? row.plans.findIndex((plan) => plan.id === planOverride.planId)
@@ -61,10 +67,31 @@ export function RowTrack({
       {row.bars.map((bar, i) => (
         <div
           key={i}
+          data-session-id={bar.sessionId}
+          role={onSessionClick ? 'button' : undefined}
+          tabIndex={onSessionClick ? 0 : undefined}
+          aria-label={onSessionClick ? 'Open study session' : undefined}
+          onClick={
+            onSessionClick
+              ? (event) => {
+                  event.stopPropagation()
+                  onSessionClick(bar.sessionId)
+                }
+              : undefined
+          }
+          onKeyDown={
+            onSessionClick
+              ? (event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  onSessionClick(bar.sessionId)
+                }
+              : undefined
+          }
           // A live bar is cut by the now-line, so its right end is squared off —
           // it is still running, the line just clips it. Every other end keeps
           // its round cap, since that is where study really started or stopped.
-          className={`absolute top-0 bottom-0 ${bar.live ? 'rounded-l-full' : 'rounded-full'} ${barClass(bar.mode, bar.live)}`}
+          className={`absolute top-0 bottom-0 ${bar.live ? 'rounded-l-full' : 'rounded-full'} ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
           style={{ left: bar.leftPx, width: bar.widthPx }}
         />
       ))}

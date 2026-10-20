@@ -6,15 +6,19 @@ import {
   toMinute,
   toTimelineRows,
 } from '@studytrack/backend/convex/timeline/util'
+import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
+import type { TimelineBarVM } from '@studytrack/backend/convex/timeline/types'
 import { useMutation } from 'convex/react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useMounted } from '~/hooks/use-mounted'
 import { cn } from '~/lib/utils'
 import { DayTimeline } from './day-timeline'
+import type { PlanClick } from './day-timeline/desktop-bar'
 import { useAutoExpansion } from './use-auto-expansion'
 import { useElementWidth } from './use-element-width'
 import { useExpansionPreference } from './use-expansion-preference'
 import { useTimeline } from './use-timeline'
+import { SessionPopup, type SessionPopupData } from './session-popup'
 import { TimelineSkeleton } from './timeline-skeleton'
 import { useMetricStore } from '~/state/metric.store'
 
@@ -38,6 +42,7 @@ export function TimelineSection() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
   const nowMin = toMinute(now, dayStart)
+  const [popup, setPopup] = useState<SessionPopupData | null>(null)
   const [manual, toggleBand] = useExpansionPreference()
   const auto = useAutoExpansion(nowMin)
   const createPlan = useMutation(api.plannedSessions.create)
@@ -58,6 +63,39 @@ export function TimelineSection() {
     window: axis,
     metric,
   })
+
+  const openPlan = (click: PlanClick) => {
+    const owner = members?.find((member) => member.plans.some((plan) => plan.id === click.planId))
+    const plan = owner?.plans.find((entry) => entry.id === click.planId)
+    const startAt = plan?.startAt ?? dayStart + click.startMin * 60_000
+    const endAt = plan?.endAt ?? dayStart + click.endMin * 60_000
+    setPopup({
+      kind: 'plan',
+      planId: click.planId,
+      member: owner?.name ?? owner?.discordId ?? null,
+      startAt,
+      endAt,
+      missed: owner ? planMissed(owner, startAt, endAt, now) : false,
+      tasks: [],
+    })
+  }
+
+  const openSession = (sessionId: TimelineBarVM['sessionId']) => {
+    for (const member of members ?? []) {
+      const session = member.sessions.find((entry) => entry.id === sessionId)
+      if (!session) continue
+      setPopup({
+        kind: 'session',
+        sessionId,
+        member: member.name ?? member.discordId,
+        startAt: session.startedAt,
+        endAt: session.endedAt,
+        live: session.status === 'active',
+        tasks: session.tasks,
+      })
+      return
+    }
+  }
 
   return (
     <div className="relative">
@@ -82,11 +120,8 @@ export function TimelineSection() {
               plannedEnd: dayStart + span.endMin * 60_000,
             }).catch((error) => console.error('[studytrack] plan change failed', error))
           }}
-          onPlanClick={(click) => {
-            // Harness: clicks and drags are separate interactions. Replace with
-            // the real detail surface when it exists.
-            console.log('[studytrack] planned session clicked', click)
-          }}
+          onPlanClick={openPlan}
+          onSessionClick={openSession}
           onPlanUpdate={(update) => {
             void updatePlan({
               planId: update.planId,
@@ -97,6 +132,21 @@ export function TimelineSection() {
         />
       </div>
       {!ready && <TimelineSkeleton className="absolute inset-0" />}
+      <SessionPopup data={popup} dayStart={dayStart} now={now} onClose={() => setPopup(null)} />
     </div>
+  )
+}
+
+// A plan is missed once its window has passed without any non-break voice time
+// overlapping it. Mirrors the timeline's own rule.
+function planMissed(member: DashboardMember, startAt: number, endAt: number, now: number): boolean {
+  if (endAt > now) return false
+  return !member.sessions.some((session) =>
+    session.partials.some(
+      (partial) =>
+        partial.mode !== 'break' &&
+        partial.startedAt < endAt &&
+        (partial.endedAt ?? Number.POSITIVE_INFINITY) > startAt
+    )
   )
 }

@@ -1,4 +1,8 @@
-import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
+import type {
+  TimelineBarVM,
+  TimelineRowVM,
+  TimelineWindow,
+} from '@studytrack/backend/convex/timeline/types'
 import type { RefObject } from 'react'
 import { PinnedDesktopBar, type PlanClick, type PlanDrag, type PlanUpdate } from './desktop-bar'
 import { PinnedMobileLane } from './mobile-lane'
@@ -30,6 +34,7 @@ export function DayTimeline({
   onPlanDrag,
   onPlanUpdate,
   onPlanClick,
+  onSessionClick,
 }: {
   window: TimelineWindow
   rows: TimelineRowVM[]
@@ -40,6 +45,7 @@ export function DayTimeline({
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
   onPlanClick?: (click: PlanClick) => void
+  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
 }) {
   const yourRow = rows.find((row) => row.you)
   const { bands, hidden } = nightBands(axis, rows)
@@ -59,6 +65,7 @@ export function DayTimeline({
           row={yourRow}
           nowLabel={nowLabel}
           scrollerRef={scrollerRef}
+          onSessionClick={onSessionClick}
         />
       )}
 
@@ -75,8 +82,14 @@ export function DayTimeline({
             onPlanDrag={onPlanDrag}
             onPlanUpdate={onPlanUpdate}
             onPlanClick={onPlanClick}
+            onSessionClick={onSessionClick}
           />
-          <TrackScroller surface={surface} rows={rows} scrollerRef={scrollerRef} />
+          <TrackScroller
+            surface={surface}
+            rows={rows}
+            scrollerRef={scrollerRef}
+            onSessionClick={onSessionClick}
+          />
         </div>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import type {
+  TimelineBarVM,
   TimelinePlanBlockVM,
   TimelineRowVM,
   TimelineWindow,
@@ -116,6 +117,7 @@ export function PinnedDesktopBar({
   onPlanDrag,
   onPlanUpdate,
   onPlanClick,
+  onSessionClick,
 }: {
   surface: AxisSurface
   row?: TimelineRowVM
@@ -124,6 +126,7 @@ export function PinnedDesktopBar({
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
   onPlanClick?: (click: PlanClick) => void
+  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -444,7 +447,7 @@ export function PinnedDesktopBar({
               onPointerUp={onLanePointerUp}
               onPointerCancel={() => setDrag(null)}
             >
-              <RowTrack row={row} planOverride={planOverride} />
+              <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
               {onPlanUpdate &&
                 row.planBlocks.map((block) => (
                   <span
