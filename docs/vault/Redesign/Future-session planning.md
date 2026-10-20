@@ -64,8 +64,12 @@ sessions, and how it differs on mobile. Explicitly later.
   A denied permission renders the bell struck through and is never auto-asked
   again; clicking the struck bell asks once more. Once granted, the bell is on,
   and clicking it mutes or unmutes locally without revoking the grant. While
-  unmuted, a plan entering its final ten minutes raises one notification. This
-  is page-level only: a closed tab cannot notify (that needs push + service
+  unmuted, one notification fires on the tick that watches a plan cross into its
+  final ten minutes. A first sighting — page load, a newly created plan, or a
+  moved plan — only seeds the baseline, so reloading or creating a plan inside
+  the window stays quiet. The notice is remembered per plan window in
+  localStorage, so a reload after it fired does not repeat it. This is
+  page-level only: a closed tab cannot notify (that needs push + service
   worker).
 - **A plan is public** (2026-10-18). Same rule as Tasks ([[0007]]): the room may
   see what you plan to do, not only that you are doing it. The read therefore
