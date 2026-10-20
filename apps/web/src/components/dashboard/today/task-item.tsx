@@ -67,31 +67,34 @@ export function TaskItem({
           className="h-[34px] min-w-0 flex-1 rounded-lg border border-input bg-background/60 px-2.5 text-sm text-foreground focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
         />
       ) : (
-        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-sm leading-normal">
-          {task.active && (
-            <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
-              NOW
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <p className="flex min-w-0 items-center gap-1.5 text-sm leading-normal">
+            {task.active && (
+              <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
+                NOW
+              </span>
+            )}
+            <span
+              className={cn(
+                'min-w-0 truncate',
+                task.done ? 'text-subtle-foreground line-through' : 'text-white/85'
+              )}
+            >
+              {task.title}
             </span>
-          )}
+            {task.doneAt && (
+              <span className="text-subtle-foreground shrink-0 font-mono text-caption">
+                {task.doneAt}
+              </span>
+            )}
+          </p>
           {!task.active && !task.done && isNext && (
-            <span className="border-border text-muted-foreground shrink-0 rounded border px-1 py-0.5 font-mono text-label">
+            <span className="text-label border-border text-muted-foreground flex w-max items-center gap-1 rounded border px-1 py-0.5 font-mono">
+              <span className="bg-primary h-1 w-1 rounded-full" />
               NEXT
             </span>
           )}
-          <span
-            className={cn(
-              'min-w-0 truncate',
-              task.done ? 'text-subtle-foreground line-through' : 'text-white/85'
-            )}
-          >
-            {task.title}
-          </span>
-          {task.doneAt && (
-            <span className="text-subtle-foreground shrink-0 font-mono text-caption">
-              {task.doneAt}
-            </span>
-          )}
-        </p>
+        </div>
       )}
 
       {!editing && (
