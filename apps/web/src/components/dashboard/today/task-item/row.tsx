@@ -98,7 +98,7 @@ export function TaskRow({
           onPointerDown={stopPropagation}
           onKeyDown={stopPropagation}
           className={cn(
-            'bg-card/80 flex items-center gap-0.5 rounded-md pl-1 backdrop-blur-sm transition-opacity duration-150 [&>button]:transition-opacity',
+            'flex items-center gap-0.5 transition-opacity duration-150 [&>button]:transition-opacity',
             overlay
               ? 'opacity-100'
               : 'pointer-events-none absolute top-1 right-1 z-10 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:[&>button]:opacity-60 [&>button:hover]:opacity-100'
