@@ -1,6 +1,7 @@
 /**
- * Placeholder data for the Today screen — static skeleton, wire to Convex later.
- * Every region's component takes its data as props; this is the single swap point.
+ * Placeholder data for the Today screen. The room, the consistency board and the
+ * task queue are live from Convex; the remaining regions still read their mock
+ * values from here.
  */
 
 export const live = true // you are in a session — flips hero + mobile ordering
@@ -19,35 +20,6 @@ export const week: WeekDay[] = [
   { label: 'Sat 18', hrs: '—' },
   { label: 'Sun 19', hrs: '—' },
 ]
-
-export type Task = {
-  txt: string
-  done?: boolean
-  doneAt?: string
-  active?: boolean
-  planned?: string | null
-}
-
-// contract: done/doneAt · plannedAt · activeSince — the queue, oldest first.
-// All task content is public.
-export const tasks: Task[] = [
-  {
-    txt: 'Read chapter 4 — Kant, the categorical imperative',
-    done: true,
-    doneAt: '13:48',
-  },
-  { txt: 'Anki deck: German irregular verbs ×40', active: true },
-  { txt: 'Problem set 3, questions 1–6' },
-  { txt: 'Draft essay outline + thesis statement' },
-]
-
-/** The up-next task: the first open task after the active one, no wrap. Falls
- *  back to the first open task when nothing is active. Generic so callers keep
- *  their own element type (e.g. the dock's `DockTask`). */
-export function upNext<T extends Task>(tasks: T[]): T | undefined {
-  const activeIndex = tasks.findIndex((task) => task.active && !task.done)
-  return tasks.slice(activeIndex + 1).find((task) => !task.done)
-}
 
 // contract: levels 0–4 derived from dailyTotals · today = todayIndex
 export const heat = [

@@ -1,76 +1,86 @@
+import { api } from '@studytrack/backend/convex/_generated/api'
+import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
+import type { Task } from '@studytrack/backend/convex/tasks/types'
+import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
-import { upNext, type Task } from './data'
+import { useDateStore } from '~/state/date.store'
+import type { QueueTask, TaskId } from './task-types'
 
-// A task with a stable id — the mock list is keyed by title elsewhere, which
-// collides the moment two tasks share a name.
-export type QueueTask = Task & { id: string }
+const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DASHBOARD_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
 
 /**
- * The single source of truth for today's task queue. Owned by `TodayLayout` and
- * shared by the desktop pane and the mobile dock, so both surfaces stay
- * interactive and never disagree about which task is active.
+ * The one source of truth for the focused Day's task queue, shared by the desktop
+ * pane and the mobile dock. Reads and writes go straight to Convex, so both
+ * surfaces update live and the list survives a reload.
  *
- * The active pointer is session-scoped: nothing is active unless tracking is on
- * (`live`), and stopping tracking clears it.
+ * `live` is the tracking indicator the around-the-room UI uses; the active task
+ * itself is user-level and is not cleared when tracking stops (ST-27).
  */
-export function useTaskQueue(initial: Task[], initialLive: boolean) {
-  const [items, setItems] = useState<QueueTask[]>(() =>
-    initial.map((task, i) => ({ ...task, id: `seed-${i}` }))
-  )
-  const [live, setLive] = useState(initialLive)
-  // The seeded task is already active; its clock starts on the client. The value
-  // is only ever rendered once mounted, so the server timestamp can't mismatch.
-  const [activeSince, setActiveSince] = useState<number | null>(() =>
-    initial.some((task) => task.active) ? Date.now() : null
-  )
+export function useTaskQueue(initialLive: boolean) {
+  const selectedDate = useDateStore((state) => state.selectedDate)
+  const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
 
-  const active = items.find((task) => task.active && !task.done)
+  const tasks = useQuery(api.tasks.listMine, { dayStart })
+  const activeTask = useQuery(api.tasks.getActive)
+  const create = useMutation(api.tasks.create)
+  const toggle = useMutation(api.tasks.toggle)
+  const renameTask = useMutation(api.tasks.rename)
+  const removeTask = useMutation(api.tasks.remove)
+  const setActiveTask = useMutation(api.tasks.setActive)
+  const clearActiveTask = useMutation(api.tasks.clearActive)
+
+  const [live, setLive] = useState(initialLive)
+
+  const items = tasks?.map((task) => toQueueTask(task, activeTask?.task.id === task.id)) ?? []
+  const active = activeTask ? toQueueTask(activeTask.task, true) : undefined
   const next = upNext(items)
 
-  const add = (title: string) =>
-    setItems((prev) => [...prev, { id: crypto.randomUUID(), txt: title }])
-
-  const rename = (id: string, title: string) => {
-    const trimmed = title.trim()
-    if (!trimmed) return
-    setItems((prev) => prev.map((t) => (t.id === id ? { ...t, txt: trimmed } : t)))
+  const add = (title: string) => {
+    void create({ title, plannedAt: dayStart }).catch(logTaskError)
   }
 
-  const remove = (id: string) => setItems((prev) => prev.filter((t) => t.id !== id))
-
-  const tick = (id: string) => {
-    setItems((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done, active: false } : t)))
-    if (active?.id === id) setActiveSince(null)
+  const rename = (id: TaskId, title: string) => {
+    void renameTask({ taskId: id, title }).catch(logTaskError)
   }
 
-  const setActive = (id: string) => {
-    if (!live || items.find((t) => t.id === id)?.done) return
-    if (active?.id === id) {
+  const remove = (id: TaskId) => {
+    void removeTask({ taskId: id }).catch(logTaskError)
+  }
+
+  const tick = (id: TaskId) => {
+    void toggle({ taskId: id }).catch(logTaskError)
+  }
+
+  const setActive = (id: TaskId) => {
+    const task = items.find((item) => item.id === id)
+    if (!task || task.done) return
+    if (task.active) {
       clearActive()
       return
     }
-    setItems((prev) => prev.map((t) => ({ ...t, active: t.id === id })))
-    setActiveSince(Date.now())
+    void setActiveTask({ taskId: id }).catch(logTaskError)
   }
 
   const clearActive = () => {
-    setItems((prev) => prev.map((t) => ({ ...t, active: false })))
-    setActiveSince(null)
+    void clearActiveTask({}).catch(logTaskError)
   }
 
   const startTracking = () => setLive(true)
 
-  const toggleTracking = () => {
-    if (live) clearActive()
-    setLive(!live)
-  }
+  const toggleTracking = () => setLive((current) => !current)
 
   return {
+    loading: tasks === undefined || activeTask === undefined,
     items,
     live,
     active,
     next,
-    activeSince,
+    activeSince: activeTask?.activeSince ?? null,
     add,
     rename,
     remove,
@@ -83,3 +93,22 @@ export function useTaskQueue(initial: Task[], initialLive: boolean) {
 }
 
 export type TaskQueue = ReturnType<typeof useTaskQueue>
+
+function toQueueTask(task: Task, active: boolean): QueueTask {
+  return {
+    ...task,
+    active,
+    doneAt: task.completedAt === null ? null : DONE_AT_FORMAT.format(new Date(task.completedAt)),
+  }
+}
+
+// The first Open task below the active row, or the newest Open task when nothing
+// is active. Never wraps back to the top.
+function upNext(tasks: QueueTask[]): QueueTask | undefined {
+  const activeIndex = tasks.findIndex((task) => task.active && !task.done)
+  return tasks.slice(activeIndex + 1).find((task) => !task.done)
+}
+
+function logTaskError(error: unknown) {
+  console.error('[studytrack] task change failed', error)
+}

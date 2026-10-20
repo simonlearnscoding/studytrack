@@ -4,6 +4,7 @@ import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
 import { cn } from '~/lib/utils'
+import type { TaskId } from '../task-types'
 import type { DockTask } from './types'
 
 // The expandable half of the dock: a bottom sheet holding the full task list,
@@ -12,6 +13,7 @@ import type { DockTask } from './types'
 export function TaskSheet({
   open,
   live,
+  loading,
   tasks,
   onClose,
   onAdd,
@@ -24,14 +26,15 @@ export function TaskSheet({
 }: {
   open: boolean
   live: boolean
+  loading: boolean
   tasks: DockTask[]
   onClose: () => void
   onAdd: (title: string) => void
-  onTick: (id: string) => void
-  onSetActive: (id: string) => void
+  onTick: (id: TaskId) => void
+  onSetActive: (id: TaskId) => void
   onClear: () => void
-  onRename: (id: string, title: string) => void
-  onRemove: (id: string) => void
+  onRename: (id: TaskId, title: string) => void
+  onRemove: (id: TaskId) => void
   onToggleTracking: () => void
 }) {
   const [title, setTitle] = useState('')
@@ -72,8 +75,14 @@ export function TaskSheet({
         </div>
 
         <ul className="min-h-0 flex-1 overflow-y-auto px-2">
-          {tasks.length === 0 ? (
-            <li className="text-caption px-3 py-6 text-center">No tasks yet — add one below.</li>
+          {loading ? (
+            <li className="px-3 py-2">
+              <div className="skeleton h-9 rounded-lg" />
+            </li>
+          ) : tasks.length === 0 ? (
+            <li className="text-caption px-3 py-6 text-center">
+              No tasks planned for this day — add one below.
+            </li>
           ) : (
             tasks.map((task) => (
               <SheetRow
@@ -138,16 +147,16 @@ function SheetRow({
   onRemove: () => void
 }) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(task.txt)
+  const [draft, setDraft] = useState(task.title)
 
   const startEditing = () => {
-    setDraft(task.txt)
+    setDraft(task.title)
     setEditing(true)
   }
 
   const commit = () => {
     const trimmed = draft.trim()
-    if (trimmed && trimmed !== task.txt) onRename(trimmed)
+    if (trimmed && trimmed !== task.title) onRename(trimmed)
     setEditing(false)
   }
 
@@ -169,7 +178,7 @@ function SheetRow({
               event.preventDefault()
               commit()
             } else if (event.key === 'Escape') {
-              setDraft(task.txt)
+              setDraft(task.title)
               setEditing(false)
             }
           }}
@@ -193,7 +202,7 @@ function SheetRow({
                   NOW
                 </span>
               )}
-              {task.txt}
+              {task.title}
             </span>
           </button>
           <div className="flex shrink-0 items-center gap-0.5">

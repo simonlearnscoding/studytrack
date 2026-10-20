@@ -33,18 +33,26 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
 
       {/* contract: tap row = set active · checkbox = complete · × = clear active */}
       <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
-        {queue.items.map((t) => (
-          <TaskItem
-            key={t.id}
-            task={t}
-            isNext={t === queue.next}
-            onSetActive={() => queue.setActive(t.id)}
-            onTick={() => queue.tick(t.id)}
-            onClear={queue.clearActive}
-            onRename={(title) => queue.rename(t.id, title)}
-            onRemove={() => queue.remove(t.id)}
-          />
-        ))}
+        {queue.loading ? (
+          <div className="skeleton h-16 rounded-lg" />
+        ) : queue.items.length === 0 ? (
+          <p className="text-caption px-3 py-6 text-center">
+            No tasks planned for this day — add one above.
+          </p>
+        ) : (
+          queue.items.map((t) => (
+            <TaskItem
+              key={t.id}
+              task={t}
+              isNext={t === queue.next}
+              onSetActive={() => queue.setActive(t.id)}
+              onTick={() => queue.tick(t.id)}
+              onClear={queue.clearActive}
+              onRename={(title) => queue.rename(t.id, title)}
+              onRemove={() => queue.remove(t.id)}
+            />
+          ))
+        )}
       </div>
     </section>
   )

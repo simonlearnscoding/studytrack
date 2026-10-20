@@ -3,6 +3,7 @@ import { Check, ListChecks, Play, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '~/lib/utils'
 import { LiveDot } from '../../live-dot'
+import type { TaskId } from '../task-types'
 import type { DockTask } from './types'
 
 // The sticky bottom bar — mobile only, centred, floating over the page.
@@ -35,7 +36,7 @@ export function NowBar({
   onStart: () => void
   onOpen: () => void
   onTick: () => void
-  onSetActive: (id: string) => void
+  onSetActive: (id: TaskId) => void
   onClear: () => void
 }) {
   return (
@@ -59,7 +60,7 @@ export function NowBar({
                   {active ? 'Now' : 'Up next'}
                 </span>
                 <span className="block truncate text-sm font-medium text-foreground">
-                  {active?.txt ?? suggestion?.txt ?? 'Nothing queued'}
+                  {active?.title ?? suggestion?.title ?? 'Nothing queued'}
                 </span>
               </span>
             </button>

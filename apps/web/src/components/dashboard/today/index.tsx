@@ -15,7 +15,7 @@ import { MobileTaskDock } from './mobile-task-dock'
 import { MonthCalendar } from './month-calendar'
 import { PresenceRail } from './presence-rail'
 import { TaskPane } from './task-pane'
-import { heat, live, month, tasks } from './data'
+import { heat, live, month } from './data'
 import { TimelineSection } from './timeline-section'
 import { useConsistencyBoard } from './use-consistency-board'
 import { useRoom } from './use-room'
@@ -25,7 +25,7 @@ import { useNow } from '~/hooks/use-now'
 export function TodayLayout() {
   // The queue is the one source of truth for the active task + up-next; both the
   // desktop pane and the mobile dock read the same state.
-  const queue = useTaskQueue(tasks, live)
+  const queue = useTaskQueue(live)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useRoom()
   // The consistency board follows the selected day; a once-a-minute clock keeps
@@ -59,8 +59,8 @@ export function TodayLayout() {
         >
           <Hero
             live={queue.live}
-            active={queue.active?.txt ?? null}
-            next={queue.next?.txt ?? null}
+            active={queue.active?.title ?? null}
+            next={queue.next?.title ?? null}
           />
           <TimelineSection />
           <div className="flex flex-col gap-6">

@@ -2,7 +2,7 @@ import { Pencil, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
-import type { Task } from './data'
+import type { QueueTask } from './task-types'
 
 // One row in the desktop task pane: tap the body to set it active, the checkbox
 // completes it, and a trailing actions area (clear active, delete, rename) shows
@@ -16,7 +16,7 @@ export function TaskItem({
   onRename,
   onRemove,
 }: {
-  task: Task
+  task: QueueTask
   isNext?: boolean
   onSetActive: () => void
   onTick: () => void
@@ -25,16 +25,16 @@ export function TaskItem({
   onRemove: () => void
 }) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(task.txt)
+  const [draft, setDraft] = useState(task.title)
 
   const startEditing = () => {
-    setDraft(task.txt)
+    setDraft(task.title)
     setEditing(true)
   }
 
   const commit = () => {
     const trimmed = draft.trim()
-    if (trimmed && trimmed !== task.txt) onRename(trimmed)
+    if (trimmed && trimmed !== task.title) onRename(trimmed)
     setEditing(false)
   }
 
@@ -56,7 +56,7 @@ export function TaskItem({
               event.preventDefault()
               commit()
             } else if (event.key === 'Escape') {
-              setDraft(task.txt)
+              setDraft(task.title)
               setEditing(false)
             }
           }}
@@ -92,7 +92,7 @@ export function TaskItem({
                   NEXT
                 </span>
               )}
-              {task.txt}
+              {task.title}
               {task.doneAt && (
                 <span className="text-subtle-foreground ml-1.5 font-mono text-caption">
                   {task.doneAt}

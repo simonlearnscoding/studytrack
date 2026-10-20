@@ -23,6 +23,7 @@ export function MobileTaskDock({
   const [open, setOpen] = useState(false)
 
   const {
+    loading,
     items,
     live,
     active,
@@ -72,6 +73,7 @@ export function MobileTaskDock({
       <TaskSheet
         open={open}
         live={live}
+        loading={loading}
         tasks={items}
         onClose={() => setOpen(false)}
         onAdd={add}
