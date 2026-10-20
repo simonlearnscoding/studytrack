@@ -74,10 +74,9 @@ export function NowBar({
               <>
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center">
                   <Checkbox
-                    checked={false}
+                    defaultChecked={false}
                     onCheckedChange={() => onTick()}
                     aria-label="Complete task"
-                    className="size-6"
                   />
                 </div>
                 <BarButton label="Stop working" onClick={onClear}>
