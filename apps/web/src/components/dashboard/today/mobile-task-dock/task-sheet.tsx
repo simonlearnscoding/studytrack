@@ -1,9 +1,10 @@
 import { Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
+import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
-import { useTaskComposerHotkey, NEW_TASK_PLACEHOLDER } from '~/hooks/use-task-composer-hotkey'
+import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
 import type { TaskId } from '../task-types'
@@ -104,15 +105,18 @@ export function TaskSheet({
 
         <div className="px-4 pt-3">
           <form onSubmit={submit} className="flex items-center gap-2">
-            <Input
-              ref={inputRef}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder={NEW_TASK_PLACEHOLDER}
-              aria-label="New task"
-              maxLength={80}
-              className="h-9 flex-1 rounded-lg border-white/[0.08] bg-white/[0.04]"
-            />
+            <div className="relative min-w-0 flex-1">
+              <Input
+                ref={inputRef}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder=" "
+                aria-label="New task"
+                maxLength={80}
+                className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04]"
+              />
+              <TaskComposerHint />
+            </div>
             <Button type="submit" size="icon" className="h-9 w-9 shrink-0 rounded-lg">
               <Plus className="h-4 w-4" aria-hidden />
             </Button>

@@ -1,12 +1,9 @@
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import type { RefObject } from 'react'
 
 // "New task": jump straight to the composer instead of adding it from the
 // keyboard. `Mod` is Ctrl on Linux/Windows and Cmd on macOS.
 export const NEW_TASK_HOTKEY = 'Mod+Enter'
-
-// Shown in every composer so the shortcut is discoverable.
-export const NEW_TASK_PLACEHOLDER = `Add a task… (${formatForDisplay(NEW_TASK_HOTKEY)})`
 
 /**
  * Focuses the composer input on NEW_TASK_HOTKEY. Composers that can be mounted

@@ -18,9 +18,10 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
+import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { useTaskComposerHotkey, NEW_TASK_PLACEHOLDER } from '~/hooks/use-task-composer-hotkey'
+import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { TaskItem } from './task-item'
 import { TaskOverlay } from './task-overlay'
 import type { TaskId } from './task-types'
@@ -87,13 +88,17 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
     <section className="bg-card flex min-h-0 flex-1 flex-col rounded-xl border p-4 max-lg:p-3.5">
       {/* composer */}
       <form onSubmit={submit} className="mb-3 flex gap-2">
-        <Input
-          ref={inputRef}
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder={NEW_TASK_PLACEHOLDER}
-          className="h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"
-        />
+        <div className="relative min-w-0 flex-1">
+          <Input
+            ref={inputRef}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder=" "
+            aria-label="New task"
+            className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"
+          />
+          <TaskComposerHint />
+        </div>
         <Button type="submit" size="icon" className="h-9 w-9 shrink-0 rounded-lg">
           <Plus className="h-4 w-4" />
         </Button>

@@ -1,7 +1,8 @@
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
+import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
-import { useTaskComposerHotkey, NEW_TASK_PLACEHOLDER } from '~/hooks/use-task-composer-hotkey'
+import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 
 // The single add-task entry point, shared by the rail widget (compact icon
@@ -9,11 +10,9 @@ import { cn } from '~/lib/utils'
 export function AddTaskForm({
   create,
   compact = false,
-  placeholder = NEW_TASK_PLACEHOLDER,
 }: {
   create: (args: { title: string }) => Promise<unknown>
   compact?: boolean
-  placeholder?: string
 }) {
   const [title, setTitle] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -31,14 +30,17 @@ export function AddTaskForm({
 
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
-      <input
-        ref={inputRef}
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder={placeholder}
-        aria-label="New task"
-        className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-background/60 px-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-      />
+      <div className="relative min-w-0 flex-1">
+        <input
+          ref={inputRef}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder=" "
+          aria-label="New task"
+          className="peer h-9 w-full rounded-lg border border-input bg-background/60 px-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+        />
+        <TaskComposerHint />
+      </div>
       <Button
         type="submit"
         size="sm"
