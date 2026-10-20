@@ -8,6 +8,10 @@ export const createTaskArgs = v.object({ title: v.string(), plannedAt: v.number(
 export const toggleTaskArgs = v.object({ taskId: v.id('task') })
 export const renameTaskArgs = v.object({ taskId: v.id('task'), title: v.string() })
 export const removeTaskArgs = v.object({ taskId: v.id('task') })
+export const reorderTasksArgs = v.object({
+  dayStart: v.number(),
+  orderedTaskIds: v.array(v.id('task')),
+})
 export const setActiveTaskArgs = v.object({ taskId: v.id('task') })
 export const clearActiveArgs = v.object({})
 
@@ -16,6 +20,7 @@ export type CreateTaskArgs = Infer<typeof createTaskArgs>
 export type ToggleTaskArgs = Infer<typeof toggleTaskArgs>
 export type RenameTaskArgs = Infer<typeof renameTaskArgs>
 export type RemoveTaskArgs = Infer<typeof removeTaskArgs>
+export type ReorderTasksArgs = Infer<typeof reorderTasksArgs>
 export type SetActiveTaskArgs = Infer<typeof setActiveTaskArgs>
 export type ClearActiveArgs = Infer<typeof clearActiveArgs>
 
