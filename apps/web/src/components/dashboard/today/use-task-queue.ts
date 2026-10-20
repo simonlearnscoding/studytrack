@@ -2,8 +2,9 @@ import { api } from '@studytrack/backend/convex/_generated/api'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
 import type { Task } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDateStore } from '~/state/date.store'
+import { useTaskCacheStore } from '~/state/task-cache.store'
 import type { QueueTask, TaskId } from './task-types'
 
 const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
@@ -35,8 +36,20 @@ export function useTaskQueue(initialLive: boolean) {
   const clearActiveTask = useMutation(api.tasks.clearActive)
 
   const [live, setLive] = useState(initialLive)
+  // Convex's `useQuery` only exposes results for active subscriptions, so a Day
+  // we navigate away from has no local result when we come back. Show the last
+  // seen list for that Day until the live subscription reconnects and refreshes
+  // it, instead of flashing the loading skeleton.
+  const remembered = useTaskCacheStore((state) => state.byDay[dayStart])
+  const remember = useTaskCacheStore((state) => state.remember)
+  const visibleTasks = tasks ?? remembered
 
-  const items = tasks?.map((task) => toQueueTask(task, activeTask?.task.id === task.id)) ?? []
+  useEffect(() => {
+    if (tasks !== undefined) remember(dayStart, tasks)
+  }, [tasks, dayStart, remember])
+
+  const items =
+    visibleTasks?.map((task) => toQueueTask(task, activeTask?.task.id === task.id)) ?? []
   const active = activeTask ? toQueueTask(activeTask.task, true) : undefined
   const next = upNext(items)
 
@@ -75,7 +88,7 @@ export function useTaskQueue(initialLive: boolean) {
   const toggleTracking = () => setLive((current) => !current)
 
   return {
-    loading: tasks === undefined || activeTask === undefined,
+    loading: visibleTasks === undefined || activeTask === undefined,
     items,
     live,
     active,
