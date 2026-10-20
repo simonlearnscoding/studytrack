@@ -1,7 +1,23 @@
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { CornerDownLeft } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { NEW_TASK_HOTKEY } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
+
+// One keycap shared by the modifier and Enter keys, so the shortcut reads as a
+// single hint: a raised fill and a bright edge against the composer surface.
+function Keycap({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <kbd
+      className={cn(
+        'text-label flex h-5 items-center justify-center rounded-sm border border-foreground/20 bg-foreground/10 px-1.5 font-mono text-foreground',
+        className
+      )}
+    >
+      {children}
+    </kbd>
+  )
+}
 
 // Sits over an empty composer input as a rich placeholder. Uses the `peer`
 // input's `:placeholder-shown` to stay out of the way once the user types, and
@@ -17,15 +33,13 @@ export function TaskComposerHint({ className }: { className?: string }) {
         className
       )}
     >
-      <kbd className="text-label flex h-5 items-center rounded-sm border border-border bg-secondary px-1.5 font-mono">
-        {modifier}
-      </kbd>
-      <span className="text-caption">+</span>
-      <kbd className="flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-secondary text-muted-foreground">
+      <Keycap>{modifier}</Keycap>
+      <span className="text-caption font-medium">+</span>
+      <Keycap className="w-5 px-0">
         <CornerDownLeft className="h-3.5 w-3.5" aria-hidden />
         <span className="sr-only">Enter</span>
-      </kbd>
-      <span className="text-hint ml-1 text-xs">Add a task</span>
+      </Keycap>
+      <span className="text-caption ml-1 font-medium">Add a task</span>
     </span>
   )
 }

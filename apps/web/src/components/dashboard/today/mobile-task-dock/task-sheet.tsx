@@ -4,7 +4,7 @@ import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
-import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { handleComposerEscape, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
 import type { TaskId } from '../task-types'
@@ -110,6 +110,7 @@ export function TaskSheet({
                 ref={inputRef}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event) => handleComposerEscape(event, () => setTitle(''))}
                 placeholder=" "
                 aria-label="New task"
                 maxLength={80}
