@@ -1,9 +1,10 @@
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
 import { cn } from '~/lib/utils'
+import { TaskAction } from '../task-action'
 import type { TaskId } from '../task-types'
 import type { DockTask } from './types'
 
@@ -71,7 +72,7 @@ export function TaskSheet({
 
         <div className="flex items-center gap-2 px-4 pt-2.5 pb-2">
           <h2 className="text-label">Tasks</h2>
-          <span className="text-caption ml-auto">tap = set now</span>
+          <span className="text-caption ml-auto">play = now</span>
         </div>
 
         <ul className="min-h-0 flex-1 overflow-y-auto px-2">
@@ -163,10 +164,12 @@ function SheetRow({
   return (
     <li
       className={cn(
-        'flex items-start gap-2 rounded-lg px-2 py-2.5 transition-colors',
+        'flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors',
         task.active && 'bg-primary/[0.06]'
       )}
     >
+      <Checkbox checked={task.done} onCheckedChange={onTick} className="shrink-0" />
+
       {editing ? (
         <input
           autoFocus
@@ -183,57 +186,55 @@ function SheetRow({
             }
           }}
           aria-label="Task title"
-          className="h-[38px] w-full rounded-lg border border-input bg-background/60 px-2.5 text-sm text-foreground focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+          className="h-[34px] min-w-0 flex-1 rounded-lg border border-input bg-background/60 px-2.5 text-sm text-foreground focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
         />
       ) : (
-        <>
-          <Checkbox checked={!!task.done} onCheckedChange={onTick} className="mt-0.5" />
-          <button
-            type="button"
-            onClick={onSetActive}
-            disabled={task.done}
-            className="min-w-0 flex-1 cursor-pointer text-left text-sm leading-5 disabled:cursor-default"
-          >
-            <span
-              className={cn(task.done ? 'text-subtle-foreground line-through' : 'text-foreground')}
-            >
-              {task.active && (
-                <span className="bg-primary-tint text-primary mr-1.5 rounded px-1 py-0.5 align-[1px] font-mono text-label">
-                  NOW
-                </span>
-              )}
-              {task.title}
+        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-sm leading-5">
+          {task.active && (
+            <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
+              NOW
             </span>
-          </button>
-          <div className="flex shrink-0 items-center gap-0.5">
-            {task.active && (
-              <button
-                type="button"
-                onClick={onClear}
-                aria-label="End active task"
-                className="bg-primary-tint text-primary ring-primary/40 hover:bg-primary/20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md ring-1 ring-inset transition-colors"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-              </button>
+          )}
+          <span
+            className={cn(
+              'min-w-0 truncate',
+              task.done ? 'text-subtle-foreground line-through' : 'text-foreground'
             )}
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label="Delete task"
-              className="text-muted-foreground hover:text-foreground flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={startEditing}
-              aria-label="Rename task"
-              className="text-muted-foreground hover:text-foreground flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          </div>
-        </>
+          >
+            {task.title}
+          </span>
+          {task.doneAt && (
+            <span className="text-subtle-foreground shrink-0 font-mono text-caption">
+              {task.doneAt}
+            </span>
+          )}
+        </p>
+      )}
+
+      {!editing && (
+        <div className="flex shrink-0 items-center gap-0.5">
+          {!task.done &&
+            (task.active ? (
+              <>
+                <TaskAction label="Complete task" onClick={onTick} accent>
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                </TaskAction>
+                <TaskAction label="Stop working" onClick={onClear}>
+                  <Pause className="h-3.5 w-3.5" aria-hidden />
+                </TaskAction>
+              </>
+            ) : (
+              <TaskAction label="Start working" onClick={onSetActive} accent>
+                <Play className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden />
+              </TaskAction>
+            ))}
+          <TaskAction label="Rename task" onClick={startEditing}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
+          </TaskAction>
+          <TaskAction label="Delete task" onClick={onRemove}>
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </TaskAction>
+        </div>
       )}
     </li>
   )

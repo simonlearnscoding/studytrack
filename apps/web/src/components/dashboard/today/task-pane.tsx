@@ -31,7 +31,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
         </Button>
       </form>
 
-      {/* contract: tap row = set active · checkbox = complete · × = clear active */}
+      {/* contract: checkbox = complete · play/pause = start or stop · pencil = rename · trash = delete */}
       <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
         {queue.loading ? (
           <div className="skeleton h-16 rounded-lg" />

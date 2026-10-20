@@ -1,5 +1,5 @@
 import { formatDuration } from '@studytrack/backend/convex/sessions/util'
-import { Check, ListChecks, Play, X } from 'lucide-react'
+import { Check, ListChecks, Pause, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '~/lib/utils'
 import { LiveDot } from '../../live-dot'
@@ -74,8 +74,8 @@ export function NowBar({
                 <BarButton label="Complete task" onClick={onTick} accent>
                   <Check className="h-4 w-4" strokeWidth={3} />
                 </BarButton>
-                <BarButton label="Clear active task" onClick={onClear}>
-                  <X className="h-4 w-4" />
+                <BarButton label="Stop working" onClick={onClear}>
+                  <Pause className="h-4 w-4" />
                 </BarButton>
               </>
             ) : (
