@@ -1,12 +1,76 @@
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { TaskItem } from './task-item'
+import { TaskOverlay } from './task-overlay'
+import type { TaskId } from './task-types'
 import type { TaskQueue } from './use-task-queue'
+
+const screenReaderInstructions = {
+  draggable:
+    'Press space or enter to lift the task. Use the arrow keys to move it. Press space or enter to drop, or escape to cancel.',
+}
 
 export function TaskPane({ queue }: { queue: TaskQueue }) {
   const [title, setTitle] = useState('')
+  const [draggingId, setDraggingId] = useState<TaskId | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const ids = queue.items.map((task) => task.id)
+  const dragging = queue.items.find((task) => task.id === draggingId)
+
+  const titleOf = (id: string | number) =>
+    queue.items.find((task) => task.id === id)?.title ?? 'task'
+  const positionOf = (id: string | number) => ids.indexOf(id as TaskId) + 1
+
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `${titleOf(active.id)} moved to position ${positionOf(over.id)} of ${ids.length}.`
+        : undefined,
+    onDragEnd: ({ active }) => `Dropped ${titleOf(active.id)}.`,
+    onDragCancel: ({ active }) =>
+      `Reordering cancelled. ${titleOf(active.id)} returned to its place.`,
+  }
+
+  const startDrag = ({ active }: DragStartEvent) => {
+    setDraggingId(active.id as TaskId)
+  }
+
+  const endDrag = ({ active, over }: DragEndEvent) => {
+    setDraggingId(null)
+    if (!over || active.id === over.id) return
+
+    const from = ids.indexOf(active.id as TaskId)
+    const to = ids.indexOf(over.id as TaskId)
+    if (from < 0 || to < 0) return
+
+    queue.reorder(arrayMove(ids, from, to))
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -32,28 +96,45 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
       </form>
 
       {/* contract: checkbox = complete · play/pause = start or stop · pencil = rename · trash = delete */}
-      <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
-        {queue.loading ? (
-          <div className="skeleton h-16 rounded-lg" />
-        ) : queue.items.length === 0 ? (
-          <p className="text-caption px-3 py-6 text-center">
-            No tasks planned for this day — add one above.
-          </p>
-        ) : (
-          queue.items.map((t) => (
-            <TaskItem
-              key={t.id}
-              task={t}
-              isNext={t === queue.next}
-              onSetActive={() => queue.setActive(t.id)}
-              onTick={() => queue.tick(t.id)}
-              onClear={queue.clearActive}
-              onRename={(title) => queue.rename(t.id, title)}
-              onRemove={() => queue.remove(t.id)}
-            />
-          ))
-        )}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={startDrag}
+        onDragEnd={endDrag}
+        onDragCancel={() => setDraggingId(null)}
+        accessibility={{ announcements, screenReaderInstructions }}
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
+          {queue.loading ? (
+            <div className="skeleton h-16 rounded-lg" />
+          ) : queue.items.length === 0 ? (
+            <p className="text-caption px-3 py-6 text-center">
+              No tasks planned for this day — add one above.
+            </p>
+          ) : (
+            <ul>
+              <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+                {queue.items.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    isNext={task === queue.next}
+                    onSetActive={() => queue.setActive(task.id)}
+                    onTick={() => queue.tick(task.id)}
+                    onClear={queue.clearActive}
+                    onRename={(title) => queue.rename(task.id, title)}
+                    onRemove={() => queue.remove(task.id)}
+                  />
+                ))}
+              </SortableContext>
+            </ul>
+          )}
+        </div>
+
+        <DragOverlay>
+          {dragging ? <TaskOverlay task={dragging} isNext={dragging === queue.next} /> : null}
+        </DragOverlay>
+      </DndContext>
     </section>
   )
 }
