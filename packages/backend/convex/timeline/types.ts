@@ -52,6 +52,10 @@ export type TimelineDotVM = { leftPx: number; title: string }
 // is emitted as one piece per visible segment.
 export type TimelinePlanVM = { leftPx: number; widthPx: number; missed: boolean }
 
+// A plan's visible window on the axis, used by the drag gesture as a wall: a
+// new plan may not start inside it or be dragged across it.
+export type TimelinePlanBlockVM = { startPx: number; endPx: number }
+
 // One member's row, already positioned on the axis. No timestamps survive this
 // far — the view renders pixels only.
 export type TimelineRowVM = {
@@ -63,6 +67,7 @@ export type TimelineRowVM = {
   tail: string
   bars: TimelineBarVM[]
   plans: TimelinePlanVM[]
+  planBlocks: TimelinePlanBlockVM[]
   dots: TimelineDotVM[]
   // How many of this member's sessions are hidden inside the collapsed night
   // band (LD-13). Zero until it collapses.

@@ -1,4 +1,8 @@
-import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
+import type {
+  TimelinePlanBlockVM,
+  TimelineRowVM,
+  TimelineWindow,
+} from '@studytrack/backend/convex/timeline/types'
 import { formatClock, minuteToPx } from '@studytrack/backend/convex/timeline/util'
 import {
   useEffect,
@@ -41,6 +45,35 @@ function snapPx(segments: TimelineWindow['segments'], px: number, floorPx: numbe
   if (minute == null) return px
   const snapped = Math.round(minute / SNAP_MIN) * SNAP_MIN
   return Math.max(minuteToPx(segments, snapped) ?? px, floorPx)
+}
+
+// Is this pixel on top of an existing planned session? The half-open end lets a
+// new plan start exactly where the previous one ends.
+function insidePlan(px: number, blocks: TimelinePlanBlockVM[]): boolean {
+  return blocks.some((block) => px >= block.startPx && px < block.endPx)
+}
+
+// Stop a drag at the next plan in the direction of travel, and never let it go
+// left of the past wall. The from-pixel is always outside a plan (pointer-down
+// rejects that), so only the blocks ahead of it can be walls.
+function clampToPlans(
+  px: number,
+  fromPx: number,
+  floorPx: number,
+  widthPx: number,
+  blocks: TimelinePlanBlockVM[]
+): number {
+  if (px >= fromPx) {
+    const wall = blocks
+      .filter((block) => block.startPx >= fromPx)
+      .reduce((nearest, block) => Math.min(nearest, block.startPx), widthPx)
+    return Math.min(Math.max(px, floorPx), widthPx, wall)
+  }
+
+  const wall = blocks
+    .filter((block) => block.endPx <= fromPx)
+    .reduce((nearest, block) => Math.max(nearest, block.endPx), floorPx)
+  return Math.max(Math.min(px, widthPx), floorPx, wall)
 }
 
 // lg+ your labels + track pin as one bar directly under the hero (0..7rem),
@@ -111,16 +144,23 @@ export function PinnedDesktopBar({
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     const fromPx = lanePx(event)
     const floorPx = planFloorPx(axis.segments, now)
-    // A gesture that begins in the past plans nothing at all: the wall is hard
-    // at the start and soft everywhere after it.
+    // A gesture that begins in the past, or on top of an existing plan, plans
+    // nothing at all: both walls are hard at the start.
     if (fromPx < floorPx) return
+    if (insidePlan(fromPx, row?.planBlocks ?? [])) return
     event.currentTarget.setPointerCapture(event.pointerId)
     setDrag({ fromPx, toPx: fromPx, floorPx })
   }
 
   const onLanePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!drag) return
-    const toPx = lanePx(event)
+    const toPx = clampToPlans(
+      lanePx(event),
+      drag.fromPx,
+      drag.floorPx,
+      axis.widthPx,
+      row?.planBlocks ?? []
+    )
     if (drag.toPx === toPx) return
     // `fromPx` and `floorPx` are frozen when the gesture starts, so the closure
     // values are safe here.

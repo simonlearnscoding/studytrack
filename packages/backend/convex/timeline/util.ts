@@ -6,6 +6,7 @@ import type {
   TimelineBarVM,
   TimelineDotVM,
   TimelineMetric,
+  TimelinePlanBlockVM,
   TimelinePlanVM,
   TimelineRowVM,
   TimelineSegment,
@@ -167,6 +168,7 @@ function toRow(
 ): TimelineRowVM {
   const bars: TimelineBarVM[] = []
   const plans: TimelinePlanVM[] = []
+  const planBlocks: TimelinePlanBlockVM[] = []
   const dots: TimelineDotVM[] = []
   let hiddenCount = 0
 
@@ -181,6 +183,16 @@ function toRow(
       (leftPx, widthPx) => plans.push({ leftPx, widthPx, missed }),
       () => {}
     )
+
+    // The drag wall is the plan's whole window, not just its visible pieces. A
+    // start hidden in the collapsed night clamps forward to the first visible
+    // pixel, so a drag cannot step into the hidden part either.
+    let startPx = minuteToPx(window.segments, plannedStartMin)
+    const endPx = minuteToPx(window.segments, plannedEndMin)
+    if (startPx === null && endPx !== null) startPx = window.segments[0].widthPx
+    if (startPx !== null && endPx !== null && endPx > startPx) {
+      planBlocks.push({ startPx, endPx })
+    }
   }
 
   for (const session of member.sessions) {
@@ -224,6 +236,7 @@ function toRow(
     ),
     bars: bars.sort((a, b) => a.leftPx - b.leftPx),
     plans: plans.sort((a, b) => a.leftPx - b.leftPx),
+    planBlocks: planBlocks.sort((a, b) => a.startPx - b.startPx),
     dots: dots.sort((a, b) => a.leftPx - b.leftPx),
     hiddenCount,
   }

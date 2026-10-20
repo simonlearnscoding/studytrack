@@ -6,6 +6,9 @@ import { getMe } from '../users/service'
 // marks on the same grain.
 export const PLAN_GRAIN_MS = 15 * 60 * 1000
 
+// Bounded overlap read: a member's plans for one Day sit far below this.
+const MAX_PLANS_PER_MEMBER_DAY = 200
+
 // The first grain at or after `now`, inside the plan's Day. A plan never starts
 // in the past; a plan for a future Day may start at its midnight.
 export function planFloor(dayStart: number, now: number): number {
@@ -40,6 +43,17 @@ export async function createPlan(
   if (plannedStart < planFloor(dayStart, Date.now())) {
     throw new Error('A plan cannot start in the past.')
   }
+
+  // A new block may touch an existing one at its edges, but never overlap it.
+  // The check is per member and per Day; adjacent plans share a boundary.
+  const existing = await ctx.db
+    .query('plannedSession')
+    .withIndex('by_userId_dayStart', (q) => q.eq('userId', user._id).eq('dayStart', dayStart))
+    .take(MAX_PLANS_PER_MEMBER_DAY)
+  const overlaps = existing.some(
+    (plan) => plannedStart < plan.plannedEnd && plannedEnd > plan.plannedStart
+  )
+  if (overlaps) throw new Error('This plan overlaps another plan.')
 
   await ctx.db.insert('plannedSession', { userId: user._id, dayStart, plannedStart, plannedEnd })
 }

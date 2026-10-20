@@ -15,7 +15,7 @@ Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 - `sessionPartial`: `by_sessionId` (sessionId, status) · `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, startedAt) · `by_startedAt` (startedAt)
 - `dailyTotal`: `by_dayStart` (dayStart) · `by_memberKey` (memberKey, dayStart)
 - `task`: `by_userId` (userId) · `by_userId_plannedAt` (userId, plannedAt) · `by_userId_completedAt` (userId, completedAt) · `by_plannedSessionId` (plannedSessionId)
-- `plannedSession`: `by_userId` (userId) · `by_dayStart` (dayStart)
+- `plannedSession`: `by_userId_dayStart` (userId, dayStart) · `by_dayStart` (dayStart)
 
 A **session** is the whole sitting; its **partials** are the stretches of constant
 voice state. A partial's `mode` is one of `voice`, `camera`, `screenShare`,
@@ -160,7 +160,8 @@ their own line.
 
 - `plannedSession` is one row per block, so a member may have several plans at
   once. Dragging again **creates** another block instead of moving an existing
-  one.
+  one. Plans for the same member and Day may touch but never overlap; the
+  mutation refuses an overlap.
 - `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
   `plannedEnd` are the instants of the block, both on the 15-minute grid.
 - The mutation refuses a start in the past and a window outside its Day. Plans

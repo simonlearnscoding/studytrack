@@ -93,7 +93,8 @@ export default defineSchema({
 
   // A member's planned session: a future block on their own lane, not a
   // Session (no voice evidence, no partials). A member may have several plans at
-  // once, so each drag inserts a row instead of replacing one.
+  // once, so each drag inserts a row instead of replacing one; plans for the same
+  // member and Day may touch but never overlap.
   // `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
   // `plannedEnd` are the instants the block covers.
   plannedSession: defineTable({
@@ -102,7 +103,7 @@ export default defineSchema({
     plannedStart: v.number(),
     plannedEnd: v.number(),
   })
-    .index('by_userId', ['userId'])
+    .index('by_userId_dayStart', ['userId', 'dayStart'])
     .index('by_dayStart', ['dayStart']),
 
   // The motivational quote shown in the site header, one per local Day. A cron

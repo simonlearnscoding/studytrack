@@ -104,6 +104,37 @@ describe('plannedSessions.create', () => {
     expect(res[0].plans).toHaveLength(2)
   })
 
+  it('refuses a plan that overlaps an existing one', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+
+    await expect(
+      t
+        .withIdentity(ADA)
+        .mutation(api.plannedSessions.create, plan(ADA, { start: START + 30 * 60_000 }))
+    ).rejects.toThrow(/overlaps/)
+    await expect(
+      t
+        .withIdentity(ADA)
+        .mutation(api.plannedSessions.create, plan(ADA, { end: END - 30 * 60_000 }))
+    ).rejects.toThrow(/overlaps/)
+
+    expect(await rowsOf(t)).toHaveLength(1)
+  })
+
+  it('allows plans that only touch at the edge', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t
+      .withIdentity(ADA)
+      .mutation(api.plannedSessions.create, plan(ADA, { start: END, end: END + H }))
+
+    expect(await rowsOf(t)).toHaveLength(2)
+  })
+
   it('refuses a window that starts in the past', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')

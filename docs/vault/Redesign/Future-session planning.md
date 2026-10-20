@@ -42,11 +42,12 @@ sessions, and how it differs on mobile. Explicitly later.
   partials, so none of the Session rules (the 30-minute rejoin, Pause) apply.
   The `planned` slot on a Task is a third, separate idea (the Day/instant a task
   is pencilled for) and must not be conflated with it.
-- **Several planned sessions at a time** (2026-10-20, replacing the earlier
-  one-at-a-time rule). A member may keep more than one Planned session, on the
-  same Day or across Days. Every drag **creates** a new block; there is no
-  create-vs-move guess. Overlapping plans are allowed until an edit/delete
-  gesture exists.
+- **Several planned sessions, never overlapping** (2026-10-20, replacing the
+  earlier one-at-a-time rule). A member may keep more than one Planned session,
+  on the same Day or across Days. Every drag **creates** a new block. Plans for
+  the same member and Day may touch at their edges but never overlap: the
+  mutation refuses an overlap, and the drag stops at the next plan in the
+  direction of travel and refuses to start on top of one.
 - **A plan is public** (2026-10-18). Same rule as Tasks ([[0007]]): the room may
   see what you plan to do, not only that you are doing it. The read therefore
   cannot filter plans down to the signed-in member, and the block may later
@@ -65,7 +66,8 @@ Planning is stored, not a DEV harness. The drag reports `{ startMin, endMin }` t
       `dayStart` + `plannedStart` + `plannedEnd`), so `session`, daily totals,
       the leaderboard and metrics keep their existing shape.
 - [x] **A create mutation** behind the drag, enforcing the past floor (first
-      15-minute mark at or after now). Each drag inserts one row, so a member can
+      15-minute mark at or after now) and refusing an overlap with another plan
+      for the same member and Day. Each drag inserts one row, so a member can
       keep several plans.
 - [x] **The today read.** `getTodaysActivitiesForDashboard` attaches the Day's
       plans to `DashboardMember.plans` after the partial-first grouping,
