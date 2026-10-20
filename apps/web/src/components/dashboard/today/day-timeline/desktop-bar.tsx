@@ -432,10 +432,11 @@ export function PinnedDesktopBar({
           <NowPill label={nowLabel} left={now} className="-top-4 z-[7]" />
         </div>
         {/* your lane — the taller hero track, and the drag-to-plan surface.
-            Your name, live dot and tail live in the pinned name cell, not here.
-            Without a signed-in row the bar degrades to the hour strip. */}
+            Your name, live dot and tail live in the pinned name cell, not here;
+            the empty band above the track is reserved for done-task and session
+            titles. Without a signed-in row the bar degrades to the hour strip. */}
         {row && (
-          <div className="h-12 pt-3">
+          <div className="h-[5.5rem] pt-8">
             <div
               className="cursor-crosshair relative select-none"
               onPointerDown={onLanePointerDown}
