@@ -42,7 +42,7 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'group flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0',
+        'group relative flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0',
         task.active && 'rounded-md bg-primary/[0.06]'
       )}
     >
@@ -99,7 +99,7 @@ export function TaskItem({
       )}
 
       {!editing && (
-        <div className="pointer-events-none flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="bg-card/95 pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center gap-0.5 rounded-md pl-1 opacity-0 backdrop-blur-sm transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           {!task.done &&
             (task.active ? (
               <TaskAction label="Stop working" onClick={onClear}>
