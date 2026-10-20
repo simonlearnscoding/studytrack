@@ -1,6 +1,6 @@
 import { mutation } from './_generated/server'
-import { createPlan, resizePlan } from './plannedSessions/service'
-import { createPlanArgs, resizePlanArgs } from './plannedSessions/types'
+import { createPlan, updatePlan } from './plannedSessions/service'
+import { createPlanArgs, updatePlanArgs } from './plannedSessions/types'
 
 // Thin entry: handlers only delegate to ./plannedSessions/service.
 export const create = mutation({
@@ -10,9 +10,11 @@ export const create = mutation({
   },
 })
 
-export const resize = mutation({
-  args: resizePlanArgs.fields,
+// One write path for both gestures: moving the body and dragging an edge both
+// replace the plan's two endpoints.
+export const update = mutation({
+  args: updatePlanArgs.fields,
   handler: async (ctx, args) => {
-    await resizePlan(ctx, args.planId, args.plannedStart, args.plannedEnd)
+    await updatePlan(ctx, args.planId, args.plannedStart, args.plannedEnd)
   },
 })

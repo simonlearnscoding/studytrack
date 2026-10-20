@@ -165,8 +165,8 @@ their own line.
 - `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
   `plannedEnd` are the instants of the block, both on the 15-minute grid.
 - The mutations refuse a start in the past, a window outside its Day, and an
-  overlap with another plan. A resize patches one row in place and ignores that
-  row in the overlap check. Plans are public (ADR-0007), so
+  overlap with another plan. One `update` mutation patches a row in place for
+  both edge-resizes and body-moves, ignoring that row in the overlap check. Plans are public (ADR-0007), so
   `getTodaysActivitiesForDashboard` attaches them to the member's card (`plans`,
   oldest first) and appends a card for a plan-only member.
 - The timeline draws each plan as a dashed block. A plan whose window has ended

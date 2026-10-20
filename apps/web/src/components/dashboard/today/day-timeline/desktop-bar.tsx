@@ -16,7 +16,7 @@ import { LiveDot } from '../../live-dot'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { pxToMinute } from './px-to-minute'
-import { RowTrack } from './row-track'
+import { RowTrack, type PlanOverride } from './row-track'
 import type { AxisSurface } from './types'
 import { useMirrorScroll } from './use-mirror-scroll'
 
@@ -27,7 +27,7 @@ const DRAG_PX_THRESHOLD = 4
 const SNAP_MIN = 15
 
 export type PlanDrag = { startMin: number; endMin: number }
-export type PlanResize = {
+export type PlanUpdate = {
   planId: TimelinePlanBlockVM['id']
   startMin: number
   endMin: number
@@ -113,14 +113,14 @@ export function PinnedDesktopBar({
   nowLabel,
   scrollerRef,
   onPlanDrag,
-  onPlanResize,
+  onPlanUpdate,
 }: {
   surface: AxisSurface
   row?: TimelineRowVM
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
   onPlanDrag?: (span: PlanDrag) => void
-  onPlanResize?: (resize: PlanResize) => void
+  onPlanUpdate?: (update: PlanUpdate) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -161,6 +161,29 @@ export function PinnedDesktopBar({
     minPx: number
     maxPx: number
   } | null>(null)
+
+  // The whole block being moved. `leftPx` is the optimistic position; the
+  // duration and the legal range are captured at pointer-down.
+  const [move, setMove] = useState<{
+    planId: TimelinePlanBlockVM['id']
+    startPx: number
+    widthPx: number
+    grabPx: number
+    leftPx: number
+    minLeftPx: number
+    maxLeftPx: number
+    moved: boolean
+  } | null>(null)
+
+  // The committed geometry held on screen until the live read catches up, so a
+  // released block never snaps back to its old position for a frame.
+  const [pending, setPending] = useState<PlanOverride | null>(null)
+
+  useEffect(() => {
+    if (!pending) return
+    const timer = setTimeout(() => setPending(null), 1200)
+    return () => clearTimeout(timer)
+  }, [pending])
 
   const lanePx = (event: ReactPointerEvent) => {
     const mirror = mirrorRef.current
@@ -211,6 +234,66 @@ export function PinnedDesktopBar({
     setDrag(null)
   }
 
+  // Start moving a whole block. Duration is frozen; the legal left range is the
+  // gap between the past floor/previous plan and the next plan (or axis end).
+  const startMove = (event: ReactPointerEvent<HTMLSpanElement>, block: TimelinePlanBlockVM) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return
+    event.stopPropagation()
+    const widthPx = block.endPx - block.startPx
+    if (widthPx <= 0) return
+    setPending(null)
+    const floorPx = planFloorPx(axis.segments, now)
+    const others = row?.planBlocks ?? []
+    const previousEnd = others
+      .filter((other) => other.id !== block.id && other.endPx <= block.startPx)
+      .reduce((nearest, other) => Math.max(nearest, other.endPx), 0)
+    const nextStart = others
+      .filter((other) => other.id !== block.id && other.startPx >= block.endPx)
+      .reduce((nearest, other) => Math.min(nearest, other.startPx), axis.widthPx)
+    const minLeftPx = Math.max(floorPx, previousEnd)
+    const maxLeftPx = Math.min(axis.widthPx - widthPx, nextStart - widthPx)
+    if (maxLeftPx < minLeftPx) return
+
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setMove({
+      planId: block.id,
+      startPx: block.startPx,
+      widthPx,
+      grabPx: lanePx(event),
+      leftPx: block.startPx,
+      minLeftPx,
+      maxLeftPx,
+      moved: false,
+    })
+  }
+
+  const onMoveMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (!move) return
+    const pointerPx = lanePx(event)
+    const delta = pointerPx - move.grabPx
+    const snapped = snapPx(axis.segments, move.startPx + delta, 0)
+    const leftPx = Math.max(move.minLeftPx, Math.min(snapped, move.maxLeftPx))
+    const moved = move.moved || Math.abs(delta) >= DRAG_PX_THRESHOLD
+    if (leftPx === move.leftPx && moved === move.moved) return
+    setMove({ ...move, leftPx, moved })
+  }
+
+  const onMoveUp = () => {
+    if (move?.moved) {
+      const startMin = pxToMinute(axis.segments, move.leftPx)
+      const endMin = pxToMinute(axis.segments, move.leftPx + move.widthPx)
+      if (startMin != null && endMin != null) {
+        setPending({ planId: move.planId, leftPx: move.leftPx, widthPx: move.widthPx })
+        onPlanUpdate?.({
+          planId: move.planId,
+          startMin: Math.round(startMin),
+          endMin: Math.round(endMin),
+        })
+      }
+    }
+    setMove(null)
+  }
+
   // Start dragging one edge of an existing plan. The wall on the far side is
   // the neighbouring plan (or the axis end); the near wall is the past floor.
   const startResize = (
@@ -220,6 +303,7 @@ export function PinnedDesktopBar({
   ) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     event.stopPropagation()
+    setPending(null)
     const stepPx = snapStepPx(axis.segments, block.startPx)
     if (stepPx <= 0) return
     const floorPx = planFloorPx(axis.segments, now)
@@ -258,10 +342,16 @@ export function PinnedDesktopBar({
     if (!resize) return
     const startPx = resize.edge === 'start' ? resize.edgePx : resize.startPx
     const endPx = resize.edge === 'end' ? resize.edgePx : resize.endPx
+    const originalEdge = resize.edge === 'start' ? resize.startPx : resize.endPx
     const startMin = pxToMinute(axis.segments, startPx)
     const endMin = pxToMinute(axis.segments, endPx)
-    if (startMin != null && endMin != null && endPx > startPx) {
-      onPlanResize?.({
+    if (resize.edgePx !== originalEdge && startMin != null && endMin != null && endPx > startPx) {
+      setPending({
+        planId: resize.planId,
+        leftPx: startPx,
+        widthPx: endPx - startPx,
+      })
+      onPlanUpdate?.({
         planId: resize.planId,
         startMin: Math.round(startMin),
         endMin: Math.round(endMin),
@@ -284,17 +374,15 @@ export function PinnedDesktopBar({
     return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
   })()
 
-  const resizeLeft = resize ? (resize.edge === 'start' ? resize.edgePx : resize.startPx) : 0
-  const resizeWidth = resize
-    ? (resize.edge === 'end' ? resize.edgePx : resize.endPx) - resizeLeft
-    : 0
-  const resizeLabel = (() => {
-    if (!resize || resizeWidth <= 0) return null
-    const startMin = pxToMinute(axis.segments, resizeLeft)
-    const endMin = pxToMinute(axis.segments, resizeLeft + resizeWidth)
-    if (startMin == null || endMin == null) return null
-    return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
-  })()
+  // The live geometry that replaces the stored block during a gesture. There is
+  // deliberately no "before" outline: the block itself moves.
+  const resizeStartPx = resize ? (resize.edge === 'start' ? resize.edgePx : resize.startPx) : 0
+  const resizeEndPx = resize ? (resize.edge === 'end' ? resize.edgePx : resize.endPx) : 0
+  const planOverride: PlanOverride | null = resize
+    ? { planId: resize.planId, leftPx: resizeStartPx, widthPx: resizeEndPx - resizeStartPx }
+    : move
+      ? { planId: move.planId, leftPx: move.leftPx, widthPx: move.widthPx }
+      : pending
 
   return (
     <div
@@ -342,8 +430,20 @@ export function PinnedDesktopBar({
               onPointerUp={onLanePointerUp}
               onPointerCancel={() => setDrag(null)}
             >
-              <RowTrack row={row} />
-              {onPlanResize &&
+              <RowTrack row={row} planOverride={planOverride} />
+              {onPlanUpdate &&
+                row.planBlocks.map((block) => (
+                  <span
+                    key={`${block.id}-body`}
+                    onPointerDown={(event) => startMove(event, block)}
+                    onPointerMove={onMoveMove}
+                    onPointerUp={onMoveUp}
+                    onPointerCancel={() => setMove(null)}
+                    className="absolute top-0 bottom-0 z-[3] cursor-grab active:cursor-grabbing"
+                    style={{ left: block.startPx, width: block.endPx - block.startPx }}
+                  />
+                ))}
+              {onPlanUpdate &&
                 row.planBlocks.map((block) => (
                   <Fragment key={block.id}>
                     {(['start', 'end'] as const).map((edge) => (
@@ -361,18 +461,6 @@ export function PinnedDesktopBar({
                     ))}
                   </Fragment>
                 ))}
-              {resize && resizeWidth > 0 && (
-                <div
-                  className="border-primary bg-primary/15 pointer-events-none absolute inset-y-0 rounded-[2px] border border-dashed"
-                  style={{ left: resizeLeft, width: resizeWidth }}
-                >
-                  {resizeLabel && (
-                    <span className="bg-primary-tint text-primary absolute -top-4 left-0 block w-max rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap">
-                      {resizeLabel}
-                    </span>
-                  )}
-                </div>
-              )}
               {drag && dragWidth >= DRAG_PX_THRESHOLD && (
                 <div
                   className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 rounded-[2px] border border-dashed"

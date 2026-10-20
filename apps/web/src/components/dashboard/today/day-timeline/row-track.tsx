@@ -1,6 +1,15 @@
-import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import type { TimelinePlanVM, TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
 import { Fragment } from 'react'
 import { barClass } from '../bar-style'
+
+// The plan currently being moved or resized. Its live geometry replaces the
+// stored piece(s) while the gesture is active, so the block follows the pointer
+// without a second "before" outline.
+export type PlanOverride = {
+  planId: TimelinePlanVM['id']
+  leftPx: number
+  widthPx: number
+}
 
 // Where a done-label starts after its dot, and the clear space kept before the
 // next dot. `DOT_LABEL_MAX` bounds the last label on the lane.
@@ -14,7 +23,17 @@ const DOT_LABEL_MAX = 160
 //
 // Your lane is the hero of the surface: a taller capsule with an inset ring and
 // bigger done-dots.
-export function RowTrack({ row }: { row: TimelineRowVM }) {
+export function RowTrack({
+  row,
+  planOverride,
+}: {
+  row: TimelineRowVM
+  planOverride?: PlanOverride | null
+}) {
+  const overridden = planOverride
+    ? row.plans.findIndex((plan) => plan.id === planOverride.planId)
+    : -1
+
   return (
     <div
       className={`relative w-full rounded-full ${
@@ -23,16 +42,22 @@ export function RowTrack({ row }: { row: TimelineRowVM }) {
           : 'h-2.5 bg-white/[0.035]'
       }`}
     >
-      {row.plans.map((plan, i) => (
-        <div
-          key={`plan-${i}`}
-          title={plan.missed ? 'Missed plan' : 'Planned session'}
-          className={`absolute top-0 bottom-0 rounded-[2px] border border-dashed ${
-            plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
-          }`}
-          style={{ left: plan.leftPx, width: plan.widthPx }}
-        />
-      ))}
+      {row.plans.map((plan, i) => {
+        // A plan split by the night band has several pieces; the override covers
+        // the first one and hides the rest, so the gesture never doubles a block.
+        if (planOverride && plan.id === planOverride.planId && i !== overridden) return null
+        const live = planOverride && i === overridden ? planOverride : plan
+        return (
+          <div
+            key={`plan-${i}`}
+            title={plan.missed ? 'Missed plan' : 'Planned session'}
+            className={`absolute top-0 bottom-0 rounded-[2px] border border-dashed ${
+              plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
+            }`}
+            style={{ left: live.leftPx, width: live.widthPx }}
+          />
+        )
+      })}
       {row.bars.map((bar, i) => (
         <div
           key={i}

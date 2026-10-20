@@ -221,7 +221,7 @@ describe('toTimelineRows', () => {
     }
     const rows = toTimelineRows([planned], input())
     expect(rows[0].plans).toEqual([
-      { leftPx: CORE_LEFT + 10 * PX_PER_HOUR, widthPx: PX_PER_HOUR, missed: false },
+      { id: 'p1', leftPx: CORE_LEFT + 10 * PX_PER_HOUR, widthPx: PX_PER_HOUR, missed: false },
     ])
     expect(rows[0].planBlocks).toEqual([
       {

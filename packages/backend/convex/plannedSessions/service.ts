@@ -33,7 +33,7 @@ export async function createPlan(
 
 // Move one edge of an owned plan. The window keeps the stored Day; only the two
 // instants change, so a plan can never be dragged onto another Day.
-export async function resizePlan(
+export async function updatePlan(
   ctx: MutationCtx,
   planId: Id<'plannedSession'>,
   plannedStart: number,

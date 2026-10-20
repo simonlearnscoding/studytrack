@@ -180,7 +180,7 @@ function toRow(
       window.segments,
       plannedStartMin,
       plannedEndMin,
-      (leftPx, widthPx) => plans.push({ leftPx, widthPx, missed }),
+      (leftPx, widthPx) => plans.push({ id: plan.id, leftPx, widthPx, missed }),
       () => {}
     )
 

@@ -183,7 +183,7 @@ describe('plannedSessions.create', () => {
   })
 })
 
-describe('plannedSessions.resize', () => {
+describe('plannedSessions.update', () => {
   beforeAll(() => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
@@ -198,7 +198,7 @@ describe('plannedSessions.resize', () => {
     await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
     const [row] = await rowsOf(t)
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.resize, {
+    await t.withIdentity(ADA).mutation(api.plannedSessions.update, {
       planId: row._id,
       plannedStart: START + 30 * 60_000,
       plannedEnd: END,
@@ -218,7 +218,7 @@ describe('plannedSessions.resize', () => {
     const [first] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(ADA).mutation(api.plannedSessions.resize, {
+      t.withIdentity(ADA).mutation(api.plannedSessions.update, {
         planId: first._id,
         plannedStart: START,
         plannedEnd: END + 30 * 60_000,
@@ -234,7 +234,7 @@ describe('plannedSessions.resize', () => {
     const [row] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(BOB).mutation(api.plannedSessions.resize, {
+      t.withIdentity(BOB).mutation(api.plannedSessions.update, {
         planId: row._id,
         plannedStart: START,
         plannedEnd: END + H,
@@ -249,7 +249,7 @@ describe('plannedSessions.resize', () => {
     const [row] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(ADA).mutation(api.plannedSessions.resize, {
+      t.withIdentity(ADA).mutation(api.plannedSessions.update, {
         planId: row._id,
         plannedStart: DAY + 11 * H,
         plannedEnd: END,

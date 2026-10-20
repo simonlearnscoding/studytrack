@@ -51,7 +51,12 @@ export type TimelineDotVM = { leftPx: number; title: string }
 // A planned session block on the lane. `missed` marks a window that has passed
 // without any voice evidence. A plan can be cut by a collapsed night band, so it
 // is emitted as one piece per visible segment.
-export type TimelinePlanVM = { leftPx: number; widthPx: number; missed: boolean }
+export type TimelinePlanVM = {
+  id: Id<'plannedSession'>
+  leftPx: number
+  widthPx: number
+  missed: boolean
+}
 
 // A plan's visible window on the axis, used by the drag gesture as a wall: a
 // new plan may not start inside it or be dragged across it.
