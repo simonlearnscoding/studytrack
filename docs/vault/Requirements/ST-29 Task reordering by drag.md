@@ -1,6 +1,6 @@
 ---
 id: ST-29
-status: todo
+status: in-review
 type: requirement
 priority: B
 area: requirements
@@ -90,10 +90,10 @@ pointer drag because that code is about time geometries, not list indices.
 ```text
 task:
   ...existing fields...
-  position: number        required; contiguous 0..n-1 within (userId, plannedAt)
+  position: number?       optional on arrival, then backfilled; 0..n-1 within
+                          (userId, plannedAt). Missing = fall back to creation order.
   indexes:
-    by_userId_plannedAt           (userId, plannedAt)          existing
-    by_userId_plannedAt_position  (userId, plannedAt, position) new — the ordered read
+    by_userId_plannedAt    (userId, plannedAt)   existing — still the Day read
 ```
 
 - `position` is a plain integer. Contiguous positions, rewritten on drop. A
@@ -104,18 +104,24 @@ task:
   pointers, so ordering would move into JavaScript, `.order()` and bounded
   `.take()` would stop being usable, and cycles / orphans / concurrent-splice
   corruption become states the database can hold.
-- The ordered read uses the new three-field index with `.order('asc')`. The
-  existing `by_userId_plannedAt` index stays for the completion/refresh reads
-  that do not care about order.
+- **Ordering happens in memory over the bounded Day read**, not through a
+  third index field. The read is already capped at 200 rows, and a
+  `(userId, plannedAt, position)` index would silently hide rows whose
+  `position` is still missing between the first deploy and the backfill. The
+  comparator is `position`, then `_creationTime`, with unpositioned rows after
+  positioned ones. One index, one read, no state where half a Day disappears.
 
 **Read contract.** `listMine({ dayStart })` returns the caller's tasks for that
-Day ordered by `position` ascending. Unauthenticated callers still get `[]`. The
-Day still comes from the caller; the query never reads the wall clock.
+Day in manual order: the Day's bounded read (newest-first by creation, capped),
+then sorted by `position` with creation order as the fallback. Unauthenticated
+callers still get `[]`. The Day still comes from the caller; the query never reads
+the wall clock.
 
 **Create.** `create({ title, plannedAt })` keeps its validation and appends by
-reading the highest `position` for that `(userId, plannedAt)` through the new
-index (`.order('desc').first()`), then inserting at `max + 1` (or `0` when the
-Day is empty). A new task therefore lands at the bottom, as today.
+reading the Day's tasks and taking the highest `position` plus one (or `0` when
+the Day is empty). A new task therefore lands at the bottom, as today. While any
+task of the Day is still unpositioned, the new task is inserted with no position
+too, so creation order keeps putting it last.
 
 **Reorder contract.** `reorder({ dayStart, orderedTaskIds })`:
 
@@ -167,14 +173,13 @@ separate piece of work and is not built here.
 **Ownership and auth.** Unchanged: every mutation resolves the Clerk identity and
 checks the task's owner; missing and foreign tasks share one error message.
 
-**Migration.** `position` arrives **optional** in the first deploy (a required
-field cannot be added to a table that already has rows), then a one-off internal
-mutation walks each `(userId, plannedAt)` group in `_creationTime` order and
-stamps `0..n-1`, then a second deploy makes the field required and the read
-switches to the ordered index. Between the two deploys the list must not silently
-empty out: either the read keeps its current `_creationTime` ordering until the
-backfill has run, or the dev data is reset. Real rows are dev/test data today,
-so a reset is acceptable; the two-step path is documented for safety.
+**Migration.** `position` ships **optional**, so the deploy cannot fail against
+rows that predate the field, and the read falls back to creation order until the
+backfill has run. A one-off internal mutation then walks each
+`(userId, plannedAt)` group in `_creationTime` order and stamps `0..n-1`;
+idempotent, safe to rerun. The field can be tightened to required later, once
+every deployment has run the backfill — this ticket does not require it, because
+the fallback comparator already covers unpositioned rows.
 
 **Docs.** `docs/domain-session-vs-plan.md` is not touched. `GLOSSARY.md` is not
 touched in this slice.
@@ -199,10 +204,10 @@ rejects. Never internal helpers, never raw row shapes beyond the model.
 - reordering does not change the active pointer, `done`, or `completedAt`;
 - unauthenticated calls are rejected / return `[]` as today.
 
-**Seam 2 — a pure ordering helper** (plain Vitest) if the "assign positions,
-then append the leftovers" logic is extracted: given the day's ids, the requested
-order and an extra id, it returns the final assignment. Prior art:
-`tasks/util.test.ts`.
+**Seam 2 — the pure ordering helpers** (plain Vitest): `byPosition` (position
+first, creation order as fallback and tie-break, unpositioned rows last) and
+`planOrder` (sent ids in order, then the Day's leftovers, unknown id throws).
+Prior art: `tasks/util.test.ts`.
 
 The web side is not unit-tested for drag mechanics. The interaction is verified by
 hand: click still toggles, buttons still work, overlay follows the pointer,
