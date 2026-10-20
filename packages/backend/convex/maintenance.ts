@@ -3,6 +3,18 @@ import { v } from 'convex/values'
 import { rollupDay } from './dailyTotals/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from './sessions/util'
 
+// Destructive maintenance: wipe every planned session. A one-off reset for dev
+// or a rule change (e.g. before overlap prevention shipped). Internal only —
+// CLI/dashboard, never a client.
+export const clearPlannedSessions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const plans = await ctx.db.query('plannedSession').collect()
+    for (const plan of plans) await ctx.db.delete(plan._id)
+    return { deletedPlans: plans.length }
+  },
+})
+
 // Destructive maintenance: delete one member's chosen sessions (and their
 // partials), then re-roll every affected closed Day so the dailyTotal cache
 // stops counting the removed time. Internal only — CLI/dashboard, never a
