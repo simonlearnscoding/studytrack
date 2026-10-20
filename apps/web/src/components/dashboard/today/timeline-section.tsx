@@ -162,7 +162,7 @@ export function TimelineSection() {
             style={{ position: 'fixed', left: popup.x, top: popup.y, width: 0, height: 0 }}
           />
         )}
-        <PopoverContent side="bottom" align="start" sideOffset={8} className="w-80 p-4">
+        <PopoverContent side="bottom" align="start" sideOffset={8} className="w-64 p-3">
           {popup && (
             <SessionPopupContent
               key={popup.data.kind === 'plan' ? popup.data.planId : popup.data.sessionId}

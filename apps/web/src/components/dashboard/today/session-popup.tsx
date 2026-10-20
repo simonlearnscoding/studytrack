@@ -48,25 +48,24 @@ export function SessionPopupContent({
 
   return (
     <>
-      <div className="min-w-0">
-        <span className="text-label">{status}</span>
-        <h2 className="text-title mt-1.5">{title}</h2>
-        {data.member && <p className="text-caption mt-0.5">{data.member}</p>}
+      <div className="text-xs text-muted-foreground">
+        <p>
+          {status}
+          {data.member ? ` · ${data.member}` : ''}
+        </p>
+        <p className="mt-1 font-semibold text-foreground">{title}</p>
+        <p className="mt-1 font-mono">
+          {formatClock(toMinute(data.startAt, dayStart))} – {formatClock(toMinute(endAt, dayStart))}{' '}
+          · {formatDurationHM(endAt - data.startAt)}
+        </p>
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2 font-mono">
-        <span className="text-metric text-foreground">
-          {formatClock(toMinute(data.startAt, dayStart))} – {formatClock(toMinute(endAt, dayStart))}
-        </span>
-        <span className="text-caption">{formatDurationHM(endAt - data.startAt)}</span>
-      </div>
-
-      <div className="mt-4 border-t border-white/[0.06] pt-3">
-        <span className="text-label">
+      <div className="mt-3 border-t border-white/[0.06] pt-2.5">
+        <p className="text-xs text-muted-foreground">
           {data.kind === 'plan' ? 'Tasks planned' : 'Tasks in this session'}
-        </span>
+        </p>
         {data.tasks.length === 0 ? (
-          <p className="text-caption mt-2">
+          <p className="mt-1.5 text-xs text-muted-foreground">
             {data.kind === 'plan'
               ? 'No tasks linked to this plan yet.'
               : 'No tasks in this session.'}
@@ -74,9 +73,12 @@ export function SessionPopupContent({
         ) : (
           <ul className="mt-2 flex max-h-56 flex-col gap-2 overflow-y-auto">
             {data.tasks.map((task) => (
-              <li key={task.id} className="flex items-start justify-between gap-3">
-                <span className="text-body min-w-0">{task.title}</span>
-                <span className="text-caption shrink-0 font-mono">
+              <li
+                key={task.id}
+                className="flex items-start justify-between gap-3 text-xs text-muted-foreground"
+              >
+                <span className="min-w-0 text-foreground/90">{task.title}</span>
+                <span className="shrink-0 font-mono">
                   {task.completedAt !== null
                     ? `done ${formatClock(toMinute(task.completedAt, dayStart))}`
                     : task.planned
@@ -90,10 +92,10 @@ export function SessionPopupContent({
       </div>
 
       {data.kind === 'plan' && onRemove && (
-        <div className="mt-4 flex items-center justify-end gap-2 border-t border-white/[0.06] pt-3">
+        <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/[0.06] pt-2.5">
           {confirming ? (
             <>
-              <span className="text-caption mr-auto">Remove this plan?</span>
+              <span className="mr-auto text-xs text-muted-foreground">Remove this plan?</span>
               <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
                 Cancel
               </Button>
