@@ -1,9 +1,9 @@
-import type { TimelineBarVM, TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
 import { useRef, type RefObject } from 'react'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { RowName } from './row-name'
-import { RowTrack } from './row-track'
+import { RowTrack, type SessionClick } from './row-track'
 import type { AxisSurface } from './types'
 import { useMirrorScroll } from './use-mirror-scroll'
 
@@ -20,7 +20,7 @@ export function PinnedMobileLane({
   row: TimelineRowVM
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
-  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   useMirrorScroll(scrollerRef, mirrorRef)

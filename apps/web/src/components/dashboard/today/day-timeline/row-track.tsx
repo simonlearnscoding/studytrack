@@ -15,6 +15,13 @@ export type PlanOverride = {
   widthPx: number
 }
 
+// A click on a session bar, with the viewport point the popover should anchor to.
+export type SessionClick = {
+  sessionId: TimelineBarVM['sessionId']
+  x: number
+  y: number
+}
+
 // Where a done-label starts after its dot, and the clear space kept before the
 // next dot. `DOT_LABEL_MAX` bounds the last label on the lane.
 const DOT_LABEL_LEAD = 6
@@ -34,7 +41,7 @@ export function RowTrack({
 }: {
   row: TimelineRowVM
   planOverride?: PlanOverride | null
-  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const overridden = planOverride
     ? row.plans.findIndex((plan) => plan.id === planOverride.planId)
@@ -75,7 +82,12 @@ export function RowTrack({
             onSessionClick
               ? (event) => {
                   event.stopPropagation()
-                  onSessionClick(bar.sessionId)
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  onSessionClick({
+                    sessionId: bar.sessionId,
+                    x: event.clientX || rect.left,
+                    y: event.clientY || rect.top,
+                  })
                 }
               : undefined
           }
@@ -84,7 +96,8 @@ export function RowTrack({
               ? (event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return
                   event.preventDefault()
-                  onSessionClick(bar.sessionId)
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  onSessionClick({ sessionId: bar.sessionId, x: rect.left, y: rect.top })
                 }
               : undefined
           }

@@ -17,7 +17,7 @@ import { LiveDot } from '../../live-dot'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { pxToMinute } from './px-to-minute'
-import { RowTrack, type PlanOverride } from './row-track'
+import { RowTrack, type PlanOverride, type SessionClick } from './row-track'
 import type { AxisSurface } from './types'
 import { useMirrorScroll } from './use-mirror-scroll'
 
@@ -33,7 +33,7 @@ export type PlanUpdate = {
   startMin: number
   endMin: number
 }
-export type PlanClick = PlanUpdate
+export type PlanClick = PlanUpdate & { x: number; y: number }
 
 // The earliest pixel a plan may start: the first 15-minute mark at and after
 // "now". A plan never contains a past minute (LD-6), so this is the wall both
@@ -126,7 +126,7 @@ export function PinnedDesktopBar({
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
   onPlanClick?: (click: PlanClick) => void
-  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -284,7 +284,7 @@ export function PinnedDesktopBar({
     setMove({ ...move, leftPx, moved })
   }
 
-  const onMoveUp = () => {
+  const onMoveUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (move?.moved) {
       const startMin = pxToMinute(axis.segments, move.leftPx)
       const endMin = pxToMinute(axis.segments, move.leftPx + move.widthPx)
@@ -305,6 +305,8 @@ export function PinnedDesktopBar({
           planId: move.planId,
           startMin: Math.round(startMin),
           endMin: Math.round(endMin),
+          x: event.clientX,
+          y: event.clientY,
         })
       }
     }

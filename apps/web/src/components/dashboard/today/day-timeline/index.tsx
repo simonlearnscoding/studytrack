@@ -9,6 +9,7 @@ import { PinnedMobileLane } from './mobile-lane'
 import { NamesColumn } from './names-column'
 import { nightBands } from './night-bands'
 import { TrackLegend } from './track-legend'
+import type { SessionClick } from './row-track'
 import { TrackScroller } from './track-scroller'
 import { useCentreOnNow } from './use-centre-on-now'
 
@@ -45,7 +46,7 @@ export function DayTimeline({
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
   onPlanClick?: (click: PlanClick) => void
-  onSessionClick?: (sessionId: TimelineBarVM['sessionId']) => void
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const yourRow = rows.find((row) => row.you)
   const { bands, hidden } = nightBands(axis, rows)

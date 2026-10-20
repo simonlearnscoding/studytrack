@@ -7,18 +7,19 @@ import {
   toTimelineRows,
 } from '@studytrack/backend/convex/timeline/util'
 import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
-import type { TimelineBarVM } from '@studytrack/backend/convex/timeline/types'
 import { useMutation } from 'convex/react'
 import { useRef, useState } from 'react'
 import { useMounted } from '~/hooks/use-mounted'
 import { cn } from '~/lib/utils'
+import { Popover, PopoverAnchor, PopoverContent } from '~/components/ui/popover'
 import { DayTimeline } from './day-timeline'
 import type { PlanClick } from './day-timeline/desktop-bar'
+import type { SessionClick } from './day-timeline/row-track'
 import { useAutoExpansion } from './use-auto-expansion'
 import { useElementWidth } from './use-element-width'
 import { useExpansionPreference } from './use-expansion-preference'
 import { useTimeline } from './use-timeline'
-import { SessionPopup, type SessionPopupData } from './session-popup'
+import { SessionPopupContent, type SessionPopupData } from './session-popup'
 import { TimelineSkeleton } from './timeline-skeleton'
 import { useMetricStore } from '~/state/metric.store'
 
@@ -42,7 +43,7 @@ export function TimelineSection() {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
   const nowMin = toMinute(now, dayStart)
-  const [popup, setPopup] = useState<SessionPopupData | null>(null)
+  const [popup, setPopup] = useState<{ data: SessionPopupData; x: number; y: number } | null>(null)
   const [manual, toggleBand] = useExpansionPreference()
   const auto = useAutoExpansion(nowMin)
   const createPlan = useMutation(api.plannedSessions.create)
@@ -70,28 +71,36 @@ export function TimelineSection() {
     const startAt = plan?.startAt ?? dayStart + click.startMin * 60_000
     const endAt = plan?.endAt ?? dayStart + click.endMin * 60_000
     setPopup({
-      kind: 'plan',
-      planId: click.planId,
-      member: owner?.name ?? owner?.discordId ?? null,
-      startAt,
-      endAt,
-      missed: owner ? planMissed(owner, startAt, endAt, now) : false,
-      tasks: [],
+      x: click.x,
+      y: click.y,
+      data: {
+        kind: 'plan',
+        planId: click.planId,
+        member: owner?.name ?? owner?.discordId ?? null,
+        startAt,
+        endAt,
+        missed: owner ? planMissed(owner, startAt, endAt, now) : false,
+        tasks: [],
+      },
     })
   }
 
-  const openSession = (sessionId: TimelineBarVM['sessionId']) => {
+  const openSession = (click: SessionClick) => {
     for (const member of members ?? []) {
-      const session = member.sessions.find((entry) => entry.id === sessionId)
+      const session = member.sessions.find((entry) => entry.id === click.sessionId)
       if (!session) continue
       setPopup({
-        kind: 'session',
-        sessionId,
-        member: member.name ?? member.discordId,
-        startAt: session.startedAt,
-        endAt: session.endedAt,
-        live: session.status === 'active',
-        tasks: session.tasks,
+        x: click.x,
+        y: click.y,
+        data: {
+          kind: 'session',
+          sessionId: click.sessionId,
+          member: member.name ?? member.discordId,
+          startAt: session.startedAt,
+          endAt: session.endedAt,
+          live: session.status === 'active',
+          tasks: session.tasks,
+        },
       })
       return
     }
@@ -132,7 +141,22 @@ export function TimelineSection() {
         />
       </div>
       {!ready && <TimelineSkeleton className="absolute inset-0" />}
-      <SessionPopup data={popup} dayStart={dayStart} now={now} onClose={() => setPopup(null)} />
+      <Popover
+        open={popup !== null}
+        onOpenChange={(open) => {
+          if (!open) setPopup(null)
+        }}
+      >
+        {popup && (
+          <PopoverAnchor
+            aria-hidden
+            style={{ position: 'fixed', left: popup.x, top: popup.y, width: 0, height: 0 }}
+          />
+        )}
+        <PopoverContent side="bottom" align="start" sideOffset={8} className="w-80 p-4">
+          {popup && <SessionPopupContent data={popup.data} dayStart={dayStart} now={now} />}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
