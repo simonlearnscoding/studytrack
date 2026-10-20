@@ -82,6 +82,11 @@ export function TimelineSection() {
               plannedEnd: dayStart + span.endMin * 60_000,
             }).catch((error) => console.error('[studytrack] plan change failed', error))
           }}
+          onPlanClick={(click) => {
+            // Harness: clicks and drags are separate interactions. Replace with
+            // the real detail surface when it exists.
+            console.log('[studytrack] planned session clicked', click)
+          }}
           onPlanUpdate={(update) => {
             void updatePlan({
               planId: update.planId,

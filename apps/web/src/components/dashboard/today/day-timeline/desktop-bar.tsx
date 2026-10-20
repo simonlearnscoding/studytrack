@@ -32,6 +32,7 @@ export type PlanUpdate = {
   startMin: number
   endMin: number
 }
+export type PlanClick = PlanUpdate
 
 // The earliest pixel a plan may start: the first 15-minute mark at and after
 // "now". A plan never contains a past minute (LD-6), so this is the wall both
@@ -114,6 +115,7 @@ export function PinnedDesktopBar({
   scrollerRef,
   onPlanDrag,
   onPlanUpdate,
+  onPlanClick,
 }: {
   surface: AxisSurface
   row?: TimelineRowVM
@@ -121,6 +123,7 @@ export function PinnedDesktopBar({
   scrollerRef: RefObject<HTMLDivElement | null>
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
+  onPlanClick?: (click: PlanClick) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -285,6 +288,17 @@ export function PinnedDesktopBar({
       if (startMin != null && endMin != null) {
         setPending({ planId: move.planId, leftPx: move.leftPx, widthPx: move.widthPx })
         onPlanUpdate?.({
+          planId: move.planId,
+          startMin: Math.round(startMin),
+          endMin: Math.round(endMin),
+        })
+      }
+    } else if (move) {
+      // A press-and-release under the drag threshold is a click, not a move.
+      const startMin = pxToMinute(axis.segments, move.startPx)
+      const endMin = pxToMinute(axis.segments, move.startPx + move.widthPx)
+      if (startMin != null && endMin != null) {
+        onPlanClick?.({
           planId: move.planId,
           startMin: Math.round(startMin),
           endMin: Math.round(endMin),
