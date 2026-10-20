@@ -21,7 +21,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { handleComposerEscape, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { TaskItem } from './task-item'
 import { TaskOverlay } from './task-overlay'
 import type { TaskId } from './task-types'
@@ -93,6 +93,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
             ref={inputRef}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={(event) => handleComposerEscape(event, () => setTitle(''))}
             placeholder=" "
             aria-label="New task"
             className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"
