@@ -62,6 +62,7 @@ export function ConsistencyBoard({
     .map((row, i) => ({ ...row, rank: i + 1 }))
   const visible = expanded ? rows : rows.slice(0, initial)
   const hidden = Math.max(0, rows.length - initial)
+  const isEmpty = rows.length === 0
 
   // shared by the header and body rows so the column buttons sit exactly over
   // the values they sort
@@ -89,47 +90,57 @@ export function ConsistencyBoard({
           </button>
         ))}
       </div>
-      {visible.map((b) => {
-        // The Week is the lead row; a member the Week misses falls back to Month.
-        const lead = b.week ?? b.month
-        if (!lead) return null
-        return (
-          <div
-            key={b.key}
-            className={`grid items-center border-b border-white/[0.04] ${grid} ${
-              lead.you ? 'bg-primary/5 rounded-lg' : ''
-            }`}
-          >
-            <span
-              className={`text-subtle-foreground font-mono ${compact ? 'text-sm' : 'text-base'}`}
+      {isEmpty ? (
+        <div
+          className={`flex items-center justify-center px-4 ${compact ? 'min-h-44' : 'min-h-48'}`}
+        >
+          <p className="text-body text-center text-muted-foreground">
+            No sessions yet. Join a study voice channel to start the board.
+          </p>
+        </div>
+      ) : (
+        visible.map((b) => {
+          // The Week is the lead row; a member the Week misses falls back to Month.
+          const lead = b.week ?? b.month
+          if (!lead) return null
+          return (
+            <div
+              key={b.key}
+              className={`grid items-center border-b border-white/[0.04] ${grid} ${
+                lead.you ? 'bg-primary/5 rounded-lg' : ''
+              }`}
             >
-              #{b.rank}
-            </span>
-            <Avatar initials={lead.initials} color={lead.color} size={24} />
-            <p className={`truncate text-white/70 ${compact ? 'text-sm' : 'text-base'}`}>
-              {lead.name}
-              {lead.you && <span className="text-primary ml-1.5 text-base">you</span>}
-            </p>
-            {periods.map((p) => {
-              const cell = rowFor(b, p)
-              return (
-                <span
-                  key={p}
-                  className={`text-right font-mono transition-colors ${compact ? 'text-sm' : 'text-base'} ${
-                    cell
-                      ? sort === p
-                        ? 'text-foreground/75'
-                        : 'text-subtle-foreground'
-                      : 'text-hint'
-                  }`}
-                >
-                  {cell ? fmtHrs(cell[metric]) : '—'}
-                </span>
-              )
-            })}
-          </div>
-        )
-      })}
+              <span
+                className={`text-subtle-foreground font-mono ${compact ? 'text-sm' : 'text-base'}`}
+              >
+                #{b.rank}
+              </span>
+              <Avatar initials={lead.initials} color={lead.color} size={24} />
+              <p className={`truncate text-white/70 ${compact ? 'text-sm' : 'text-base'}`}>
+                {lead.name}
+                {lead.you && <span className="text-primary ml-1.5 text-base">you</span>}
+              </p>
+              {periods.map((p) => {
+                const cell = rowFor(b, p)
+                return (
+                  <span
+                    key={p}
+                    className={`text-right font-mono transition-colors ${compact ? 'text-sm' : 'text-base'} ${
+                      cell
+                        ? sort === p
+                          ? 'text-foreground/75'
+                          : 'text-subtle-foreground'
+                        : 'text-hint'
+                    }`}
+                  >
+                    {cell ? fmtHrs(cell[metric]) : '—'}
+                  </span>
+                )
+              })}
+            </div>
+          )
+        })
+      )}
       {hidden > 0 && (
         <button
           type="button"
