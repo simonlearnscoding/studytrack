@@ -10,6 +10,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
@@ -129,16 +130,18 @@ function clampToPlans(
 // Gestures: wheel over the bar pans the timeline (forwarded to the real
 // scroller — the bar itself is a picture, not a scroll box). A drag across your
 // lane is a *planning* gesture (LD-6), not a pan: it previews a dashed span
-// live and reports `{ startMin, endMin }` on release. Planning is future-only —
-// the preview refuses to snap back past now's quarter-hour, and a drag that
-// begins before now plans nothing. Mobile plans by tap instead — see the pinned
-// mobile lane.
+// live and reports `{ startMin, endMin }` on release. A double-click on empty
+// future lane creates a one-hour plan at that position instead. Planning is
+// future-only — the preview refuses to snap back past now's quarter-hour, and a
+// drag or double-click that begins before now plans nothing. Mobile plans by
+// tap instead — see the pinned mobile lane.
 export function PinnedDesktopBar({
   surface: { axis, bands, hidden, locked, onToggleBand },
   row,
   nowLabel,
   scrollerRef,
   onPlanDrag,
+  onPlanDoubleClick,
   onPlanUpdate,
   onPlanClick,
   onSessionClick,
@@ -148,6 +151,7 @@ export function PinnedDesktopBar({
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
   onPlanDrag?: (span: PlanDrag) => void
+  onPlanDoubleClick?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
   onPlanClick?: (click: PlanClick) => void
   onSessionClick?: (click: SessionClick) => void
@@ -215,7 +219,7 @@ export function PinnedDesktopBar({
     return () => clearTimeout(timer)
   }, [pending])
 
-  const lanePx = (event: ReactPointerEvent) => {
+  const lanePx = (event: { clientX: number }) => {
     const mirror = mirrorRef.current
     if (!mirror) return 0
     const px = event.clientX - mirror.getBoundingClientRect().left
@@ -262,6 +266,23 @@ export function PinnedDesktopBar({
       }
     }
     setDrag(null)
+  }
+
+  // Double-click the empty future lane for a one-hour plan snapped to the same
+  // quarter-hour grid as a drag. Start on a plan or in the past plans nothing.
+  const onLaneDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    const px = lanePx(event)
+    const floorPx = planFloorPx(axis.segments, now)
+    if (px < floorPx) return
+    const startPx = snapPx(axis.segments, px, floorPx)
+    if (insidePlan(startPx, row?.planBlocks ?? [])) return
+    const startMin = pxToMinute(axis.segments, startPx)
+    if (startMin == null) return
+    onPlanDoubleClick?.({
+      startMin: Math.round(startMin),
+      endMin: Math.round(startMin) + 60,
+    })
   }
 
   // Start moving a whole block. Duration is frozen; the legal left range is the
@@ -478,6 +499,7 @@ export function PinnedDesktopBar({
               onPointerMove={onLanePointerMove}
               onPointerUp={onLanePointerUp}
               onPointerCancel={() => setDrag(null)}
+              onDoubleClick={onLaneDoubleClick}
             >
               <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
               {onPlanUpdate &&

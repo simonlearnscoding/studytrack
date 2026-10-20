@@ -33,6 +33,7 @@ export function DayTimeline({
   locked,
   onToggleBand,
   onPlanDrag,
+  onPlanDoubleClick,
   onPlanUpdate,
   onPlanClick,
   onSessionClick,
@@ -44,6 +45,7 @@ export function DayTimeline({
   locked: boolean
   onToggleBand: () => void
   onPlanDrag?: (span: PlanDrag) => void
+  onPlanDoubleClick?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
   onPlanClick?: (click: PlanClick) => void
   onSessionClick?: (click: SessionClick) => void
@@ -81,6 +83,7 @@ export function DayTimeline({
             nowLabel={nowLabel}
             scrollerRef={scrollerRef}
             onPlanDrag={onPlanDrag}
+            onPlanDoubleClick={onPlanDoubleClick}
             onPlanUpdate={onPlanUpdate}
             onPlanClick={onPlanClick}
             onSessionClick={onSessionClick}

@@ -13,7 +13,7 @@ import { useMounted } from '~/hooks/use-mounted'
 import { cn } from '~/lib/utils'
 import { Popover, PopoverAnchor, PopoverContent } from '~/components/ui/popover'
 import { DayTimeline } from './day-timeline'
-import type { PlanClick } from './day-timeline/desktop-bar'
+import type { PlanClick, PlanDrag } from './day-timeline/desktop-bar'
 import type { SessionClick } from './day-timeline/row-track'
 import { useAutoExpansion } from './use-auto-expansion'
 import { useElementWidth } from './use-element-width'
@@ -86,6 +86,16 @@ export function TimelineSection() {
     })
   }
 
+  // Both planning gestures land on the same create mutation; the gesture decides
+  // the span (a drag draws it, a double-click asks for one hour).
+  const createPlanAt = (span: PlanDrag) => {
+    void createPlan({
+      dayStart,
+      plannedStart: dayStart + span.startMin * 60_000,
+      plannedEnd: dayStart + span.endMin * 60_000,
+    }).catch((error) => console.error('[studytrack] plan change failed', error))
+  }
+
   const removePopupPlan = () => {
     if (popup?.data.kind !== 'plan') return
     const planId = popup.data.planId
@@ -131,13 +141,8 @@ export function TimelineSection() {
           scrollerRef={scrollerRef}
           locked={auto.morning}
           onToggleBand={toggleBand}
-          onPlanDrag={(span) => {
-            void createPlan({
-              dayStart,
-              plannedStart: dayStart + span.startMin * 60_000,
-              plannedEnd: dayStart + span.endMin * 60_000,
-            }).catch((error) => console.error('[studytrack] plan change failed', error))
-          }}
+          onPlanDrag={createPlanAt}
+          onPlanDoubleClick={createPlanAt}
           onPlanClick={openPlan}
           onSessionClick={openSession}
           onPlanUpdate={(update) => {
