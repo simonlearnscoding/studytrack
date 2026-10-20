@@ -82,6 +82,11 @@ radius / shadow tokens. Never `font-bold`, `shadow-sm` on cards, magic
 `text-[Npx]` sizes, or hand-rolled ping/pulse dots. See
 `.agents/skills/design-tokens`.
 
+- Prefer a Tailwind scale value or a design token over an arbitrary value:
+  `rounded-sm`, not `rounded-[6px]`; `text-caption`, not `text-[11px]`. Use
+  `[...]` only when no scale step or token fits, and add a token when the same
+  arbitrary value repeats.
+
 ### Deploying
 
 Web and bot run as Docker containers on `simon@server`, the web exposed through
