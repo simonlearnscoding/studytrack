@@ -6,6 +6,10 @@ priority: B
 area: requirements
 ---
 
+> **Superseded in part by [[ST-27 Task planning and active task]]:** reads are by
+> the planned Day (`plannedAt`), not by `_creationTime`. The private-content
+> wording is superseded by ADR-0007. The owner CRUD rules below still apply.
+
 # Tasks spec
 
 **In short:** the private `task` table and its rules — add a Task, mark it Done

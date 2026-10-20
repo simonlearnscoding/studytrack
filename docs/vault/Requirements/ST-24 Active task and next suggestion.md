@@ -79,3 +79,11 @@ Locked 2026-10-15, after grilling:
 ## Related
 
 - [[ST-5 Tasks]] · [[Tasks spec]] · [[Lanes of the day]] · [[Future-session planning]]
+
+## Backend spec
+
+[[ST-27 Task planning and active task]] (ST-27) picks up the backend. It revises
+three decisions here: the Day list is newest-first (not oldest-first), the active
+pointer lives on the user row (not on the task), and it clears when the active
+task is completed. Session-scoped clearing is deferred until real tracking
+exists. Planned tasks also gain an explicit Session link and a planned Day.

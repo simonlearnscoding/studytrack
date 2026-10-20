@@ -32,3 +32,5 @@ Direction: [[Roadmap]].
 ## Self & presence
 
 - [[ST-24 Active task and next suggestion]] (ST-24): in-progress · optional active task visible to you and the room, plus an up-next suggestion (mock built; backend open)
+
+- [[ST-27 Task planning and active task]] (ST-27): todo · #ready-for-agent · backend for day-planned tasks, Session attribution, and the active task. Beta wiring follows.
