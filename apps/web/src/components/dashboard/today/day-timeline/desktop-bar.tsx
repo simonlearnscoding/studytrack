@@ -13,7 +13,6 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
-import { LiveDot } from '../../live-dot'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { pxToMinute } from './px-to-minute'
@@ -432,16 +431,11 @@ export function PinnedDesktopBar({
           <HourLabels ticks={axis.ticks} widthPx={axis.widthPx} className="top-3" />
           <NowPill label={nowLabel} left={now} className="-top-4 z-[7]" />
         </div>
-        {/* your lane — taller than the room's: a details line above the track,
-            and the track itself is the drag-to-plan surface. Without a
-            signed-in row the bar degrades to the hour strip. */}
+        {/* your lane — the taller hero track, and the drag-to-plan surface.
+            Your name, live dot and tail live in the pinned name cell, not here.
+            Without a signed-in row the bar degrades to the hour strip. */}
         {row && (
-          <div className="h-[5.5rem] pt-3">
-            <div className="mb-2 flex items-center gap-2">
-              {row.live && <LiveDot className="h-1.5 w-1.5 shrink-0 text-primary" />}
-              <span className="text-label">your day</span>
-              <span className="text-caption font-mono">{row.tail}</span>
-            </div>
+          <div className="h-12 pt-3">
             <div
               className="cursor-crosshair relative select-none"
               onPointerDown={onLanePointerDown}
