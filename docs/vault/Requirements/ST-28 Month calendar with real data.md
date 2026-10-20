@@ -1,14 +1,12 @@
 ---
 id: ST-28
-status: todo
+status: done
 type: requirement
 priority: A
 area: requirements
 ---
 
 # ST-28 Month calendar with real data
-
-#ready-for-agent
 
 **In short:** make the `/beta` month calendar a real calendar. It shows the month of
 the Focus day in a Monday-first grid, pages backward and forward with two arrows,
@@ -285,3 +283,4 @@ retested here.
   today; the rollup owns closed Days.
 - **Deployment.** No schema or infrastructure change. The existing web deploy is
   enough; the live read ships with the backend deploy.
+
