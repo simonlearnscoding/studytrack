@@ -63,6 +63,31 @@ function snapStepPx(segments: TimelineWindow['segments'], px: number): number {
   return from === null || to === null ? 0 : to - from
 }
 
+// The from – until label every plan gesture wears. Creating a span, moving a
+// block and resizing an edge all route through this, so the times read the same
+// whichever gesture is in flight.
+function spanLabel(
+  segments: TimelineWindow['segments'],
+  leftPx: number,
+  widthPx: number
+): string | null {
+  const startMin = pxToMinute(segments, leftPx)
+  const endMin = pxToMinute(segments, leftPx + widthPx)
+  if (startMin == null || endMin == null) return null
+  return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
+}
+
+function PlanSpanLabel({ leftPx, label }: { leftPx: number; label: string }) {
+  return (
+    <span
+      className="bg-primary-tint text-primary pointer-events-none absolute -top-4 z-[5] block w-max rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap"
+      style={{ left: leftPx }}
+    >
+      {label}
+    </span>
+  )
+}
+
 // Is this pixel on top of an existing planned session? The half-open end lets a
 // new plan start exactly where the previous one ends.
 function insidePlan(px: number, blocks: TimelinePlanBlockVM[]): boolean {
@@ -384,13 +409,8 @@ export function PinnedDesktopBar({
   const dragWidth = drag
     ? snapPx(axis.segments, Math.max(drag.fromPx, drag.toPx), drag.floorPx) - dragLeft
     : 0
-  const dragLabel = (() => {
-    if (!drag || dragWidth < DRAG_PX_THRESHOLD) return null
-    const startMin = pxToMinute(axis.segments, dragLeft)
-    const endMin = pxToMinute(axis.segments, dragLeft + dragWidth)
-    if (startMin == null || endMin == null) return null
-    return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
-  })()
+  const dragLabel =
+    drag && dragWidth >= DRAG_PX_THRESHOLD ? spanLabel(axis.segments, dragLeft, dragWidth) : null
 
   // The live geometry that replaces the stored block during a gesture. There is
   // deliberately no "before" outline: the block itself moves.
@@ -401,6 +421,21 @@ export function PinnedDesktopBar({
     : move
       ? { planId: move.planId, leftPx: move.leftPx, widthPx: move.widthPx }
       : pending
+
+  // An existing plan wears the same from – until label while it is being moved
+  // or resized. The start edge is the anchor: it stays put when the end changes,
+  // and travels with the block when the whole plan moves.
+  const resizeChanged = resize
+    ? resize.edgePx !== (resize.edge === 'start' ? resize.startPx : resize.endPx)
+    : false
+  const updateLabel = resize
+    ? resizeChanged
+      ? spanLabel(axis.segments, resizeStartPx, resizeEndPx - resizeStartPx)
+      : null
+    : move?.moved
+      ? spanLabel(axis.segments, move.leftPx, move.widthPx)
+      : null
+  const updateLabelLeftPx = resize ? resizeStartPx : (move?.leftPx ?? 0)
 
   return (
     <div
@@ -479,14 +514,10 @@ export function PinnedDesktopBar({
                 <div
                   className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 rounded-[2px] border border-dashed"
                   style={{ left: dragLeft, width: dragWidth }}
-                >
-                  {dragLabel && (
-                    <span className="bg-primary-tint text-primary absolute -top-4 left-0 block w-max rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap">
-                      {dragLabel}
-                    </span>
-                  )}
-                </div>
+                />
               )}
+              {dragLabel && <PlanSpanLabel leftPx={dragLeft} label={dragLabel} />}
+              {updateLabel && <PlanSpanLabel leftPx={updateLabelLeftPx} label={updateLabel} />}
             </div>
           </div>
         )}
