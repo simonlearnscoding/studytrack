@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
+import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 
 // The single add-task entry point, shared by the rail widget (compact icon
@@ -15,6 +16,8 @@ export function AddTaskForm({
   placeholder?: string
 }) {
   const [title, setTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  useTaskComposerHotkey(inputRef)
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -29,6 +32,7 @@ export function AddTaskForm({
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
       <input
+        ref={inputRef}
         value={title}
         onChange={(event) => setTitle(event.target.value)}
         placeholder={placeholder}

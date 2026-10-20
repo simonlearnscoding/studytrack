@@ -17,9 +17,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
+import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { TaskItem } from './task-item'
 import { TaskOverlay } from './task-overlay'
 import type { TaskId } from './task-types'
@@ -33,6 +34,8 @@ const screenReaderInstructions = {
 export function TaskPane({ queue }: { queue: TaskQueue }) {
   const [title, setTitle] = useState('')
   const [draggingId, setDraggingId] = useState<TaskId | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  useTaskComposerHotkey(inputRef)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -85,6 +88,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
       {/* composer */}
       <form onSubmit={submit} className="mb-3 flex gap-2">
         <Input
+          ref={inputRef}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Add a task…"

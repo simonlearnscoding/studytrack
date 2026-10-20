@@ -1,8 +1,9 @@
 import { Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
+import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
 import type { TaskId } from '../task-types'
@@ -39,6 +40,8 @@ export function TaskSheet({
   onToggleTracking: () => void
 }) {
   const [title, setTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  useTaskComposerHotkey(inputRef, open)
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -102,6 +105,7 @@ export function TaskSheet({
         <div className="px-4 pt-3">
           <form onSubmit={submit} className="flex items-center gap-2">
             <Input
+              ref={inputRef}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Plan the next step…"
