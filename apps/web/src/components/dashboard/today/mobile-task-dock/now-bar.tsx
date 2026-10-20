@@ -1,6 +1,7 @@
 import { formatDuration } from '@studytrack/backend/convex/sessions/util'
-import { Check, ListChecks, Pause, Play } from 'lucide-react'
+import { ListChecks, Pause, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
 import { LiveDot } from '../../live-dot'
 import type { TaskId } from '../task-types'
@@ -9,9 +10,9 @@ import type { DockTask } from './types'
 // The sticky bottom bar — mobile only, centred, floating over the page.
 //
 // This bar is the read surface for the active task: when one is set it shows
-// "Now" with a tick to complete it and a × to clear the pointer; when none is
-// set it shows the derived "Up next" suggestion with a play button that picks
-// it. The list opens the sheet.
+// "Now" with a checkbox to complete it and a pause to stop the pointer; when
+// none is set it shows the derived "Up next" suggestion with a play button that
+// picks it. The list opens the sheet.
 export function NowBar({
   live,
   active,
@@ -71,9 +72,14 @@ export function NowBar({
             )}
             {active ? (
               <>
-                <BarButton label="Complete task" onClick={onTick} accent>
-                  <Check className="h-4 w-4" strokeWidth={3} />
-                </BarButton>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center">
+                  <Checkbox
+                    checked={false}
+                    onCheckedChange={() => onTick()}
+                    aria-label="Complete task"
+                    className="size-6"
+                  />
+                </div>
                 <BarButton label="Stop working" onClick={onClear}>
                   <Pause className="h-4 w-4" />
                 </BarButton>
