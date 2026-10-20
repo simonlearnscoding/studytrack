@@ -585,4 +585,87 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
       },
     ])
   })
+
+  it("carries the member's active task for the room rail", async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', {
+        discordId: 'discord-1',
+        name: 'Ada',
+        createdAt: NOW,
+      })
+      const taskId = await ctx.db.insert('task', {
+        userId,
+        title: 'Read a chapter',
+        done: false,
+        plannedAt: DAY_START,
+      })
+      await ctx.db.patch(userId, { activeTaskId: taskId, activeSince: NOW - 5 * M })
+      const sessionId = await ctx.db.insert('session', {
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+      await ctx.db.insert('sessionPartial', {
+        sessionId,
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        channelId: 'chan-a',
+        mode: 'camera',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+
+    expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'Read a chapter' })
+  })
+
+  it('leaves the active task null when the pointer is stale', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', {
+        discordId: 'discord-1',
+        name: 'Ada',
+        createdAt: NOW,
+      })
+      const taskId = await ctx.db.insert('task', {
+        userId,
+        title: 'Gone soon',
+        done: false,
+        plannedAt: DAY_START,
+      })
+      await ctx.db.patch(userId, { activeTaskId: taskId, activeSince: NOW - 5 * M })
+      await ctx.db.delete(taskId)
+      const sessionId = await ctx.db.insert('session', {
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+      await ctx.db.insert('sessionPartial', {
+        sessionId,
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        channelId: 'chan-a',
+        mode: 'camera',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+
+    expect(res[0].activeTask).toBeNull()
+  })
 })

@@ -62,6 +62,7 @@ const member = (
   online: sessions.some((s) => s.status === 'active'),
   sessions,
   plans: [],
+  activeTask: null,
 })
 
 const window = resolveWindow({ nowMin: 15 * 60, availablePx: FLOOR_PX })

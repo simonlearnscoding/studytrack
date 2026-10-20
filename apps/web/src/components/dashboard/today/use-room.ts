@@ -11,9 +11,9 @@ type StudyMode = DashboardMember['sessions'][number]['partials'][number]['mode']
 
 // One person in the present-tense room, shaped for the rail. `time` is null until
 // the client clock exists (server render), so the rail never disagrees with the
-// server's HTML. `mode` is null on a break (no icon); `task` is the now-line's
-// one task — null until ST-24 gives the backend an active/next pointer. `idle` is
-// the playful line shown instead when there is no task to name.
+// server's HTML. `mode` is null on a break (no icon); `task` is the member's
+// active task, or null when they have none. `idle` is the playful line shown
+// instead when there is no task to name.
 export type RoomPerson = {
   key: string
   initials: string
@@ -62,7 +62,7 @@ export function toRoomPerson(
           )
         : null,
     mode: mode && mode !== 'break' ? mode : null,
-    task: null,
+    task: member.activeTask?.title ?? null,
     idle: idleLine(member.discordId, now),
   }
 }

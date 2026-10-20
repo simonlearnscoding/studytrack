@@ -55,6 +55,14 @@ export type DashboardPlan = {
   endAt: number
 }
 
+// The member's one NOW task: the user-level active pointer, not tied to a
+// Session and not cleared when tracking stops (ST-27). Public like every task
+// title (ADR-0007). Null when the pointer is unset or stale.
+export type DashboardActiveTask = {
+  id: Id<'task'>
+  title: string
+}
+
 // One card on the dashboard: a person's whole day.
 export type DashboardMember = {
   userId: Id<'users'> | null
@@ -70,4 +78,6 @@ export type DashboardMember = {
   // The member's planned sessions for this Day, oldest first. Plans are public,
   // so they ride on every member's card, even when they have no Sessions today.
   plans: DashboardPlan[]
+  // What the member says they are on right now, for the room rail.
+  activeTask: DashboardActiveTask | null
 }

@@ -60,6 +60,7 @@ function withOwnLane(members: DashboardMember[], me: Doc<'users'> | null): Dashb
       online: false,
       sessions: [],
       plans: [],
+      activeTask: null,
     },
   ]
 }

@@ -52,7 +52,8 @@ export async function getTodaysActivitiesForDashboard(
   }
   const members = await groupTodaysMembers(ctx, dayStart)
   const withTasks = await attachDayTasks(ctx, members, dayStart)
-  return await attachDayPlans(ctx, withTasks, dayStart)
+  const withPlans = await attachDayPlans(ctx, withTasks, dayStart)
+  return await attachActiveTasks(ctx, withPlans)
 }
 
 // The shared day-window read, without any auth: everyone who studied today (or is
@@ -119,6 +120,7 @@ export async function groupTodaysMembers(
       online: sessions.some((s) => s.status === 'active'),
       sessions,
       plans: [],
+      activeTask: null,
     })
   }
 
@@ -250,6 +252,7 @@ async function attachDayPlans(
         online: false,
         sessions: [],
         plans: [],
+        activeTask: null,
       }
       result.push(member)
       byUser.set(key, member)
@@ -263,6 +266,27 @@ async function attachDayPlans(
   }
 
   return result
+}
+
+// Give every member their NOW task from the user-level pointer. Kept out of
+// groupTodaysMembers because the bot's leaderboard reads that helper and has no
+// use for the pointer.
+async function attachActiveTasks(
+  ctx: QueryCtx,
+  members: DashboardMember[]
+): Promise<DashboardMember[]> {
+  return await Promise.all(
+    members.map(async (member) => {
+      if (!member.userId) return member
+      const user = await ctx.db.get(member.userId)
+      if (!user?.activeTaskId) return member
+
+      const task = await ctx.db.get(user.activeTaskId)
+      if (!task || task.userId !== user._id) return member
+
+      return { ...member, activeTask: { id: task._id, title: task.title } }
+    })
+  )
 }
 
 function toSessionTaskSource(task: Doc<'task'>): SessionTaskSource {
