@@ -48,6 +48,7 @@ export function TimelineSection() {
   const auto = useAutoExpansion(nowMin)
   const createPlan = useMutation(api.plannedSessions.create)
   const updatePlan = useMutation(api.plannedSessions.update)
+  const removePlan = useMutation(api.plannedSessions.remove)
 
   // False on the server, the first client paint, and while the live read lands —
   // the reveal commit lands the measured width and the members together, so the
@@ -83,6 +84,14 @@ export function TimelineSection() {
         tasks: [],
       },
     })
+  }
+
+  const removePopupPlan = () => {
+    if (popup?.data.kind !== 'plan') return
+    const planId = popup.data.planId
+    void removePlan({ planId })
+      .then(() => setPopup(null))
+      .catch((error) => console.error('[studytrack] plan remove failed', error))
   }
 
   const openSession = (click: SessionClick) => {
@@ -154,7 +163,15 @@ export function TimelineSection() {
           />
         )}
         <PopoverContent side="bottom" align="start" sideOffset={8} className="w-80 p-4">
-          {popup && <SessionPopupContent data={popup.data} dayStart={dayStart} now={now} />}
+          {popup && (
+            <SessionPopupContent
+              key={popup.data.kind === 'plan' ? popup.data.planId : popup.data.sessionId}
+              data={popup.data}
+              dayStart={dayStart}
+              now={now}
+              onRemove={popup.data.kind === 'plan' ? removePopupPlan : undefined}
+            />
+          )}
         </PopoverContent>
       </Popover>
     </div>

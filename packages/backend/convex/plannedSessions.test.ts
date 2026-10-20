@@ -257,3 +257,37 @@ describe('plannedSessions.update', () => {
     ).rejects.toThrow(/past/)
   })
 })
+
+describe('plannedSessions.remove', () => {
+  beforeAll(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
+  it('deletes an owned plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await t.withIdentity(ADA).mutation(api.plannedSessions.remove, { planId: row._id })
+
+    expect(await rowsOf(t)).toEqual([])
+  })
+
+  it('refuses to delete another member plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.plannedSessions.remove, { planId: row._id })
+    ).rejects.toThrow(/Plan not found/)
+    expect(await rowsOf(t)).toHaveLength(1)
+  })
+})

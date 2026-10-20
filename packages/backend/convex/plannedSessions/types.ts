@@ -20,6 +20,9 @@ export const updatePlanArgs = v.object({
 })
 export type UpdatePlanArgs = Infer<typeof updatePlanArgs>
 
+export const removePlanArgs = v.object({ planId: v.id('plannedSession') })
+export type RemovePlanArgs = Infer<typeof removePlanArgs>
+
 // The owner's view of a planned session. Not a Session: there is no voice
 // evidence and no partials, only the window the member pencilled in.
 export type PlannedSession = {

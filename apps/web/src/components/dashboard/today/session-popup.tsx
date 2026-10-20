@@ -2,6 +2,8 @@ import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
 import type { DashboardSessionTask } from '@studytrack/backend/convex/sessions/types'
 import { formatDurationHM } from '@studytrack/backend/convex/sessions/util'
 import { formatClock, toMinute } from '@studytrack/backend/convex/timeline/util'
+import { useState } from 'react'
+import { Button } from '~/components/ui/button'
 
 // What the popover renders. Both branches share a member, a window and a task
 // list, so the future detail surface (rename, delete, task planning) can build on
@@ -31,11 +33,14 @@ export function SessionPopupContent({
   data,
   dayStart,
   now,
+  onRemove,
 }: {
   data: SessionPopupData
   dayStart: number
   now: number
+  onRemove?: () => void
 }) {
+  const [confirming, setConfirming] = useState(false)
   const endAt = data.endAt ?? now
   const title = data.kind === 'plan' ? 'Planned session' : 'Study session'
   const status =
@@ -83,6 +88,36 @@ export function SessionPopupContent({
           </ul>
         )}
       </div>
+
+      {data.kind === 'plan' && onRemove && (
+        <div className="mt-4 flex items-center justify-end gap-2 border-t border-white/[0.06] pt-3">
+          {confirming ? (
+            <>
+              <span className="text-caption mr-auto">Remove this plan?</span>
+              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={onRemove}
+              >
+                Remove
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => setConfirming(true)}
+            >
+              Remove plan
+            </Button>
+          )}
+        </div>
+      )}
     </>
   )
 }

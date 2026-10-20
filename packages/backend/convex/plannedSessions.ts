@@ -1,6 +1,6 @@
 import { mutation } from './_generated/server'
-import { createPlan, updatePlan } from './plannedSessions/service'
-import { createPlanArgs, updatePlanArgs } from './plannedSessions/types'
+import { createPlan, removePlan, updatePlan } from './plannedSessions/service'
+import { createPlanArgs, removePlanArgs, updatePlanArgs } from './plannedSessions/types'
 
 // Thin entry: handlers only delegate to ./plannedSessions/service.
 export const create = mutation({
@@ -16,5 +16,12 @@ export const update = mutation({
   args: updatePlanArgs.fields,
   handler: async (ctx, args) => {
     await updatePlan(ctx, args.planId, args.plannedStart, args.plannedEnd)
+  },
+})
+
+export const remove = mutation({
+  args: removePlanArgs.fields,
+  handler: async (ctx, args) => {
+    await removePlan(ctx, args.planId)
   },
 })

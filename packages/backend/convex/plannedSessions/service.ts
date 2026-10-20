@@ -48,6 +48,13 @@ export async function updatePlan(
   await ctx.db.patch(plan._id, { plannedStart, plannedEnd })
 }
 
+// Delete an owned plan. Missing and someone else's rows share the same error.
+export async function removePlan(ctx: MutationCtx, planId: Id<'plannedSession'>): Promise<void> {
+  const user = await requireUser(ctx)
+  const plan = await requireOwnedPlan(ctx, user, planId)
+  await ctx.db.delete(plan._id)
+}
+
 // The window rules every write shares: inside one Day, positive, on the 15-minute
 // grid, and never starting in the past.
 function assertValidWindow(dayStart: number, plannedStart: number, plannedEnd: number): void {
