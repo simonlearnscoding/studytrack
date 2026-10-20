@@ -59,12 +59,14 @@ sessions, and how it differs on mobile. Explicitly later.
   anchored to the clicked block: member, time window, duration, and the
   session's tasks. Rename, delete and planning tasks into a plan hang off this
   same surface later.
-- **A ten-minute warning, opt-in** (2026-10-20). The header bell requests
-  browser notification permission; a denied permission renders the bell struck
-  through, and clicking it asks again. Once granted, clicking the bell mutes or
-  unmutes locally without revoking the grant. While unmuted, a plan entering its
-  final ten minutes raises one notification. This is page-level only: a closed
-  tab cannot notify (that needs push + service worker).
+- **A ten-minute warning** (2026-10-20). On the first visit, while the browser
+  grant is still untouched, the app asks for notification permission by itself.
+  A denied permission renders the bell struck through and is never auto-asked
+  again; clicking the struck bell asks once more. Once granted, the bell is on,
+  and clicking it mutes or unmutes locally without revoking the grant. While
+  unmuted, a plan entering its final ten minutes raises one notification. This
+  is page-level only: a closed tab cannot notify (that needs push + service
+  worker).
 - **A plan is public** (2026-10-18). Same rule as Tasks ([[0007]]): the room may
   see what you plan to do, not only that you are doing it. The read therefore
   cannot filter plans down to the signed-in member, and the block may later

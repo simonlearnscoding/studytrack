@@ -24,11 +24,33 @@ export function NotificationBell() {
   const [permission, setPermission] = useState<Permission>(null)
   const [muted, setMuted] = useState(false)
   const notified = useRef(new Set<string>())
+  const askedOnMount = useRef(false)
 
   useEffect(() => {
-    if (!mounted) return
-    setPermission(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
+    if (!mounted || askedOnMount.current) return
+    askedOnMount.current = true
+
+    if (typeof Notification === 'undefined') {
+      setPermission('unsupported')
+      return
+    }
+
+    const initial = Notification.permission
+    setPermission(initial)
     setMuted(localStorage.getItem(MUTE_KEY) === '1')
+
+    // Ask once, on the first visit, while the grant is still untouched. A
+    // declined grant is never auto-reprompted; clicking the struck bell is the
+    // explicit way back.
+    if (initial !== 'default') return
+    void Notification.requestPermission()
+      .then((result) => {
+        setPermission(result)
+        if (result !== 'granted') return
+        setMuted(false)
+        localStorage.setItem(MUTE_KEY, '0')
+      })
+      .catch((error) => console.error('[studytrack] notification permission failed', error))
   }, [mounted])
 
   // A new Day starts a fresh set of plans and a fresh set of notices.
