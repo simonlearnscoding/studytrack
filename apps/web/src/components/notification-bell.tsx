@@ -23,7 +23,9 @@ export function NotificationBell() {
   const plans = useQuery(api.plannedSessions.listMine, { dayStart })
   const [permission, setPermission] = useState<Permission>(null)
   const [muted, setMuted] = useState(false)
-  const notified = useRef(new Set<string>())
+  // Only a tick that watches a plan cross the 10-minute line announces it.
+  // First sightings (page load, create, move) seed the baseline silently.
+  const lastSeen = useRef(new Map<string, number>())
   const askedOnMount = useRef(false)
 
   useEffect(() => {
@@ -53,22 +55,35 @@ export function NotificationBell() {
       .catch((error) => console.error('[studytrack] notification permission failed', error))
   }, [mounted])
 
-  // A new Day starts a fresh set of plans and a fresh set of notices.
-  useEffect(() => {
-    notified.current.clear()
-  }, [dayStart])
-
   const enabled = permission === 'granted' && !muted
 
   useEffect(() => {
-    if (!enabled || plans === undefined) return
+    if (!enabled || plans === undefined) {
+      lastSeen.current.clear()
+      return
+    }
 
     const tick = () => {
       const now = Date.now()
+      const liveKeys = new Set<string>()
+
       for (const plan of plans) {
+        const key = `${plan._id}:${plan.plannedStart}`
+        liveKeys.add(key)
         const startsIn = plan.plannedStart - now
-        if (startsIn <= 0 || startsIn > NOTICE_LEAD_MS) continue
-        if (notified.current.has(plan._id)) continue
+        const previous = lastSeen.current.get(key)
+        lastSeen.current.set(key, startsIn)
+
+        // The first sighting of a plan — initial load, a new plan, or one that
+        // was moved — is a baseline, never a reason to notify.
+        if (previous === undefined) continue
+        // Announce only the tick that crosses the 10-minute line. Already-inside
+        // plans (e.g. created five minutes out) stay quiet.
+        if (startsIn <= 0 || startsIn > NOTICE_LEAD_MS || previous <= NOTICE_LEAD_MS) continue
+
+        // Once per plan window, even across tabs and reloads.
+        const noticeKey = `studytrack.notice:${key}`
+        if (localStorage.getItem(noticeKey) === '1') continue
 
         try {
           const notice = new Notification('Planned session in 10 minutes', {
@@ -81,10 +96,14 @@ export function NotificationBell() {
             window.focus()
             notice.close()
           }
-          notified.current.add(plan._id)
+          localStorage.setItem(noticeKey, '1')
         } catch (error) {
           console.error('[studytrack] notification failed', error)
         }
+      }
+
+      for (const key of lastSeen.current.keys()) {
+        if (!liveKeys.has(key)) lastSeen.current.delete(key)
       }
     }
 
