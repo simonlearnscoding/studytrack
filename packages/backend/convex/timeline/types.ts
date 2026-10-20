@@ -37,7 +37,10 @@ export type TimelineWindow = {
 }
 
 // One stretch of a member's day on the track. `live` marks a running partial.
+// `sessionId` is the sitting the stretch belongs to, so a click can open that
+// session's details.
 export type TimelineBarVM = {
+  sessionId: Id<'session'>
   leftPx: number
   widthPx: number
   mode: StudyMode

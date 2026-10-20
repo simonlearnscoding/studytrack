@@ -3,7 +3,7 @@ import { useRef, type RefObject } from 'react'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { RowName } from './row-name'
-import { RowTrack } from './row-track'
+import { RowTrack, type SessionClick } from './row-track'
 import type { AxisSurface } from './types'
 import { useMirrorScroll } from './use-mirror-scroll'
 
@@ -15,10 +15,12 @@ export function PinnedMobileLane({
   row,
   nowLabel,
   scrollerRef,
+  onSessionClick,
 }: { surface: AxisSurface } & {
   row: TimelineRowVM
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   useMirrorScroll(scrollerRef, mirrorRef)
@@ -47,7 +49,7 @@ export function PinnedMobileLane({
               <NowPill label={nowLabel} left={now} className="top-0 z-[3]" />
             </div>
             <div className="flex h-6 items-center">
-              <RowTrack row={row} />
+              <RowTrack row={row} onSessionClick={onSessionClick} />
             </div>
           </div>
         </div>

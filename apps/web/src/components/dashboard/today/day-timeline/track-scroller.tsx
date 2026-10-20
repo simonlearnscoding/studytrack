@@ -1,8 +1,13 @@
 import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
-import { useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import {
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from 'react'
 import { NowLine } from './axis-markers'
 import { BandLayer } from './night-band'
-import { RowTrack } from './row-track'
+import { RowTrack, type SessionClick } from './row-track'
 import type { AxisSurface } from './types'
 
 // The room's track area: the night bands, hour gridlines, the now-line, and one
@@ -19,35 +24,72 @@ export function TrackScroller({
   surface: { axis, bands, hidden, locked, onToggleBand },
   rows,
   scrollerRef,
+  onSessionClick,
 }: {
   surface: AxisSurface
   rows: TimelineRowVM[]
   scrollerRef: RefObject<HTMLDivElement | null>
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const hasYourRow = rows.some((row) => row.you)
 
-  // Mouse drag-to-pan. Pointer capture keeps the drag alive outside the box;
-  // interactive children (band handles) opt out via the closest('button') check.
-  const pan = useRef<{ pointerId: number; lastX: number } | null>(null)
+  // Mouse drag-to-pan. Capture starts only once the pointer has actually moved,
+  // so a plain click keeps its real target and the session bar can open its
+  // popover. A press that turns into a pan suppresses the click that follows.
+  const pan = useRef<{
+    pointerId: number
+    lastX: number
+    startX: number
+    moved: boolean
+    captured: boolean
+  } | null>(null)
+  const suppressClick = useRef(false)
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
+    suppressClick.current = false
     if ((event.target as HTMLElement).closest('button')) return
-    pan.current = { pointerId: event.pointerId, lastX: event.clientX }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    pan.current = {
+      pointerId: event.pointerId,
+      lastX: event.clientX,
+      startX: event.clientX,
+      moved: false,
+      captured: false,
+    }
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = pan.current
     if (!drag || drag.pointerId !== event.pointerId) return
+    if (!drag.moved && Math.abs(event.clientX - drag.startX) > 4) drag.moved = true
+    if (!drag.moved) return
+    if (!drag.captured) {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      drag.captured = true
+    }
     const scroller = scrollerRef.current
     if (scroller) scroller.scrollLeft -= event.clientX - drag.lastX
     drag.lastX = event.clientX
   }
 
   const endPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = pan.current
+    if (drag?.pointerId !== event.pointerId) return
+    if (drag.moved) suppressClick.current = true
+    pan.current = null
+  }
+
+  const cancelPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (pan.current?.pointerId !== event.pointerId) return
     pan.current = null
+  }
+
+  // Captured after a pan, before the bar's own click handler runs.
+  const onClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressClick.current) return
+    suppressClick.current = false
+    event.stopPropagation()
+    event.preventDefault()
   }
 
   return (
@@ -56,7 +98,8 @@ export function TrackScroller({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPan}
-      onPointerCancel={endPan}
+      onPointerCancel={cancelPan}
+      onClickCapture={onClickCapture}
       className={`min-w-0 cursor-grab pb-2 select-none active:cursor-grabbing ${
         axis.overflow ? 'overflow-x-auto' : 'overflow-x-clip'
       }`}
@@ -98,7 +141,7 @@ export function TrackScroller({
             .filter((row) => !row.you)
             .map((row) => (
               <div key={row.key} className="flex h-6 items-center">
-                <RowTrack row={row} />
+                <RowTrack row={row} onSessionClick={onSessionClick} />
               </div>
             ))}
         </div>

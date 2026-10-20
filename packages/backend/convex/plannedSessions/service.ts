@@ -1,5 +1,5 @@
 import type { Doc, Id } from '../_generated/dataModel'
-import type { MutationCtx } from '../_generated/server'
+import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../sessions/util'
 import { getMe } from '../users/service'
 
@@ -9,6 +9,19 @@ export const PLAN_GRAIN_MS = 15 * 60 * 1000
 
 // Bounded overlap read: a member's plans for one Day sit far below this.
 const MAX_PLANS_PER_MEMBER_DAY = 200
+
+// The caller's plans for one Day, oldest first. Used by the notification
+// scheduler: it needs the same rows the timeline draws, without the room read.
+export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Doc<'plannedSession'>[]> {
+  const user = await getMe(ctx)
+  if (!user) return []
+  const plans = await ctx.db
+    .query('plannedSession')
+    .withIndex('by_userId_dayStart', (q) => q.eq('userId', user._id).eq('dayStart', dayStart))
+    .order('desc')
+    .take(MAX_PLANS_PER_MEMBER_DAY)
+  return plans.reverse()
+}
 
 // The first grain at or after `now`, inside the plan's Day. A plan never starts
 // in the past; a plan for a future Day may start at its midnight.
@@ -46,6 +59,13 @@ export async function updatePlan(
   await assertNoOverlap(ctx, user._id, plan.dayStart, plannedStart, plannedEnd, plan._id)
 
   await ctx.db.patch(plan._id, { plannedStart, plannedEnd })
+}
+
+// Delete an owned plan. Missing and someone else's rows share the same error.
+export async function removePlan(ctx: MutationCtx, planId: Id<'plannedSession'>): Promise<void> {
+  const user = await requireUser(ctx)
+  const plan = await requireOwnedPlan(ctx, user, planId)
+  await ctx.db.delete(plan._id)
 }
 
 // The window rules every write shares: inside one Day, positive, on the 15-minute

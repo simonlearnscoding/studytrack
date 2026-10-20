@@ -257,3 +257,66 @@ describe('plannedSessions.update', () => {
     ).rejects.toThrow(/past/)
   })
 })
+
+describe('plannedSessions.remove', () => {
+  beforeAll(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
+  it('deletes an owned plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await t.withIdentity(ADA).mutation(api.plannedSessions.remove, { planId: row._id })
+
+    expect(await rowsOf(t)).toEqual([])
+  })
+
+  it('refuses to delete another member plan', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.plannedSessions.remove, { planId: row._id })
+    ).rejects.toThrow(/Plan not found/)
+    expect(await rowsOf(t)).toHaveLength(1)
+  })
+})
+
+describe('plannedSessions.listMine', () => {
+  beforeAll(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns nothing when unauthenticated', async () => {
+    const t = makeTest()
+    expect(await t.query(api.plannedSessions.listMine, { dayStart: DAY })).toEqual([])
+  })
+
+  it('returns only the caller plans for the selected Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t
+      .withIdentity(ADA)
+      .mutation(api.plannedSessions.create, plan(ADA, { start: END, end: END + H }))
+    await t.withIdentity(BOB).mutation(api.plannedSessions.create, plan(BOB))
+
+    const mine = await t.withIdentity(ADA).query(api.plannedSessions.listMine, { dayStart: DAY })
+    expect(mine.map((entry) => entry.plannedStart)).toEqual([START, END])
+  })
+})

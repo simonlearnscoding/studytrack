@@ -1,10 +1,15 @@
-import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
+import type {
+  TimelineBarVM,
+  TimelineRowVM,
+  TimelineWindow,
+} from '@studytrack/backend/convex/timeline/types'
 import type { RefObject } from 'react'
-import { PinnedDesktopBar, type PlanDrag, type PlanUpdate } from './desktop-bar'
+import { PinnedDesktopBar, type PlanClick, type PlanDrag, type PlanUpdate } from './desktop-bar'
 import { PinnedMobileLane } from './mobile-lane'
 import { NamesColumn } from './names-column'
 import { nightBands } from './night-bands'
 import { TrackLegend } from './track-legend'
+import type { SessionClick } from './row-track'
 import { TrackScroller } from './track-scroller'
 import { useCentreOnNow } from './use-centre-on-now'
 
@@ -29,6 +34,8 @@ export function DayTimeline({
   onToggleBand,
   onPlanDrag,
   onPlanUpdate,
+  onPlanClick,
+  onSessionClick,
 }: {
   window: TimelineWindow
   rows: TimelineRowVM[]
@@ -38,6 +45,8 @@ export function DayTimeline({
   onToggleBand: () => void
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
+  onPlanClick?: (click: PlanClick) => void
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const yourRow = rows.find((row) => row.you)
   const { bands, hidden } = nightBands(axis, rows)
@@ -57,6 +66,7 @@ export function DayTimeline({
           row={yourRow}
           nowLabel={nowLabel}
           scrollerRef={scrollerRef}
+          onSessionClick={onSessionClick}
         />
       )}
 
@@ -72,8 +82,15 @@ export function DayTimeline({
             scrollerRef={scrollerRef}
             onPlanDrag={onPlanDrag}
             onPlanUpdate={onPlanUpdate}
+            onPlanClick={onPlanClick}
+            onSessionClick={onSessionClick}
           />
-          <TrackScroller surface={surface} rows={rows} scrollerRef={scrollerRef} />
+          <TrackScroller
+            surface={surface}
+            rows={rows}
+            scrollerRef={scrollerRef}
+            onSessionClick={onSessionClick}
+          />
         </div>
       </div>
     </section>

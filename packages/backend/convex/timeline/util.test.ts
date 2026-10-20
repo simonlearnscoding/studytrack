@@ -165,7 +165,7 @@ describe('toTimelineRows', () => {
       input()
     )
     expect(rows[0].bars).toEqual([
-      { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'camera', live: false },
+      { sessionId: 's', leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'camera', live: false },
     ])
     expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2, title: 'Read' }])
   })
@@ -184,6 +184,7 @@ describe('toTimelineRows', () => {
       input({ now: at(15 * 60) })
     )
     expect(rows[0].bars[0]).toEqual({
+      sessionId: 's',
       leftPx: CORE_LEFT + 8 * PX_PER_HOUR,
       widthPx: PX_PER_HOUR,
       mode: 'screenShare',
@@ -197,7 +198,13 @@ describe('toTimelineRows', () => {
       input({ now: at(23 * 60) })
     )
     expect(rows[0].bars).toEqual([
-      { leftPx: CORE_LEFT + 16 * PX_PER_HOUR, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
+      {
+        sessionId: 's',
+        leftPx: CORE_LEFT + 16 * PX_PER_HOUR,
+        widthPx: PX_PER_HOUR,
+        mode: 'voice',
+        live: false,
+      },
     ])
     expect(rows[0].hiddenCount).toBe(0)
   })
@@ -209,7 +216,7 @@ describe('toTimelineRows', () => {
     )
     // 06:00–07:00 visible in the core; 04:00–06:00 hidden in the night band.
     expect(rows[0].bars).toEqual([
-      { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
+      { sessionId: 's', leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
     ])
     expect(rows[0].hiddenCount).toBe(1)
   })

@@ -1,4 +1,5 @@
 import type {
+  TimelineBarVM,
   TimelinePlanBlockVM,
   TimelineRowVM,
   TimelineWindow,
@@ -16,7 +17,7 @@ import { LiveDot } from '../../live-dot'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { pxToMinute } from './px-to-minute'
-import { RowTrack, type PlanOverride } from './row-track'
+import { RowTrack, type PlanOverride, type SessionClick } from './row-track'
 import type { AxisSurface } from './types'
 import { useMirrorScroll } from './use-mirror-scroll'
 
@@ -32,6 +33,7 @@ export type PlanUpdate = {
   startMin: number
   endMin: number
 }
+export type PlanClick = PlanUpdate & { x: number; y: number }
 
 // The earliest pixel a plan may start: the first 15-minute mark at and after
 // "now". A plan never contains a past minute (LD-6), so this is the wall both
@@ -114,6 +116,8 @@ export function PinnedDesktopBar({
   scrollerRef,
   onPlanDrag,
   onPlanUpdate,
+  onPlanClick,
+  onSessionClick,
 }: {
   surface: AxisSurface
   row?: TimelineRowVM
@@ -121,6 +125,8 @@ export function PinnedDesktopBar({
   scrollerRef: RefObject<HTMLDivElement | null>
   onPlanDrag?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
+  onPlanClick?: (click: PlanClick) => void
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -278,7 +284,7 @@ export function PinnedDesktopBar({
     setMove({ ...move, leftPx, moved })
   }
 
-  const onMoveUp = () => {
+  const onMoveUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (move?.moved) {
       const startMin = pxToMinute(axis.segments, move.leftPx)
       const endMin = pxToMinute(axis.segments, move.leftPx + move.widthPx)
@@ -288,6 +294,19 @@ export function PinnedDesktopBar({
           planId: move.planId,
           startMin: Math.round(startMin),
           endMin: Math.round(endMin),
+        })
+      }
+    } else if (move) {
+      // A press-and-release under the drag threshold is a click, not a move.
+      const startMin = pxToMinute(axis.segments, move.startPx)
+      const endMin = pxToMinute(axis.segments, move.startPx + move.widthPx)
+      if (startMin != null && endMin != null) {
+        onPlanClick?.({
+          planId: move.planId,
+          startMin: Math.round(startMin),
+          endMin: Math.round(endMin),
+          x: event.clientX,
+          y: event.clientY,
         })
       }
     }
@@ -430,7 +449,7 @@ export function PinnedDesktopBar({
               onPointerUp={onLanePointerUp}
               onPointerCancel={() => setDrag(null)}
             >
-              <RowTrack row={row} planOverride={planOverride} />
+              <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
               {onPlanUpdate &&
                 row.planBlocks.map((block) => (
                   <span

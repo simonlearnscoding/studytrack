@@ -1,4 +1,8 @@
-import type { TimelinePlanVM, TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import type {
+  TimelineBarVM,
+  TimelinePlanVM,
+  TimelineRowVM,
+} from '@studytrack/backend/convex/timeline/types'
 import { Fragment } from 'react'
 import { barClass } from '../bar-style'
 
@@ -9,6 +13,13 @@ export type PlanOverride = {
   planId: TimelinePlanVM['id']
   leftPx: number
   widthPx: number
+}
+
+// A click on a session bar, with the viewport point the popover should anchor to.
+export type SessionClick = {
+  sessionId: TimelineBarVM['sessionId']
+  x: number
+  y: number
 }
 
 // Where a done-label starts after its dot, and the clear space kept before the
@@ -26,9 +37,11 @@ const DOT_LABEL_MAX = 160
 export function RowTrack({
   row,
   planOverride,
+  onSessionClick,
 }: {
   row: TimelineRowVM
   planOverride?: PlanOverride | null
+  onSessionClick?: (click: SessionClick) => void
 }) {
   const overridden = planOverride
     ? row.plans.findIndex((plan) => plan.id === planOverride.planId)
@@ -61,10 +74,37 @@ export function RowTrack({
       {row.bars.map((bar, i) => (
         <div
           key={i}
+          data-session-id={bar.sessionId}
+          role={onSessionClick ? 'button' : undefined}
+          tabIndex={onSessionClick ? 0 : undefined}
+          aria-label={onSessionClick ? 'Open study session' : undefined}
+          onClick={
+            onSessionClick
+              ? (event) => {
+                  event.stopPropagation()
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  onSessionClick({
+                    sessionId: bar.sessionId,
+                    x: event.clientX || rect.left,
+                    y: event.clientY || rect.top,
+                  })
+                }
+              : undefined
+          }
+          onKeyDown={
+            onSessionClick
+              ? (event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  onSessionClick({ sessionId: bar.sessionId, x: rect.left, y: rect.top })
+                }
+              : undefined
+          }
           // A live bar is cut by the now-line, so its right end is squared off —
           // it is still running, the line just clips it. Every other end keeps
           // its round cap, since that is where study really started or stopped.
-          className={`absolute top-0 bottom-0 ${bar.live ? 'rounded-l-full' : 'rounded-full'} ${barClass(bar.mode, bar.live)}`}
+          className={`absolute top-0 bottom-0 ${bar.live ? 'rounded-l-full' : 'rounded-full'} ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
           style={{ left: bar.leftPx, width: bar.widthPx }}
         />
       ))}

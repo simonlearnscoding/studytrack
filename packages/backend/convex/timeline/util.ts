@@ -206,7 +206,13 @@ function toRow(
         startMin,
         endMin,
         (leftPx, widthPx) =>
-          bars.push({ leftPx, widthPx, mode: partial.mode, live: partial.endedAt === null }),
+          bars.push({
+            sessionId: session.id,
+            leftPx,
+            widthPx,
+            mode: partial.mode,
+            live: partial.endedAt === null,
+          }),
         () => {
           hiddenInsideBand = true
         }
