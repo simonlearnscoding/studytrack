@@ -10,8 +10,7 @@ export const PLAN_GRAIN_MS = 15 * 60 * 1000
 // Bounded overlap read: a member's plans for one Day sit far below this.
 const MAX_PLANS_PER_MEMBER_DAY = 200
 
-// The caller's plans for one Day, oldest first. Used by the notification
-// scheduler: it needs the same rows the timeline draws, without the room read.
+// The caller's plans for one Day, oldest first, without the room read.
 export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Doc<'plannedSession'>[]> {
   const user = await getMe(ctx)
   if (!user) return []
