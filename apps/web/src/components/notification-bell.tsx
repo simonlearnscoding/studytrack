@@ -32,12 +32,8 @@ export function NotificationBell() {
     if (!mounted || askedOnMount.current) return
     askedOnMount.current = true
 
-    if (typeof Notification === 'undefined') {
-      setPermission('unsupported')
-      return
-    }
-
-    const initial = Notification.permission
+    const initial: Permission =
+      typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
     setPermission(initial)
     setMuted(localStorage.getItem(MUTE_KEY) === '1')
 

@@ -5,3 +5,8 @@ pnpm-lock.yaml
 **/_generated/**
 **/routeTree.gen.ts
 **/.wrangler/**
+
+# Vault notes are written by the ZenNotes app, and their long [[wikilinks]]
+# send prettier's markdown formatter into a non-idempotent indent loop (every
+# run rewraps deeper), so the format gate can never converge on them.
+docs/vault/

@@ -152,7 +152,7 @@ export async function startLeaderboard(
     })
   }
 
-  let messages = await postBoard(channel, await render())
+  const messages = await postBoard(channel, await render())
   console.log(`[leaderboard] posted in #${channel.name}`)
 
   const update = async () => {
