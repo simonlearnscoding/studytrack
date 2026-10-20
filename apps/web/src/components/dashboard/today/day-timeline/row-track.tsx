@@ -38,7 +38,7 @@ export function RowTrack({ row }: { row: TimelineRowVM }) {
         return (
           <Fragment key={i}>
             <span
-              className={`border-primary/75 bg-background absolute top-1/2 z-[3] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] ${
+              className={`border-primary/75 bg-background absolute top-1/2 z-[3] -translate-x-1/2 -translate-y-1/2 rounded-[2px] border-[1.5px] ${
                 row.you ? 'h-2 w-2' : 'h-1.5 w-1.5'
               }`}
               style={{ left: dot.leftPx }}

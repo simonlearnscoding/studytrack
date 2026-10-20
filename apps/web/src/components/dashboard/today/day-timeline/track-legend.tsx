@@ -11,7 +11,7 @@ const legend = [
   { label: 'planned', swatch: 'border-primary/55 h-[7px] w-3 rounded-[2px] border border-dashed' },
   {
     label: 'done',
-    swatch: 'border-primary/75 bg-background h-1.5 w-1.5 rounded-full border-[1.5px]',
+    swatch: 'border-primary/75 bg-background h-1.5 w-1.5 rounded-[2px] border-[1.5px]',
   },
 ]
 
