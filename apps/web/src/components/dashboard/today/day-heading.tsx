@@ -62,13 +62,17 @@ export function DayHeading({ now }: { now: number }) {
         </Button>
       </div>
       {!isToday && (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          title="Back to today"
+          aria-label="Back to today"
           onClick={() => selectToday(new Date())}
-          className="text-label hover:text-foreground cursor-pointer transition-colors"
+          className="h-7 rounded-full border-primary/30 bg-primary-tint px-3 font-semibold text-primary hover:bg-primary/15"
         >
           Today
-        </button>
+        </Button>
       )}
     </div>
   )
