@@ -3,29 +3,26 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../sessions/util'
 import { getMe } from '../users/service'
 import type { ActiveTask, Task } from './types'
+import { byPosition, planOrder } from './util'
 
 const MAX_TASKS = 200
 
-// The caller's tasks **planned for one Day**, oldest first so a new task lands at
-// the bottom of the list. Task content is public (docs/adr/0007), so the room may
-// read titles; ownership still gates writes. The caller supplies the Day start,
-// so the query never reads the wall clock.
+// The caller's tasks **planned for one Day**, in manual order. A task with no
+// explicit position (written before the field existed) falls back to creation
+// order, so the list reads as it did before the first drag. Task content is
+// public (docs/adr/0007), so the room may read titles; ownership still gates
+// writes. The caller supplies the Day start, so the query never reads the wall
+// clock.
 export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Task[]> {
   const user = await getMe(ctx)
   if (!user) return []
 
-  // Read newest-first so the cap keeps the most recent tasks, then flip for the
-  // display order.
-  const tasks = await ctx.db
-    .query('task')
-    .withIndex('by_userId_plannedAt', (q) => q.eq('userId', user._id).eq('plannedAt', dayStart))
-    .order('desc')
-    .take(MAX_TASKS)
-
-  return tasks.reverse().map(toTask)
+  const tasks = await dayTasks(ctx, user._id, dayStart)
+  return tasks.map(toTask)
 }
 
-// Add a task planned for the Day the caller is viewing. Rejects an empty title.
+// Add a task planned for the Day the caller is viewing, at the bottom of that
+// Day's list. Rejects an empty title.
 export async function createTask(
   ctx: MutationCtx,
   title: string,
@@ -38,7 +35,39 @@ export async function createTask(
     throw new Error('A task is planned for a Day, not a time.')
   }
 
-  await ctx.db.insert('task', { userId: user._id, title: trimmed, done: false, plannedAt })
+  const existing = await dayTasks(ctx, user._id, plannedAt)
+  const next = nextPosition(existing)
+
+  await ctx.db.insert('task', {
+    userId: user._id,
+    title: trimmed,
+    done: false,
+    plannedAt,
+    ...(next === null ? {} : { position: next }),
+  })
+}
+
+// Replace the manual order of one Day. The ids must be the caller's own tasks of
+// that Day; anything else fails as "not found" and nothing is written. Tasks the
+// caller did not send (added on another device mid-drag) keep their order after
+// the ones they did.
+export async function reorderTasks(
+  ctx: MutationCtx,
+  dayStart: number,
+  orderedTaskIds: Id<'task'>[]
+): Promise<void> {
+  const user = await requireUser(ctx)
+  if (new Set(orderedTaskIds).size !== orderedTaskIds.length) {
+    throw new Error('A task cannot appear twice in the new order.')
+  }
+
+  const tasks = await dayTasks(ctx, user._id, dayStart)
+  const ordered = planOrder(tasks, orderedTaskIds)
+
+  for (const [index, task] of ordered.entries()) {
+    if (task.position === index) continue
+    await ctx.db.patch(task._id, { position: index })
+  }
 }
 
 // Flip a task between Open and Done. Marking done stamps `completedAt` and clears
@@ -107,6 +136,29 @@ export async function getActive(ctx: QueryCtx): Promise<ActiveTask | null> {
   if (!task || task.userId !== user._id) return null
 
   return { task: toTask(task), activeSince: user.activeSince }
+}
+
+// A Day's tasks, bounded and in manual order. Newest-first at the read so the cap
+// keeps the most recent tasks when a Day is over it.
+async function dayTasks(
+  ctx: QueryCtx,
+  userId: Id<'users'>,
+  dayStart: number
+): Promise<Doc<'task'>[]> {
+  const tasks = await ctx.db
+    .query('task')
+    .withIndex('by_userId_plannedAt', (q) => q.eq('userId', userId).eq('plannedAt', dayStart))
+    .order('desc')
+    .take(MAX_TASKS)
+  return tasks.sort(byPosition)
+}
+
+// Where a new task goes. Null while the Day still holds tasks without a position:
+// leaving it positionless keeps creation order and puts it at the bottom.
+function nextPosition(tasks: Doc<'task'>[]): number | null {
+  if (!tasks.every((task) => task.position !== undefined)) return null
+  const highest = tasks.reduce((max, task) => Math.max(max, task.position ?? -1), -1)
+  return highest + 1
 }
 
 async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {

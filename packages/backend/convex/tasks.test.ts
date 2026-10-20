@@ -106,6 +106,129 @@ describe('tasks.listMine', () => {
   })
 })
 
+describe('tasks.reorder', () => {
+  async function ids(t: Test, identity: { subject: string }, dayStart = DAY) {
+    const tasks = await t.withIdentity(identity).query(api.tasks.listMine, { dayStart })
+    return tasks.map((task) => task.id)
+  }
+
+  it('rejects an unauthenticated caller', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'One')
+    const [id] = await ids(t, ADA)
+
+    await expect(
+      t.mutation(api.tasks.reorder, { dayStart: DAY, orderedTaskIds: [id] })
+    ).rejects.toThrow(/Not authenticated/)
+  })
+
+  it('saves the new order for the Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'One')
+    await create(t, ADA, 'Two')
+    await create(t, ADA, 'Three')
+    const [one, two, three] = await ids(t, ADA)
+
+    await t.withIdentity(ADA).mutation(api.tasks.reorder, {
+      dayStart: DAY,
+      orderedTaskIds: [three, one, two],
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Three', 'One', 'Two'])
+  })
+
+  it('leaves the active task, Done state and completion instant alone', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Active')
+    await create(t, ADA, 'Done')
+    const [active, done] = await ids(t, ADA)
+    await t.withIdentity(ADA).mutation(api.tasks.setActive, { taskId: active })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: done })
+    const completedBefore = (await tasksOf(t)).find((task) => task._id === done)?.completedAt
+
+    await t.withIdentity(ADA).mutation(api.tasks.reorder, {
+      dayStart: DAY,
+      orderedTaskIds: [done, active],
+    })
+
+    const result = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(result.map((task) => task.title)).toEqual(['Done', 'Active'])
+    expect(result[0].done).toBe(true)
+    expect(result[0].completedAt).toBe(completedBefore)
+    expect((await t.withIdentity(ADA).query(api.tasks.getActive, {}))?.task.id).toBe(active)
+  })
+
+  it('keeps a task added on another device after the given order', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'One')
+    await create(t, ADA, 'Two')
+    const [one, two] = await ids(t, ADA)
+    await create(t, ADA, 'Late')
+
+    await t.withIdentity(ADA).mutation(api.tasks.reorder, {
+      dayStart: DAY,
+      orderedTaskIds: [two, one],
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Two', 'One', 'Late'])
+  })
+
+  it('rejects a task from another Day and writes nothing', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Today')
+    await create(t, ADA, 'Tomorrow', TOMORROW)
+    const [today] = await ids(t, ADA)
+    const [tomorrow] = await ids(t, ADA, TOMORROW)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.tasks.reorder, {
+        dayStart: DAY,
+        orderedTaskIds: [tomorrow, today],
+      })
+    ).rejects.toThrow(/Task not found/)
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Today'])
+  })
+
+  it('rejects another member task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await create(t, ADA, 'Ada task')
+    const [adaTask] = await ids(t, ADA)
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.tasks.reorder, {
+        dayStart: DAY,
+        orderedTaskIds: [adaTask],
+      })
+    ).rejects.toThrow(/Task not found/)
+  })
+
+  it('rejects an order that repeats a task', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'One')
+    await create(t, ADA, 'Two')
+    const [one, two] = await ids(t, ADA)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.tasks.reorder, {
+        dayStart: DAY,
+        orderedTaskIds: [one, two, one],
+      })
+    ).rejects.toThrow(/twice/)
+  })
+})
+
 describe('tasks.create', () => {
   it('rejects an unauthenticated caller', async () => {
     const t = makeTest()
@@ -128,6 +251,25 @@ describe('tasks.create', () => {
     await expect(
       t.withIdentity(ADA).mutation(api.tasks.create, { title: 'Later', plannedAt: DAY + 1000 })
     ).rejects.toThrow(/planned for a Day/)
+  })
+
+  it('appends a new task after the manual order', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'One')
+    await create(t, ADA, 'Two')
+    await create(t, ADA, 'Three')
+    const before = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    const [one, two, three] = before.map((task) => task.id)
+
+    await t.withIdentity(ADA).mutation(api.tasks.reorder, {
+      dayStart: DAY,
+      orderedTaskIds: [three, one, two],
+    })
+    await create(t, ADA, 'Four')
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Three', 'One', 'Two', 'Four'])
   })
 
   it('trims the title and stamps the given plannedAt', async () => {

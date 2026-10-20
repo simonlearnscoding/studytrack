@@ -32,6 +32,20 @@ export function useTaskQueue(initialLive: boolean) {
   const toggle = useMutation(api.tasks.toggle)
   const renameTask = useMutation(api.tasks.rename)
   const removeTask = useMutation(api.tasks.remove)
+  const reorderTasks = useMutation(api.tasks.reorder).withOptimisticUpdate((localStore, args) => {
+    const { dayStart: day } = args
+    const current = localStore.getQuery(api.tasks.listMine, { dayStart: day })
+    if (current === undefined) return
+
+    const byId = new Map(current.map((task) => [task.id, task]))
+    const sent = new Set(args.orderedTaskIds)
+    const ordered = args.orderedTaskIds.flatMap((id) => {
+      const task = byId.get(id)
+      return task ? [task] : []
+    })
+    const rest = current.filter((task) => !sent.has(task.id))
+    localStore.setQuery(api.tasks.listMine, { dayStart: day }, [...ordered, ...rest])
+  })
   const setActiveTask = useMutation(api.tasks.setActive)
   const clearActiveTask = useMutation(api.tasks.clearActive)
 
@@ -69,6 +83,10 @@ export function useTaskQueue(initialLive: boolean) {
     void toggle({ taskId: id }).catch(logTaskError)
   }
 
+  const reorder = (orderedTaskIds: TaskId[]) => {
+    void reorderTasks({ dayStart, orderedTaskIds }).catch(logTaskError)
+  }
+
   const setActive = (id: TaskId) => {
     const task = items.find((item) => item.id === id)
     if (!task || task.done) return
@@ -98,6 +116,7 @@ export function useTaskQueue(initialLive: boolean) {
     rename,
     remove,
     tick,
+    reorder,
     setActive,
     clearActive,
     startTracking,

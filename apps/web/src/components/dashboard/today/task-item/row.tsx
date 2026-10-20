@@ -1,66 +1,61 @@
 import { Pause, Pencil, Play, Trash2 } from 'lucide-react'
-import { useState } from 'react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
-import { TaskAction } from './task-action'
-import type { QueueTask } from './task-types'
+import { TaskAction } from '../task-action'
+import type { QueueTask } from '../task-types'
 
-// One row in the desktop task pane. The checkbox stays visible on every row and
-// is the complete control; the actions on the right start/stop the task, rename
-// it, or delete it. An active task swaps its start button for complete + stop.
-export function TaskItem({
+export function TaskRow({
   task,
   isNext,
-  onSetActive,
+  editing,
+  draft,
+  onDraft,
+  onCommit,
+  onCancel,
+  onStartEditing,
   onTick,
+  onSetActive,
   onClear,
-  onRename,
   onRemove,
+  overlay = false,
 }: {
   task: QueueTask
   isNext?: boolean
-  onSetActive: () => void
+  editing: boolean
+  draft: string
+  onDraft: (value: string) => void
+  onCommit: () => void
+  onCancel: () => void
+  onStartEditing: () => void
   onTick: () => void
+  onSetActive: () => void
   onClear: () => void
-  onRename: (title: string) => void
   onRemove: () => void
+  overlay?: boolean
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(task.title)
-
-  const startEditing = () => {
-    setDraft(task.title)
-    setEditing(true)
-  }
-
-  const commit = () => {
-    const trimmed = draft.trim()
-    if (trimmed && trimmed !== task.title) onRename(trimmed)
-    setEditing(false)
-  }
-
   return (
-    <div
-      className={cn(
-        'group relative flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0',
-        task.active && 'rounded-md bg-primary/[0.06]'
-      )}
-    >
-      <Checkbox checked={task.done} onCheckedChange={onTick} />
+    <>
+      <Checkbox
+        checked={task.done}
+        onCheckedChange={onTick}
+        onPointerDown={stopPropagation}
+        onKeyDown={stopPropagation}
+        tabIndex={overlay ? -1 : undefined}
+      />
 
       {editing ? (
         <input
           autoFocus
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
+          onChange={(event) => onDraft(event.target.value)}
+          onBlur={onCommit}
           onKeyDown={(event) => {
+            stopPropagation(event)
             if (event.key === 'Enter') {
               event.preventDefault()
-              commit()
+              onCommit()
             } else if (event.key === 'Escape') {
-              setDraft(task.title)
-              setEditing(false)
+              onCancel()
             }
           }}
           aria-label="Task title"
@@ -99,7 +94,16 @@ export function TaskItem({
       )}
 
       {!editing && (
-        <div className="bg-card/95 pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center gap-0.5 rounded-md pl-1 opacity-0 backdrop-blur-sm transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div
+          onPointerDown={stopPropagation}
+          onKeyDown={stopPropagation}
+          className={cn(
+            'bg-card/95 flex items-center gap-0.5 rounded-md pl-1 backdrop-blur-sm transition-opacity duration-150',
+            overlay
+              ? 'opacity-100'
+              : 'pointer-events-none absolute top-1/2 right-1 z-10 -translate-y-1/2 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100'
+          )}
+        >
           {!task.done &&
             (task.active ? (
               <TaskAction label="Stop working" onClick={onClear}>
@@ -110,7 +114,7 @@ export function TaskItem({
                 <Play className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden />
               </TaskAction>
             ))}
-          <TaskAction label="Rename task" onClick={startEditing}>
+          <TaskAction label="Rename task" onClick={onStartEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
           <TaskAction label="Delete task" onClick={onRemove} danger>
@@ -118,6 +122,10 @@ export function TaskItem({
           </TaskAction>
         </div>
       )}
-    </div>
+    </>
   )
+}
+
+function stopPropagation(event: { stopPropagation: () => void }) {
+  event.stopPropagation()
 }

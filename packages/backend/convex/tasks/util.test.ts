@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { Id } from '../_generated/dataModel'
+import type { Doc, Id } from '../_generated/dataModel'
 import type { Task } from './types'
-import { pickUpNext } from './util'
+import { byPosition, pickUpNext, planOrder } from './util'
 
 function task(id: string, done = false): Task {
   return {
@@ -42,5 +42,57 @@ describe('pickUpNext', () => {
   it('falls back to the first Open task when the active task is not in the list', () => {
     const tasks = [task('first-open'), task('later-open')]
     expect(pickUpNext(tasks, 'elsewhere' as Id<'task'>)?.id).toBe('first-open')
+  })
+})
+
+function row(id: string, creationTime: number, position?: number): Doc<'task'> {
+  return {
+    _id: id as Id<'task'>,
+    _creationTime: creationTime,
+    userId: 'user' as Id<'users'>,
+    title: id,
+    done: false,
+    plannedAt: 0,
+    position,
+  }
+}
+
+describe('byPosition', () => {
+  it('orders by position', () => {
+    const rows = [row('c', 3, 2), row('a', 1, 0), row('b', 2, 1)]
+    expect(rows.sort(byPosition).map((item) => item._id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('keeps creation order for tasks without a position', () => {
+    const rows = [row('later', 2), row('earlier', 1)]
+    expect(rows.sort(byPosition).map((item) => item._id)).toEqual(['earlier', 'later'])
+  })
+
+  it('puts positioned tasks before unpositioned ones', () => {
+    const rows = [row('legacy', 1), row('dragged', 2, 0)]
+    expect(rows.sort(byPosition).map((item) => item._id)).toEqual(['dragged', 'legacy'])
+  })
+
+  it('breaks a position tie by creation order', () => {
+    const rows = [row('second', 2, 0), row('first', 1, 0)]
+    expect(rows.sort(byPosition).map((item) => item._id)).toEqual(['first', 'second'])
+  })
+})
+
+describe('planOrder', () => {
+  const rows = [row('a', 1, 0), row('b', 2, 1), row('c', 3, 2)]
+
+  it('returns the sent order', () => {
+    const ordered = planOrder(rows, ['c', 'a', 'b'] as Id<'task'>[])
+    expect(ordered.map((item) => item._id)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('appends tasks the caller did not send', () => {
+    const ordered = planOrder(rows, ['b', 'a'] as Id<'task'>[])
+    expect(ordered.map((item) => item._id)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('rejects an id that is not in the Day', () => {
+    expect(() => planOrder(rows, ['a', 'elsewhere'] as Id<'task'>[])).toThrow(/Task not found/)
   })
 })

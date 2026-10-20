@@ -1,4 +1,4 @@
-import type { Id } from '../_generated/dataModel'
+import type { Doc, Id } from '../_generated/dataModel'
 import type { Task } from './types'
 
 // The up-next suggestion, derived from an oldest-first Day list. It is the first
@@ -10,4 +10,31 @@ export function pickUpNext(tasks: Task[], activeTaskId: Id<'task'> | null): Task
     if (!tasks[i].done) return tasks[i]
   }
   return null
+}
+
+// The manual order of a Day. `position` is authoritative; tasks written before
+// the field existed (or before the backfill ran) keep creation order, after the
+// positioned ones. Ties fall back to the creation instant.
+export function byPosition(a: Doc<'task'>, b: Doc<'task'>): number {
+  if (a.position !== undefined && b.position !== undefined && a.position !== b.position) {
+    return a.position - b.position
+  }
+  if (a.position !== undefined && b.position === undefined) return -1
+  if (a.position === undefined && b.position !== undefined) return 1
+  return a._creationTime - b._creationTime
+}
+
+// The final Day order after a drag: the ids the caller sent, in that order, then
+// every other task of the Day in its current order. Extra tasks (added on another
+// device mid-drag) are kept instead of failing the write.
+export function planOrder(tasks: Doc<'task'>[], orderedIds: Id<'task'>[]): Doc<'task'>[] {
+  const byId = new Map(tasks.map((task) => [task._id, task]))
+  const ordered: Doc<'task'>[] = []
+  for (const id of orderedIds) {
+    const task = byId.get(id)
+    if (!task) throw new Error('Task not found')
+    ordered.push(task)
+  }
+  const sent = new Set(orderedIds)
+  return [...ordered, ...tasks.filter((task) => !sent.has(task._id))]
 }

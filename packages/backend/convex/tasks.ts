@@ -6,6 +6,7 @@ import {
   listMine as readMine,
   removeTask,
   renameTask,
+  reorderTasks,
   setActive as setActiveTask,
   toggleTask,
 } from './tasks/service'
@@ -15,6 +16,7 @@ import {
   listMineArgs,
   removeTaskArgs,
   renameTaskArgs,
+  reorderTasksArgs,
   setActiveTaskArgs,
   toggleTaskArgs,
 } from './tasks/types'
@@ -51,6 +53,13 @@ export const remove = mutation({
   args: removeTaskArgs.fields,
   handler: async (ctx, args) => {
     await removeTask(ctx, args.taskId)
+  },
+})
+
+export const reorder = mutation({
+  args: reorderTasksArgs.fields,
+  handler: async (ctx, args) => {
+    await reorderTasks(ctx, args.dayStart, args.orderedTaskIds)
   },
 })
 

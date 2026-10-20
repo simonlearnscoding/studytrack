@@ -84,6 +84,7 @@ export default defineSchema({
     done: v.boolean(),
     completedAt: v.optional(v.number()),
     plannedAt: v.number(),
+    position: v.optional(v.number()),
     plannedSessionId: v.optional(v.id('session')),
   })
     .index('by_userId', ['userId'])
