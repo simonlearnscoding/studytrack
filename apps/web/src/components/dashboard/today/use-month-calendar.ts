@@ -9,7 +9,6 @@ import {
   nextMonthStart,
   shiftMonth,
   startOfDay,
-  startOfMonth,
 } from '@studytrack/backend/convex/sessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
@@ -30,12 +29,14 @@ export type MonthCalendarView = {
 export function useMonthCalendar(now: number): MonthCalendarView {
   const selectedDate = useDateStore((state) => state.selectedDate)
   const selectDate = useDateStore((state) => state.selectDate)
+  const monthStart = useDateStore((state) => state.viewedMonthStart)
+  const showMonth = useDateStore((state) => state.showMonth)
   const metric = useMetricStore((state) => state.metric)
 
   // Normalise the client Date to the shared Europe/Zurich Day start rather than
-  // trusting the browser's own midnight.
+  // trusting the browser's own midnight. The Focus day only marks the ring; the
+  // grid and the read follow the independently paged month.
   const focusDayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
-  const monthStart = startOfMonth(focusDayStart, DASHBOARD_TIME_ZONE)
   const monthEnd = nextMonthStart(monthStart, DASHBOARD_TIME_ZONE)
   const todayDayStart = startOfDay(now, DASHBOARD_TIME_ZONE)
 
@@ -56,7 +57,7 @@ export function useMonthCalendar(now: number): MonthCalendarView {
       timeZone: DASHBOARD_TIME_ZONE,
     }),
     selectDay: (dayStart) => selectDate(new Date(dayStart)),
-    previousMonth: () => selectDate(new Date(shiftMonth(focusDayStart, -1, DASHBOARD_TIME_ZONE))),
-    nextMonth: () => selectDate(new Date(shiftMonth(focusDayStart, 1, DASHBOARD_TIME_ZONE))),
+    previousMonth: () => showMonth(shiftMonth(monthStart, -1, DASHBOARD_TIME_ZONE)),
+    nextMonth: () => showMonth(shiftMonth(monthStart, 1, DASHBOARD_TIME_ZONE)),
   }
 }

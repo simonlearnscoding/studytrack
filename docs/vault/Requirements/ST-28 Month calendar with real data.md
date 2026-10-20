@@ -8,11 +8,12 @@ area: requirements
 
 # ST-28 Month calendar with real data
 
-**In short:** make the `/beta` month calendar a real calendar. It shows the month of
-the Focus day in a Monday-first grid, pages backward and forward with two arrows,
-and colours each day from the signed-in member's Daily totals using the site
-focus/total metric. Today's cell includes live time. The mock heat, month label
-and streak go away.
+**In short:** make the `/beta` month calendar a real calendar. It shows a viewed
+month in a Monday-first grid, pages backward and forward with two arrows, and
+colours each day from the signed-in member's Daily totals using the site
+focus/total metric. Today's cell includes live time. Paging the calendar does not
+move the Focus day (the board and task list stay put); clicking a day does. The
+mock heat, month label and streak go away.
 
 Map: [[Requirements-moc]]. Chapter: [[Consistency-moc]]. Vocabulary: `GLOSSARY.md`
 (Focus day, Daily total, Deep focus, Total time, Study time). Related:
@@ -35,13 +36,14 @@ Daily totals, and the calendar is the surface that is supposed to show it.
 Turn the card into a real month grid and then connect it to the member's own
 Daily totals.
 
-- **Real grid.** The calendar shows the month containing the Focus day, Monday
-  first, with blank cells before the 1st and after the last day. The month label
-  reads `October 2026`. The month and the Focus day are the same thing the board
-  and task list already follow.
+- **Real grid.** The calendar shows the viewed month, Monday first, with blank
+  cells before the 1st and after the last day. The month label reads
+  `October 2026`. The viewed month is independent of the Focus day, so the board
+  and task list keep describing the selected day while the calendar pages.
 - **Navigation.** Two arrow buttons sit to the right of the month label. Paging
-  moves the Focus day by one month, preserving its day-of-month (clamped to the
-  new month's last day), so the board and task list follow the calendar.
+  moves only the viewed month; the Focus day, the board and the task list stay
+  put. Clicking a day moves the Focus day. The header's Today action moves both
+  the Focus day and the viewed month to today.
 - **Real heat.** Each day cell shows the member's Daily total under the site-wide
   metric switch: focus means Deep focus, total means Total time. Today's cell
   includes the live value of the running Day. Days with no study are neutral.
@@ -69,9 +71,9 @@ Only slice 3 changes the backend.
 7. As a member, I want to click a day and have the board and task list follow it, so that browsing history changes the whole page.
 8. As a member, I want a back arrow, so that I can look at last month.
 9. As a member, I want a forward arrow, so that I can return to this month or look ahead.
-10. As a member, I want paging to keep my day-of-month where possible, so that moving a month feels like moving a month, not jumping to the 1st.
-11. As a member, I want paging to clamp to the last day when the new month is shorter, so that 31 January does not become 3 March.
-12. As a member, I want paging back to the current month to keep my chosen day, so that the calendar does not unexpectedly jump to today.
+10. As a member, I want paging the calendar to leave my selected day alone, so that browsing a month does not change the board or the task list.
+11. As a member, I want clicking a day to move the board and task list, so that history browsing changes the whole page only when I choose a day.
+12. As a member, I want the Today action to return both the calendar and the board to today, so that "today" means today everywhere.
 13. As a member, I want the month label and grid to change together when I page, so that the header never describes a different month from the squares.
 14. As a member, I want the calendar to follow the site focus/total switch, so that the calendar and the board show the same metric.
 15. As a member, I want focus to mean Deep focus in the calendar, so that the word means the same thing everywhere.
@@ -123,8 +125,8 @@ for this work.
 1. **Grid.** Replace the mock month/heat/streak with a real month grid, the month
    label, neutral cells, and no streak. No backend change. The header has room
    for the arrows but slice 1 does not need them.
-2. **Navigation.** Add the previous/next month arrows and move the Focus day as
-   described below. No backend change.
+2. **Navigation.** Add the previous/next month arrows and move only the viewed
+   month as described below. No backend change.
 3. **Live data.** Add the calendar Daily totals read, colour the cells, include
    today's live value, and follow the metric switch. This is the only slice that
    changes the backend.
@@ -133,17 +135,19 @@ for this work.
 first cell is the Monday on or before the month's first Day, derived with the
 shared Week helper. Cells outside the month are blank and non-interactive. The
 fixed height keeps the card from jumping between five- and six-week months. The
-month label is the Focus day's month and year in the shared Europe/Zurich
-timezone, e.g. `October 2026`. The week starts Monday, matching the existing
-weekday header.
+month label is the viewed month and year in the shared Europe/Zurich timezone,
+e.g. `October 2026`. The week starts Monday, matching the existing weekday
+header.
 
-**Navigation.** The arrows move the Focus day by one calendar month while
-preserving its day-of-month, clamped to the new month's last day. The Focus day
-moves with the shared month/Day helpers, not by adding a fixed 30 days to the
-browser Date. Paging back to the current month does not snap to today. The board
-and task list already read the Focus day, so they follow without new wiring; the
-timeline stays on today (out of scope). The arrows have accessible labels
-("Previous month", "Next month").
+**Navigation.** The viewed month is separate state from the Focus day. The arrows
+move the viewed month by one calendar month via the shared month helpers, not by
+adding a fixed 30 days to the browser Date. The Focus day does not move, so the
+board, the task list and the header date keep describing the selected day.
+Clicking a day writes the Focus day; the viewed month stays where it is. Paging
+back to the current month does not snap to today. The header's Today action sets
+both the Focus day and the viewed month to today. The timeline stays on today
+(out of scope). The arrows have accessible labels ("Previous month", "Next
+month").
 
 **Data read.** Add one authenticated Daily totals read for the calendar. It takes
 the month window start/end and the caller's `now` (all epoch ms, Europe/Zurich
@@ -160,7 +164,7 @@ month plus the live row, returns an empty list when unauthenticated, and never
 returns another member's rows. It receives every timestamp as an argument and
 never reads the wall clock. The existing `listMine` query is untouched.
 
-**Client shape.** A calendar hook owns the focus month, the read, and the metric
+**Client shape.** A calendar hook owns the viewed month, the read, and the metric
 mapping. It returns the month label, the 42 cells, and the previous/next/select
 actions. A pure helper builds the 42 cells from the month start, today's Day,
 the Focus day and the Daily totals, marking each cell as in/out of month, Focus,
@@ -190,8 +194,9 @@ metrics.
 **Header and card.** The month label is top-left. The two arrow buttons are
 top-right. The mock streak is gone. The card keeps its existing surface and
 responsive placement. The day buttons keep the existing selected-ring treatment
-for the Focus day. Today is not separately marked in this slice; the Focus ring
-and the future treatment are the only day states.
+for the Focus day when it falls inside the viewed month. Today is not separately
+marked in this slice; the Focus ring and the future treatment are the only day
+states.
 
 **Future days.** A Day after today's Day has no heat fill and keeps the dashed
 border/number style. This is an interim treatment; the final decision is
@@ -283,4 +288,5 @@ retested here.
   today; the rollup owns closed Days.
 - **Deployment.** No schema or infrastructure change. The existing web deploy is
   enough; the live read ships with the backend deploy.
+
 

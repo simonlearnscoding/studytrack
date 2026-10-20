@@ -48,7 +48,7 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { isSignedIn } = useAuth()
   const selectedDate = useDateStore((state) => state.selectedDate)
-  const selectDate = useDateStore((state) => state.selectDate)
+  const selectToday = useDateStore((state) => state.selectToday)
   // The date is derived from the client clock, so gate it behind mount to keep
   // the server HTML and the first client paint identical.
   const mounted = useMounted()
@@ -94,7 +94,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     type="button"
                     title="Back to today"
                     aria-label="Back to today"
-                    onClick={() => selectDate(new Date())}
+                    onClick={() => selectToday(new Date())}
                     className="ml-3 cursor-pointer font-semibold text-foreground/50 transition-colors hover:text-foreground max-lg:ml-2.5"
                   >
                     Today
