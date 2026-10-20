@@ -1,10 +1,11 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import { isDeepFocus } from '../leaderboard/util'
+import { isDeepFocus, todaysTotals } from '../leaderboard/util'
+import { groupTodaysMembers } from '../sessions/service'
 import { DASHBOARD_TIME_ZONE, nextDayStart, previousDayStart, startOfDay } from '../sessions/util'
 import { getMe } from '../users/service'
-import type { DailyTotalDay, DailyTotalSum } from './types'
+import type { DailyTotalCalendarDay, DailyTotalDay, DailyTotalSum } from './types'
 import { overlapMs } from './util'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -19,6 +20,9 @@ const MAX_SUM_ROWS = 10000
 // The heatmap asks for 53 weeks (371 Days), so 400 rows is headroom. A longer
 // range throws rather than truncating silently, matching the reads above.
 const MAX_MINE_ROWS = 400
+// A Month is at most 31 Days; 62 gives headroom for a stray row or two and still
+// refuses anything that is not a single month.
+const MAX_CALENDAR_ROWS = 62
 
 // Recompute one closed Day's totals for every member that studied in it.
 // Idempotent: it clears the Day's rows and inserts fresh ones, so re-running
@@ -145,6 +149,52 @@ export async function listMine(ctx: QueryCtx, fromDayStart: number): Promise<Dai
   if (rows.length >= MAX_MINE_ROWS) throw new Error('dailyTotals: range too large to read')
 
   return rows.map((row) => ({ dayStart: row.dayStart, studyMs: row.studyMs }))
+}
+
+// The caller's own Daily totals for one Month window, as the web calendar reads
+// them. Today's row is a read-time merge from today's Sessions and partials, using
+// the same Deep focus / Total rules as the leaderboard, clipped to [today, now).
+// It is never written to `dailyTotal`; the rollup owns closed Days.
+export async function getCalendar(
+  ctx: QueryCtx,
+  fromDayStart: number,
+  toDayStart: number,
+  now: number
+): Promise<DailyTotalCalendarDay[]> {
+  const user = await getMe(ctx)
+  if (!user) return []
+
+  const memberKey = user.discordId ?? String(user._id)
+  const todayStart = startOfDay(now, DASHBOARD_TIME_ZONE)
+
+  const rows = await ctx.db
+    .query('dailyTotal')
+    .withIndex('by_memberKey', (q) =>
+      q.eq('memberKey', memberKey).gte('dayStart', fromDayStart).lt('dayStart', toDayStart)
+    )
+    .take(MAX_CALENDAR_ROWS)
+  if (rows.length >= MAX_CALENDAR_ROWS) throw new Error('dailyTotals: month too large to read')
+
+  // A stored row for today (only possible from a manual backfill) is replaced by
+  // the live row below, never added to it.
+  const days = rows
+    .filter((row) => row.dayStart !== todayStart)
+    .map((row) => ({
+      dayStart: row.dayStart,
+      deepFocusMs: row.deepFocusMs,
+      totalMs: row.totalMs,
+    }))
+
+  if (todayStart >= fromDayStart && todayStart < toDayStart) {
+    const members = await groupTodaysMembers(ctx, todayStart)
+    const mine = members.find((member) => member.discordId === memberKey)
+    const live = mine ? todaysTotals([mine], todayStart, now)[0] : null
+    if (live && (live.deepFocusMs > 0 || live.totalMs > 0)) {
+      days.push({ dayStart: todayStart, deepFocusMs: live.deepFocusMs, totalMs: live.totalMs })
+    }
+  }
+
+  return days.sort((a, b) => a.dayStart - b.dayStart)
 }
 
 type MemberTotal = {

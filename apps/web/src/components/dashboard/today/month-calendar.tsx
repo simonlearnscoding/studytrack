@@ -1,50 +1,71 @@
-import { useMounted } from '~/hooks/use-mounted'
-import { useDateStore } from '~/state/date.store'
-import { heatLevel, label } from './data'
+import type { CalendarBucket } from '@studytrack/backend/convex/sessions/calendar'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '~/components/ui/button'
+import { label } from './data'
+import type { MonthCalendarView } from './use-month-calendar'
 
-export function MonthCalendar({
-  month,
-  streak,
-  heat,
-  todayIndex,
-}: {
-  month: string
-  streak: string
-  heat: number[]
-  todayIndex: number
-}) {
-  const mounted = useMounted()
-  const selectedDate = useDateStore((state) => state.selectedDate)
-  const selectDate = useDateStore((state) => state.selectDate)
-  // Pre-mount (SSR + first paint) fall back to the server-stable today marker so
-  // the highlighted cell can't disagree between server and client.
-  const selectedIndex = mounted ? selectedDate.getDate() - 1 : todayIndex
+// The fixed heat scale: a colour always means the same amount of study. Bucket 0
+// has no fill, so absence and low study stay distinguishable.
+const bucketFill: Record<CalendarBucket, string> = {
+  0: '',
+  1: 'bg-primary/[0.09]',
+  2: 'bg-primary/[0.18]',
+  3: 'bg-primary/30 text-white/55',
+  4: 'bg-primary/[0.48] text-white/70',
+}
 
-  const selectDay = (index: number) =>
-    selectDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), index + 1))
+const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
+export function MonthCalendar({ calendar }: { calendar: MonthCalendarView }) {
   return (
     <section className="bg-card rounded-xl border p-4 max-lg:p-3.5">
-      <div className="flex items-baseline gap-2 pb-2.5">
-        <span className={label}>{month}</span>
-        <b className="font-mono text-xs font-medium">{streak} streak</b>
+      <div className="flex items-center justify-between gap-2 pb-2.5">
+        <span className={label}>{calendar.label}</span>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Previous month"
+            onClick={calendar.previousMonth}
+            className="text-subtle-foreground hover:text-foreground h-7 w-7"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Next month"
+            onClick={calendar.nextMonth}
+            className="text-subtle-foreground hover:text-foreground h-7 w-7"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-          <span key={i} className="text-center text-[8px] tracking-wider text-white/25 uppercase">
-            {d}
+        {weekdays.map((day, i) => (
+          <span key={i} className="text-label text-center">
+            {day}
           </span>
         ))}
-        {heat.map((v, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => selectDay(i)}
-            className={`flex aspect-[1.2] cursor-pointer items-end rounded-md border border-white/[0.04] p-1 font-mono text-[8px] text-white/25 ${heatLevel[v]} ${i === selectedIndex ? 'ring-primary text-primary ring-1' : ''} ${i > todayIndex ? 'border-dashed opacity-45' : ''}`}
-          >
-            {i + 1}
-          </button>
-        ))}
+        {calendar.cells.map((cell) =>
+          cell.inMonth ? (
+            <button
+              key={cell.dayStart}
+              type="button"
+              onClick={() => calendar.selectDay(cell.dayStart)}
+              aria-label={`${cell.dayOfMonth} ${calendar.label}`}
+              aria-pressed={cell.isFocus}
+              className={`flex aspect-[1.2] cursor-pointer items-end rounded-md border border-white/[0.04] p-1 font-mono text-label tracking-normal text-subtle-foreground ${bucketFill[cell.bucket]} ${cell.isFocus ? 'ring-primary text-primary ring-1' : ''} ${cell.isFuture ? 'border-dashed opacity-45' : ''}`}
+            >
+              {cell.dayOfMonth}
+            </button>
+          ) : (
+            <span key={cell.dayStart} aria-hidden className="aspect-[1.2]" />
+          )
+        )}
       </div>
     </section>
   )

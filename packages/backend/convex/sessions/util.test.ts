@@ -10,6 +10,7 @@ import type {
 import {
   DASHBOARD_TIME_ZONE,
   attachTasksToSessions,
+  dayOfMonth,
   formatDuration,
   formatDurationClock,
   formatDurationHM,
@@ -21,6 +22,7 @@ import {
   previousDayStart,
   sessionContainsCompletedAt,
   sessionStudyMs,
+  shiftMonth,
   sortMembers,
   startOfDay,
   startOfMonth,
@@ -369,6 +371,42 @@ describe('startOfMonth', () => {
   it('resolves the 1st across the fall-back change', () => {
     const now = Date.UTC(2026, 9, 25, 10, 0, 0)
     expect(startOfMonth(now, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 8, 30, 22, 0, 0))
+  })
+})
+
+describe('shiftMonth', () => {
+  it('keeps the day-of-month', () => {
+    const june15 = startOfDay(Date.UTC(2026, 5, 15, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    const july15 = shiftMonth(june15, 1, DASHBOARD_TIME_ZONE)
+    expect(dayOfMonth(july15, DASHBOARD_TIME_ZONE)).toBe(15)
+    expect(startOfMonth(july15, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 5, 30, 22, 0, 0))
+  })
+
+  it('clamps 31 January to the last day of February', () => {
+    const jan31 = startOfDay(Date.UTC(2026, 0, 31, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    const feb28 = shiftMonth(jan31, 1, DASHBOARD_TIME_ZONE)
+    expect(dayOfMonth(feb28, DASHBOARD_TIME_ZONE)).toBe(28)
+    expect(startOfMonth(feb28, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 0, 31, 23, 0, 0))
+  })
+
+  it('does not snap back to today when paging', () => {
+    const jan31 = startOfDay(Date.UTC(2026, 0, 31, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    const back = shiftMonth(shiftMonth(jan31, 1, DASHBOARD_TIME_ZONE), -1, DASHBOARD_TIME_ZONE)
+    expect(dayOfMonth(back, DASHBOARD_TIME_ZONE)).toBe(28)
+  })
+
+  it('crosses the year boundary', () => {
+    const dec15 = startOfDay(Date.UTC(2026, 11, 15, 10, 0, 0), DASHBOARD_TIME_ZONE)
+    const jan15 = shiftMonth(dec15, 1, DASHBOARD_TIME_ZONE)
+    expect(startOfMonth(jan15, DASHBOARD_TIME_ZONE)).toBe(Date.UTC(2026, 11, 31, 23, 0, 0))
+    expect(dayOfMonth(jan15, DASHBOARD_TIME_ZONE)).toBe(15)
+  })
+})
+
+describe('dayOfMonth', () => {
+  it('reads the Europe/Zurich date, not the UTC date', () => {
+    // 2026-06-01 00:00 Zurich is 2026-05-31 22:00 UTC.
+    expect(dayOfMonth(Date.UTC(2026, 4, 31, 22, 0, 0), DASHBOARD_TIME_ZONE)).toBe(1)
   })
 })
 

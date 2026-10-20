@@ -76,6 +76,28 @@ async function totals(t: Test) {
   return await t.run(async (ctx) => await ctx.db.query('dailyTotal').collect())
 }
 
+async function seedDailyTotal(
+  t: Test,
+  opts: {
+    memberKey: string
+    discordId?: string
+    dayStart: number
+    deepFocusMs: number
+    totalMs: number
+  }
+) {
+  await t.run(async (ctx) => {
+    await ctx.db.insert('dailyTotal', {
+      memberKey: opts.memberKey,
+      discordId: opts.discordId,
+      dayStart: opts.dayStart,
+      studyMs: opts.totalMs,
+      deepFocusMs: opts.deepFocusMs,
+      totalMs: opts.totalMs,
+    })
+  })
+}
+
 describe('dailyTotals.rollupDay', () => {
   it('counts one ended camera partial as Study, Deep focus and Total time', async () => {
     const t = makeTest()
@@ -297,6 +319,155 @@ describe('dailyTotals.rollupDay', () => {
       deepFocusMs: 25 * H,
       totalMs: 25 * H,
     })
+  })
+})
+
+describe('dailyTotals.getCalendar', () => {
+  const NOW = DAY_START + 5 * H
+
+  async function seedAda(t: Test) {
+    return await t.run(
+      async (ctx) =>
+        await ctx.db.insert('users', {
+          clerkUserId: 'clerk-ada',
+          discordId: 'ada',
+          name: 'Ada',
+          createdAt: DAY_START,
+        })
+    )
+  }
+
+  it('returns nothing when unauthenticated', async () => {
+    const t = makeTest()
+    expect(
+      await t.query(api.dailyTotals.getCalendar, {
+        fromDayStart: PREV_DAY_START,
+        toDayStart: DAY_END,
+        now: NOW,
+      })
+    ).toEqual([])
+  })
+
+  it('returns only the caller rows inside the half-open Month window', async () => {
+    const t = makeTest()
+    await seedAda(t)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('users', {
+        clerkUserId: 'clerk-bob',
+        discordId: 'bob',
+        name: 'Bob',
+        createdAt: DAY_START,
+      })
+    })
+    await seedDailyTotal(t, {
+      memberKey: 'ada',
+      discordId: 'ada',
+      dayStart: PREV_DAY_START,
+      deepFocusMs: 30 * M,
+      totalMs: 1 * H,
+    })
+    await seedDailyTotal(t, {
+      memberKey: 'ada',
+      discordId: 'ada',
+      dayStart: DAY_START,
+      deepFocusMs: 2 * H,
+      totalMs: 2 * H,
+    })
+    await seedDailyTotal(t, {
+      memberKey: 'bob',
+      discordId: 'bob',
+      dayStart: PREV_DAY_START,
+      deepFocusMs: 5 * H,
+      totalMs: 5 * H,
+    })
+
+    const rows = await t.withIdentity({ subject: 'clerk-ada' }).query(api.dailyTotals.getCalendar, {
+      fromDayStart: PREV_DAY_START,
+      toDayStart: DAY_START,
+      now: NOW,
+    })
+    expect(rows).toEqual([{ dayStart: PREV_DAY_START, deepFocusMs: 30 * M, totalMs: 1 * H }])
+  })
+
+  it('merges today live from Sessions, replacing any stored today row', async () => {
+    const t = makeTest()
+    await seedAda(t)
+    await seedDailyTotal(t, {
+      memberKey: 'ada',
+      discordId: 'ada',
+      dayStart: DAY_START,
+      deepFocusMs: 9 * H,
+      totalMs: 9 * H,
+    })
+    const start = DAY_START + 1 * H
+    await seedSession(t, {
+      discordId: 'ada',
+      startedAt: start,
+      endedAt: start + 2 * H,
+      partials: [
+        { mode: 'camera', startedAt: start, endedAt: start + 1 * H },
+        { mode: 'voice', startedAt: start + 1 * H, endedAt: start + 2 * H },
+      ],
+    })
+
+    const rows = await t.withIdentity({ subject: 'clerk-ada' }).query(api.dailyTotals.getCalendar, {
+      fromDayStart: DAY_START,
+      toDayStart: DAY_END,
+      now: NOW,
+    })
+    expect(rows).toEqual([{ dayStart: DAY_START, deepFocusMs: 1 * H, totalMs: 2 * H }])
+  })
+
+  it('does not merge today when it is outside the window', async () => {
+    const t = makeTest()
+    await seedAda(t)
+    const start = DAY_START + 1 * H
+    await seedSession(t, {
+      discordId: 'ada',
+      startedAt: start,
+      endedAt: start + 1 * H,
+      partials: [{ mode: 'camera', startedAt: start, endedAt: start + 1 * H }],
+    })
+
+    const past = await t.withIdentity({ subject: 'clerk-ada' }).query(api.dailyTotals.getCalendar, {
+      fromDayStart: PREV_DAY_START,
+      toDayStart: DAY_START,
+      now: NOW,
+    })
+    expect(past).toEqual([])
+  })
+
+  it('keys a manual-only member by their user id', async () => {
+    const t = makeTest()
+    const userId = await t.run(
+      async (ctx) =>
+        await ctx.db.insert('users', {
+          clerkUserId: 'clerk-manual',
+          name: 'Manual',
+          createdAt: DAY_START,
+        })
+    )
+    await seedDailyTotal(t, {
+      memberKey: String(userId),
+      dayStart: DAY_START,
+      deepFocusMs: 20 * M,
+      totalMs: 40 * M,
+    })
+    await seedDailyTotal(t, {
+      memberKey: 'someone-else',
+      dayStart: DAY_START,
+      deepFocusMs: 9 * H,
+      totalMs: 9 * H,
+    })
+
+    const rows = await t
+      .withIdentity({ subject: 'clerk-manual' })
+      .query(api.dailyTotals.getCalendar, {
+        fromDayStart: DAY_START,
+        toDayStart: DAY_END,
+        now: DAY_END + 5 * H,
+      })
+    expect(rows).toEqual([{ dayStart: DAY_START, deepFocusMs: 20 * M, totalMs: 40 * M }])
   })
 })
 

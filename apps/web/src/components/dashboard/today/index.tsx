@@ -15,9 +15,10 @@ import { MobileTaskDock } from './mobile-task-dock'
 import { MonthCalendar } from './month-calendar'
 import { PresenceRail } from './presence-rail'
 import { TaskPane } from './task-pane'
-import { heat, live, month } from './data'
+import { live } from './data'
 import { TimelineSection } from './timeline-section'
 import { useConsistencyBoard } from './use-consistency-board'
+import { useMonthCalendar } from './use-month-calendar'
 import { useRoom } from './use-room'
 import { useTaskQueue } from './use-task-queue'
 import { useNow } from '~/hooks/use-now'
@@ -28,18 +29,13 @@ export function TodayLayout() {
   const queue = useTaskQueue(live)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useRoom()
-  // The consistency board follows the selected day; a once-a-minute clock keeps
-  // the current Week and Month live without refetching every second.
-  const { weekRows, monthRows } = useConsistencyBoard(useNow(60_000))
+  // One once-a-minute clock keeps the board, the calendar's live today cell and
+  // their future/today flags current without refetching every second.
+  const now = useNow(60_000)
+  const { weekRows, monthRows } = useConsistencyBoard(now)
+  const calendar = useMonthCalendar(now)
   // below xl it sits full-width in the main column; xl+ keeps it in the rail
-  const monthCalendar = (
-    <MonthCalendar
-      month={month.name}
-      streak={month.streak}
-      heat={heat}
-      todayIndex={month.todayIndex}
-    />
-  )
+  const monthCalendar = <MonthCalendar calendar={calendar} />
 
   return (
     <div className="mx-auto flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:max-w-[1560px] lg:flex-col lg:gap-4 lg:p-8 lg:px-6 lg:pb-6">
@@ -78,7 +74,7 @@ export function TodayLayout() {
         </aside>
       </div>
 
-      <MobileTaskDock queue={queue} roomCount={roomCount} streak={month.streak} />
+      <MobileTaskDock queue={queue} roomCount={roomCount} />
     </div>
   )
 }

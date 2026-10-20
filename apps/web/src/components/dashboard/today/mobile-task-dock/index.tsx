@@ -9,15 +9,7 @@ import { TaskSheet } from './task-sheet'
 // with a sheet that expands to the whole list and the composer. The queue state
 // is owned by TodayLayout so the desktop pane and this dock share one source of
 // truth; the dock owns only whether its sheet is open.
-export function MobileTaskDock({
-  queue,
-  roomCount,
-  streak,
-}: {
-  queue: TaskQueue
-  roomCount: number
-  streak: string
-}) {
+export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCount: number }) {
   const mounted = useMounted()
   const now = useNow(1000)
   const [open, setOpen] = useState(false)
@@ -63,7 +55,6 @@ export function MobileTaskDock({
         elapsedMs={elapsedMs}
         showElapsed={mounted && !!active}
         roomCount={roomCount}
-        streak={streak}
         onStart={startTracking}
         onOpen={() => setOpen(true)}
         onTick={() => active && tick(active.id)}

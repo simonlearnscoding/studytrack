@@ -21,11 +21,6 @@ export const week: WeekDay[] = [
   { label: 'Sun 19', hrs: '—' },
 ]
 
-// contract: levels 0–4 derived from dailyTotals · today = todayIndex
-export const heat = [
-  0, 1, 0, 2, 1, 0, 1, 2, 3, 2, 1, 2, 3, 2, 1, 3, 2, 0, 1, 2, 4, 3, 2, 1, 2, 3, 4, 2, 1, 2, 1,
-]
-
 // Hero stats — the session clock and room figures are mock constants; the
 // active task and the up-next suggestion come from the live queue.
 export const heroLive = { h: '1', m: '32', others: 4, roomToday: '13h 20m', rank: '#3' }
@@ -38,8 +33,6 @@ export const you = {
   sub: '#3 today · 6d streak',
 }
 
-export const month = { name: 'October', streak: '6d', todayIndex: 13 }
-
 /* ------------------------------------------------------------------ */
 /* shared visual helpers                                               */
 /* ------------------------------------------------------------------ */
@@ -47,14 +40,6 @@ export const month = { name: 'October', streak: '6d', todayIndex: 13 }
 /** section-label pattern — promote to the `.text-label` utility when tokens land */
 export const label =
   'text-[10.5px] font-semibold uppercase tracking-[0.16em] text-subtle-foreground'
-
-export const heatLevel = [
-  '',
-  'bg-primary/[0.09]',
-  'bg-primary/[0.18]',
-  'bg-primary/30 text-white/55',
-  'bg-primary/[0.48] text-white/70',
-]
 
 /** minutes → `6h 50m` / `45m` — mono duration for the boards */
 export function fmtHrs(mins: number): string {

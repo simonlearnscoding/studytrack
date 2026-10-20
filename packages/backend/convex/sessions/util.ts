@@ -177,6 +177,23 @@ export function startOfMonth(now: number, timeZone: string): number {
   return startOfDay(Date.UTC(year, month - 1, 1), timeZone)
 }
 
+// Move a Day by whole calendar months, preserving its day-of-month and clamping
+// to the target Month's last day. `dayStart` is a Europe/Zurich midnight; the
+// result is the same wall-clock Day in the new Month, DST-safe.
+export function shiftMonth(dayStart: number, months: number, timeZone: string): number {
+  const { year, month, day } = zonedParts(dayStart, timeZone)
+  const target = new Date(Date.UTC(year, month - 1 + months, 1))
+  const targetYear = target.getUTCFullYear()
+  const targetMonth = target.getUTCMonth() + 1
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate()
+  return startOfDay(Date.UTC(targetYear, targetMonth - 1, Math.min(day, lastDay)), timeZone)
+}
+
+// The calendar day-of-month (1–31) of an instant in `timeZone`.
+export function dayOfMonth(instant: number, timeZone: string): number {
+  return zonedParts(instant, timeZone).day
+}
+
 // Monday 00:00 of the Week after `weekStart`, DST-safe. Walk seven calendar days
 // forward, then correct to local midnight. The half-open end bound of a Week.
 export function nextWeekStart(weekStart: number, timeZone: string): number {

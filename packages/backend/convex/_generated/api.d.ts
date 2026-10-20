@@ -34,6 +34,7 @@ import type * as quotes_service from "../quotes/service.js";
 import type * as quotes_types from "../quotes/types.js";
 import type * as quotes_util from "../quotes/util.js";
 import type * as sessions from "../sessions.js";
+import type * as sessions_calendar from "../sessions/calendar.js";
 import type * as sessions_metrics from "../sessions/metrics.js";
 import type * as sessions_service from "../sessions/service.js";
 import type * as sessions_types from "../sessions/types.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   "quotes/types": typeof quotes_types;
   "quotes/util": typeof quotes_util;
   sessions: typeof sessions;
+  "sessions/calendar": typeof sessions_calendar;
   "sessions/metrics": typeof sessions_metrics;
   "sessions/service": typeof sessions_service;
   "sessions/types": typeof sessions_types;
