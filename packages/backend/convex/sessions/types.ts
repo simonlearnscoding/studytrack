@@ -47,6 +47,14 @@ export type DashboardSession = {
   tasks: DashboardSessionTask[]
 }
 
+// A member's one planned session for the Day: a future block on their lane.
+// Public like tasks (ADR-0007), and not a Session — no voice evidence.
+export type DashboardPlan = {
+  id: Id<'plannedSession'>
+  startAt: number
+  endAt: number
+}
+
 // One card on the dashboard: a person's whole day.
 export type DashboardMember = {
   userId: Id<'users'> | null
@@ -59,4 +67,7 @@ export type DashboardMember = {
   // the clock.
   online: boolean
   sessions: DashboardSession[]
+  // The member's planned session for this Day, or null. A plan is public, so it
+  // rides on every member's card, even when they have no Sessions today.
+  plan: DashboardPlan | null
 }

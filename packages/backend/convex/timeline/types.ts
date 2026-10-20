@@ -47,6 +47,11 @@ export type TimelineBarVM = {
 // lane can name the task at the moment it was done.
 export type TimelineDotVM = { leftPx: number; title: string }
 
+// A planned session block on the lane. `missed` marks a window that has passed
+// without any voice evidence. A plan can be cut by a collapsed night band, so it
+// is emitted as one piece per visible segment.
+export type TimelinePlanVM = { leftPx: number; widthPx: number; missed: boolean }
+
 // One member's row, already positioned on the axis. No timestamps survive this
 // far — the view renders pixels only.
 export type TimelineRowVM = {
@@ -57,6 +62,7 @@ export type TimelineRowVM = {
   live: boolean
   tail: string
   bars: TimelineBarVM[]
+  plans: TimelinePlanVM[]
   dots: TimelineDotVM[]
   // How many of this member's sessions are hidden inside the collapsed night
   // band (LD-13). Zero until it collapses.

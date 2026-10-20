@@ -23,6 +23,16 @@ export function RowTrack({ row }: { row: TimelineRowVM }) {
           : 'h-2.5 bg-white/[0.035]'
       }`}
     >
+      {row.plans.map((plan, i) => (
+        <div
+          key={`plan-${i}`}
+          title={plan.missed ? 'Missed plan' : 'Planned session'}
+          className={`absolute top-0 bottom-0 rounded-[2px] border border-dashed ${
+            plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
+          }`}
+          style={{ left: plan.leftPx, width: plan.widthPx }}
+        />
+      ))}
       {row.bars.map((bar, i) => (
         <div
           key={i}

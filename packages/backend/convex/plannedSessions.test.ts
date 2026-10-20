@@ -1,0 +1,155 @@
+/// <reference types="vite/client" />
+import { convexTest } from 'convex-test'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { api } from './_generated/api'
+import schema from './schema'
+import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from './sessions/util'
+
+const modules = import.meta.glob('./**/*.ts')
+
+const H = 60 * 60 * 1000
+// Local noon on 2026-06-15, so "today" is unambiguous and a 14:00 plan is ahead.
+const NOW = Date.UTC(2026, 5, 15, 10, 0, 0)
+const DAY = startOfDay(NOW, DASHBOARD_TIME_ZONE)
+const START = DAY + 14 * H
+const END = DAY + 15 * H
+
+const ADA = { subject: 'clerk-ada' }
+const BOB = { subject: 'clerk-bob' }
+
+function makeTest() {
+  return convexTest(schema, modules)
+}
+
+type Test = ReturnType<typeof makeTest>
+
+async function seedUser(t: Test, identity: { subject: string }, name: string) {
+  return await t.run(async (ctx) => {
+    return await ctx.db.insert('users', {
+      clerkUserId: identity.subject,
+      name,
+      createdAt: NOW,
+    })
+  })
+}
+
+function plan(identity: { subject: string }, over: { start?: number; end?: number } = {}) {
+  return {
+    dayStart: DAY,
+    plannedStart: over.start ?? START,
+    plannedEnd: over.end ?? END,
+  }
+}
+
+async function rowsOf(t: Test) {
+  return await t.run(async (ctx) => await ctx.db.query('plannedSession').collect())
+}
+
+describe('plannedSessions.createOrMove', () => {
+  beforeAll(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterAll(() => {
+    vi.useRealTimers()
+  })
+
+  it('rejects an unauthenticated caller', async () => {
+    const t = makeTest()
+    await expect(t.mutation(api.plannedSessions.createOrMove, plan(ADA))).rejects.toThrow(
+      /Not authenticated/
+    )
+  })
+
+  it('stores the drag window and shows it on the member card', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await t.withIdentity(ADA).mutation(api.plannedSessions.createOrMove, plan(ADA))
+
+    const [row] = await rowsOf(t)
+    expect(row).toMatchObject({ dayStart: DAY, plannedStart: START, plannedEnd: END })
+
+    const res = await t
+      .withIdentity(ADA)
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+    expect(res).toHaveLength(1)
+    expect(res[0]).toMatchObject({
+      name: 'Ada',
+      online: false,
+      sessions: [],
+      plan: { id: row._id, startAt: START, endAt: END },
+    })
+  })
+
+  it('moves the one plan instead of stacking a second row', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await t.withIdentity(ADA).mutation(api.plannedSessions.createOrMove, plan(ADA))
+    await t
+      .withIdentity(ADA)
+      .mutation(
+        api.plannedSessions.createOrMove,
+        plan(ADA, { start: START + 2 * H, end: END + 3 * H })
+      )
+
+    const rows = await rowsOf(t)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      plannedStart: START + 2 * H,
+      plannedEnd: END + 3 * H,
+    })
+  })
+
+  it('refuses a window that starts in the past', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await expect(
+      t
+        .withIdentity(ADA)
+        .mutation(api.plannedSessions.createOrMove, plan(ADA, { start: DAY + 11 * H }))
+    ).rejects.toThrow(/past/)
+  })
+
+  it('refuses a window off the 15-minute grid', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await expect(
+      t
+        .withIdentity(ADA)
+        .mutation(api.plannedSessions.createOrMove, plan(ADA, { start: START + 60_000 }))
+    ).rejects.toThrow(/15-minute/)
+  })
+
+  it('refuses a window outside its Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    const dayEnd = nextDayStart(DAY, DASHBOARD_TIME_ZONE)
+
+    await expect(
+      t
+        .withIdentity(ADA)
+        .mutation(api.plannedSessions.createOrMove, plan(ADA, { end: dayEnd + 15 * 60_000 }))
+    ).rejects.toThrow(/inside its Day/)
+  })
+
+  it('keeps each member under their own plan, public to the room', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+
+    await t.withIdentity(BOB).mutation(api.plannedSessions.createOrMove, plan(BOB))
+
+    const res = await t
+      .withIdentity(ADA)
+      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+    expect(res).toHaveLength(1)
+    expect(res[0]).toMatchObject({
+      name: 'Bob',
+      plan: { startAt: START, endAt: END },
+    })
+  })
+})

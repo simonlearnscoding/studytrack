@@ -61,6 +61,7 @@ const member = (
   image,
   online: sessions.some((s) => s.status === 'active'),
   sessions,
+  plan: null,
 })
 
 const window = resolveWindow({ nowMin: 15 * 60, availablePx: FLOOR_PX })
@@ -211,6 +212,35 @@ describe('toTimelineRows', () => {
       { leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
     ])
     expect(rows[0].hiddenCount).toBe(1)
+  })
+
+  it('places a planned session on the lane as pixels', () => {
+    const planned = {
+      ...member(0, 'Me', []),
+      plan: { id: 'p1' as Id<'plannedSession'>, startAt: at(16 * 60), endAt: at(17 * 60) },
+    }
+    const rows = toTimelineRows([planned], input())
+    expect(rows[0].plans).toEqual([
+      { leftPx: CORE_LEFT + 10 * PX_PER_HOUR, widthPx: PX_PER_HOUR, missed: false },
+    ])
+  })
+
+  it('marks a plan that ended without voice evidence as missed', () => {
+    const planned = {
+      ...member(0, 'Me', []),
+      plan: { id: 'p1' as Id<'plannedSession'>, startAt: at(13 * 60), endAt: at(14 * 60) },
+    }
+    const rows = toTimelineRows([planned], input())
+    expect(rows[0].plans[0].missed).toBe(true)
+  })
+
+  it('does not mark a missed plan as such when voice overlapped it', () => {
+    const planned = {
+      ...member(0, 'Me', [session([partial('camera', 13 * 60, 14 * 60)])]),
+      plan: { id: 'p1' as Id<'plannedSession'>, startAt: at(13 * 60), endAt: at(14 * 60) },
+    }
+    const rows = toTimelineRows([planned], input())
+    expect(rows[0].plans[0].missed).toBe(false)
   })
 
   it('counts a session (not each partial) hidden in a band', () => {

@@ -6,6 +6,7 @@ import type {
   TimelineBarVM,
   TimelineDotVM,
   TimelineMetric,
+  TimelinePlanVM,
   TimelineRowVM,
   TimelineSegment,
   TimelineTick,
@@ -165,8 +166,24 @@ function toRow(
   { now, dayStart, me, window, metric }: TimelineInput
 ): TimelineRowVM {
   const bars: TimelineBarVM[] = []
+  const plans: TimelinePlanVM[] = []
   const dots: TimelineDotVM[] = []
   let hiddenCount = 0
+
+  if (member.plan) {
+    const plannedStartMin = toMinute(member.plan.startAt, dayStart)
+    const plannedEndMin = toMinute(member.plan.endAt, dayStart)
+    const missed =
+      member.plan.endAt <= now &&
+      !planHasEvidence(member.sessions, member.plan.startAt, member.plan.endAt)
+    forEachVisibleSpan(
+      window.segments,
+      plannedStartMin,
+      plannedEndMin,
+      (leftPx, widthPx) => plans.push({ leftPx, widthPx, missed }),
+      () => {}
+    )
+  }
 
   for (const session of member.sessions) {
     let hiddenInsideBand = false
@@ -208,9 +225,27 @@ function toRow(
       (metric ?? 'total') === 'focus' ? memberFocusMs(member, now) : memberTotalMs(member, now)
     ),
     bars: bars.sort((a, b) => a.leftPx - b.leftPx),
+    plans: plans.sort((a, b) => a.leftPx - b.leftPx),
     dots: dots.sort((a, b) => a.leftPx - b.leftPx),
     hiddenCount,
   }
+}
+
+// A plan counts as kept when some non-break voice time overlaps its window. Only
+// an ended window needs this: before it ends the plan is simply upcoming.
+function planHasEvidence(
+  sessions: DashboardMember['sessions'],
+  startAt: number,
+  endAt: number
+): boolean {
+  return sessions.some((session) =>
+    session.partials.some(
+      (partial) =>
+        partial.mode !== 'break' &&
+        partial.startedAt < endAt &&
+        (partial.endedAt ?? Number.POSITIVE_INFINITY) > startAt
+    )
+  )
 }
 
 // Walk a minute span across the axis, emitting one bar piece per visible

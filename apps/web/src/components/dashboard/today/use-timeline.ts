@@ -59,6 +59,7 @@ function withOwnLane(members: DashboardMember[], me: Doc<'users'> | null): Dashb
       image: me.image ?? null,
       online: false,
       sessions: [],
+      plan: null,
     },
   ]
 }

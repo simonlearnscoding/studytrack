@@ -15,6 +15,7 @@ const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
 const MAX_TODAY_PARTIALS = 1000
 const MAX_ACTIVE_PARTIALS = 500
 const MAX_TASKS_PER_MEMBER = 200
+const MAX_PLANS_PER_DAY = 500
 
 // Everyone currently in a study channel. Live — the dashboard subscribes to it.
 export async function listActive(ctx: QueryCtx) {
@@ -50,7 +51,8 @@ export async function getTodaysActivitiesForDashboard(
     if (!identity) return []
   }
   const members = await groupTodaysMembers(ctx, dayStart)
-  return await attachDayTasks(ctx, members, dayStart)
+  const withTasks = await attachDayTasks(ctx, members, dayStart)
+  return await attachDayPlans(ctx, withTasks, dayStart)
 }
 
 // The shared day-window read, without any auth: everyone who studied today (or is
@@ -116,6 +118,7 @@ export async function groupTodaysMembers(
       image: user?.image ?? null,
       online: sessions.some((s) => s.status === 'active'),
       sessions,
+      plan: null,
     })
   }
 
@@ -211,6 +214,51 @@ async function attachDayTasks(
       return { ...member, sessions: attachTasksToSessions(member.sessions, sources) }
     })
   )
+}
+
+// Attach each member's planned session for the Day. Plans are public (ADR-0007)
+// and are not Sessions, so a plan with no partials must still get a card:
+// members not produced by the partial-first grouping are appended as offline
+// stubs. A member has at most one plan, so a direct map is enough.
+async function attachDayPlans(
+  ctx: QueryCtx,
+  members: DashboardMember[],
+  dayStart: number
+): Promise<DashboardMember[]> {
+  const plans = await ctx.db
+    .query('plannedSession')
+    .withIndex('by_dayStart', (q) => q.eq('dayStart', dayStart))
+    .take(MAX_PLANS_PER_DAY)
+  if (plans.length === 0) return members
+
+  const result = members.map((member) => ({ ...member }))
+  const byUser = new Map<string, DashboardMember>()
+  for (const member of result) {
+    if (member.userId) byUser.set(String(member.userId), member)
+  }
+
+  for (const plan of plans) {
+    const key = String(plan.userId)
+    let member = byUser.get(key)
+    if (!member) {
+      const user = await ctx.db.get(plan.userId)
+      member = {
+        userId: plan.userId,
+        discordId: user?.discordId ?? key,
+        name: user?.name ?? null,
+        image: user?.image ?? null,
+        online: false,
+        sessions: [],
+        plan: null,
+      }
+      result.push(member)
+      byUser.set(key, member)
+    }
+
+    member.plan = { id: plan._id, startAt: plan.plannedStart, endAt: plan.plannedEnd }
+  }
+
+  return result
 }
 
 function toSessionTaskSource(task: Doc<'task'>): SessionTaskSource {

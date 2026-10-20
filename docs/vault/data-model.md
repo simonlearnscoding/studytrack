@@ -15,6 +15,7 @@ Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 - `sessionPartial`: `by_sessionId` (sessionId, status) · `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, startedAt) · `by_startedAt` (startedAt)
 - `dailyTotal`: `by_dayStart` (dayStart) · `by_memberKey` (memberKey, dayStart)
 - `task`: `by_userId` (userId) · `by_userId_plannedAt` (userId, plannedAt) · `by_userId_completedAt` (userId, completedAt) · `by_plannedSessionId` (plannedSessionId)
+- `plannedSession`: `by_userId` (userId) · `by_dayStart` (dayStart)
 
 A **session** is the whole sitting; its **partials** are the stretches of constant
 voice state. A partial's `mode` is one of `voice`, `camera`, `screenShare`,
@@ -85,11 +86,20 @@ erDiagram
         Id plannedSessionId FK "optional, planned into this Session"
     }
 
+    plannedSession {
+        Id _id PK
+        Id userId FK
+        number dayStart "Europe/Zurich Day start"
+        number plannedStart
+        number plannedEnd
+    }
+
     users ||--o{ session : "userId, once the Discord account is linked"
     session ||--o{ sessionPartial : "sessionId"
     users ||--o{ task : "userId"
     users ||--o| task : "activeTaskId"
     session ||--o{ task : "plannedSessionId"
+    users ||--o| plannedSession : "userId"
 ```
 
 ## Derived (ST-11)
@@ -141,3 +151,19 @@ privacy flag. Only the owner writes.
 
 Rename/delete landed in ST-16. Day planning and the active pointer landed in
 ST-27.
+
+## Planned sessions
+
+A **planned session** is not a Session: it has no voice evidence and no
+partials. It is the dashed block on a member's lane, created by dragging across
+their own line.
+
+- `plannedSession` is one row per member (`by_userId`), so dragging again **moves**
+  the plan instead of stacking a second one.
+- `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
+  `plannedEnd` are the instants of the block, both on the 15-minute grid.
+- The mutation refuses a start in the past and a window outside its Day. A plan
+  is public (ADR-0007), so `getTodaysActivitiesForDashboard` attaches it to the
+  member's card and appends a card for a plan-only member.
+- The timeline draws the plan as a dashed block. A plan whose window has ended
+  with no overlapping non-break voice time renders as **missed**.

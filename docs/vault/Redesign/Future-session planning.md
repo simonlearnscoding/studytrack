@@ -59,38 +59,25 @@ sessions, and how it differs on mobile. Explicitly later.
   do. Nothing enforces "one at a time" by deleting — a new plan replaces the
   row in place.
 
-## Not built yet: the model change
+## The model (built 2026-10-20)
 
-Planning is **frontend-only**. The drag reports `{ startMin, endMin }` to a DEV
-harness in `timeline-section.tsx` and nothing is stored: there is no mutation,
-and the timeline draws mock scenarios rather than Convex. The decisions above
-are the shape the real thing has to take; the work, in order:
+Planning is stored, not a DEV harness. The drag reports `{ startMin, endMin }` to
+`plannedSessions.createOrMove`, and the timeline draws the live read.
 
-- [ ] **Where planned times live.** Recommended: a `plannedSession` table
-      (owner + `plannedStart` + `plannedEnd`), because the alternatives ripple.
-      `session.status` is `'active' | 'ended'` and `startedAt` is **required** in
-      `packages/backend/convex/schema.ts`, so putting a plan on `session` means a
-      third status, an optional `startedAt`, and changes to `buildSession`, daily
-      totals, the leaderboard and metrics. A separate table costs the existing
-      readers nothing.
-- [ ] **A create-or-move mutation** behind the drag, enforcing the past floor
+- [x] **Where planned times live.** A separate `plannedSession` table (owner +
+      `dayStart` + `plannedStart` + `plannedEnd`), so `session`, daily totals,
+      the leaderboard and metrics keep their existing shape.
+- [x] **A create-or-move mutation** behind the drag, enforcing the past floor
       (first 15-minute mark at or after now) and "one at a time" (upsert the
       member's single row).
-- [ ] **The today read.** `getTodaysActivitiesForDashboard` is **partial-first**:
-      `sessions/service.ts` `groupTodaysMembers` collects `sessionPartial` rows
-      and only then groups them by their session, and it derives the member from
-      the session. A plan with no partials can never enter that map. Including
-      plans means re-basing the read (or unioning it) plus a field on
-      `DashboardMember`.
-- [ ] **The glossary conflict.** [[GLOSSARY]] defines a Session as evidenced
-      ("from a member first joining a study channel until they leave voice"), and
-      this note says a Planned session is not a Session. Planned times **on**
-      `session` reverses that; whichever way it lands, the reversal gets written
-      down — a glossary line, plus an ADR if it lands on `session`.
-- [ ] **The timeline still reads mocks.** `/beta` resolves a scenario
-      (`useScenario`) instead of subscribing to
-      `api.sessions.getTodaysActivitiesForDashboard`, which feeds the older
-      dashboard route. Until that seam is swapped, a stored plan renders nowhere.
+- [x] **The today read.** `getTodaysActivitiesForDashboard` attaches the Day's
+      plans to `DashboardMember.plan` after the partial-first grouping, appending
+      a card for a plan-only member.
+- [x] **The glossary conflict.** A planned session stays outside `session`: it is
+      a separate table with no partials, matching the "not a Session" definition.
+- [x] **The timeline no longer reads mocks.** It subscribes to
+      `api.sessions.getTodaysActivitiesForDashboard` and draws the stored plan as
+      a dashed block (missed when the window passed with no voice overlap).
 
 ## Open questions
 

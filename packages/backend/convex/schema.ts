@@ -91,6 +91,20 @@ export default defineSchema({
     .index('by_userId_completedAt', ['userId', 'completedAt'])
     .index('by_plannedSessionId', ['plannedSessionId']),
 
+  // A member's one planned session: a future block on their own lane, not a
+  // Session (no voice evidence, no partials). The constraint is one per member,
+  // not per Day, so a new plan moves the existing row instead of stacking.
+  // `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
+  // `plannedEnd` are the instants the block covers.
+  plannedSession: defineTable({
+    userId: v.id('users'),
+    dayStart: v.number(),
+    plannedStart: v.number(),
+    plannedEnd: v.number(),
+  })
+    .index('by_userId', ['userId'])
+    .index('by_dayStart', ['dayStart']),
+
   // The motivational quote shown in the site header, one per local Day. A cron
   // fetches it from ZenQuotes once a Day and stores it here, so readers never hit
   // the network (see quotes/). `dayStart` is the local midnight (Europe/Zurich).

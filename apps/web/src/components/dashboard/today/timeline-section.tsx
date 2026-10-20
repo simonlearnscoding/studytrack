@@ -1,3 +1,4 @@
+import { api } from '@studytrack/backend/convex/_generated/api'
 import {
   formatClock,
   mergeExpansion,
@@ -5,6 +6,7 @@ import {
   toMinute,
   toTimelineRows,
 } from '@studytrack/backend/convex/timeline/util'
+import { useMutation } from 'convex/react'
 import { useRef } from 'react'
 import { useMounted } from '~/hooks/use-mounted'
 import { cn } from '~/lib/utils'
@@ -38,6 +40,7 @@ export function TimelineSection() {
   const nowMin = toMinute(now, dayStart)
   const [manual, toggleBand] = useExpansionPreference()
   const auto = useAutoExpansion(nowMin)
+  const createOrMovePlan = useMutation(api.plannedSessions.createOrMove)
 
   // False on the server, the first client paint, and while the live read lands —
   // the reveal commit lands the measured width and the members together, so the
@@ -71,13 +74,13 @@ export function TimelineSection() {
           scrollerRef={scrollerRef}
           locked={auto.morning}
           onToggleBand={toggleBand}
-          onPlanDrag={
-            import.meta.env.DEV
-              ? // DEV HARNESS (LD-6): planning is not built — this is where a
-                // drag-to-plan span lands. Swap for the real mutation later.
-                (span) => console.debug('[LD-6 harness] plan drag', span)
-              : undefined
-          }
+          onPlanDrag={(span) => {
+            void createOrMovePlan({
+              dayStart,
+              plannedStart: dayStart + span.startMin * 60_000,
+              plannedEnd: dayStart + span.endMin * 60_000,
+            }).catch((error) => console.error('[studytrack] plan change failed', error))
+          }}
         />
       </div>
       {!ready && <TimelineSkeleton className="absolute inset-0" />}
