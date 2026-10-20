@@ -69,11 +69,6 @@ export function TaskItem({
       ) : (
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="flex min-w-0 items-center gap-1.5 text-sm leading-normal">
-            {task.active && (
-              <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
-                NOW
-              </span>
-            )}
             <span
               className={cn(
                 'min-w-0 truncate',
@@ -88,6 +83,12 @@ export function TaskItem({
               </span>
             )}
           </p>
+          {task.active && (
+            <span className="bg-primary-tint text-primary text-label flex w-max items-center gap-1 rounded px-1 py-0.5 font-mono">
+              <span className="bg-primary h-1 w-1 rounded-full" />
+              NOW
+            </span>
+          )}
           {!task.active && !task.done && isNext && (
             <span className="text-label border-border text-muted-foreground flex w-max items-center gap-1 rounded border px-1 py-0.5 font-mono">
               <span className="bg-primary h-1 w-1 rounded-full" />
