@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
-import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { useTaskComposerHotkey, NEW_TASK_PLACEHOLDER } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 
 // The single add-task entry point, shared by the rail widget (compact icon
@@ -9,7 +9,7 @@ import { cn } from '~/lib/utils'
 export function AddTaskForm({
   create,
   compact = false,
-  placeholder = 'Add a task…',
+  placeholder = NEW_TASK_PLACEHOLDER,
 }: {
   create: (args: { title: string }) => Promise<unknown>
   compact?: boolean

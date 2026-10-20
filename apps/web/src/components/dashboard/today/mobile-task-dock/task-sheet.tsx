@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
-import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { useTaskComposerHotkey, NEW_TASK_PLACEHOLDER } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
 import type { TaskId } from '../task-types'
@@ -108,7 +108,7 @@ export function TaskSheet({
               ref={inputRef}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Plan the next step…"
+              placeholder={NEW_TASK_PLACEHOLDER}
               aria-label="New task"
               maxLength={80}
               className="h-9 flex-1 rounded-lg border-white/[0.08] bg-white/[0.04]"

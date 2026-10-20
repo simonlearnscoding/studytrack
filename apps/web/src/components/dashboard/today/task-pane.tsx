@@ -20,7 +20,7 @@ import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { useTaskComposerHotkey, NEW_TASK_PLACEHOLDER } from '~/hooks/use-task-composer-hotkey'
 import { TaskItem } from './task-item'
 import { TaskOverlay } from './task-overlay'
 import type { TaskId } from './task-types'
@@ -91,7 +91,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
           ref={inputRef}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Add a task…"
+          placeholder={NEW_TASK_PLACEHOLDER}
           className="h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"
         />
         <Button type="submit" size="icon" className="h-9 w-9 shrink-0 rounded-lg">
