@@ -1,4 +1,4 @@
-import { Check, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
@@ -168,7 +168,7 @@ function SheetRow({
         task.active && 'bg-primary/[0.06]'
       )}
     >
-      <Checkbox checked={task.done} onCheckedChange={onTick} className="shrink-0" />
+      <Checkbox checked={task.done} onCheckedChange={onTick} />
 
       {editing ? (
         <input
@@ -215,14 +215,9 @@ function SheetRow({
         <div className="flex shrink-0 items-center gap-0.5">
           {!task.done &&
             (task.active ? (
-              <>
-                <TaskAction label="Complete task" onClick={onTick} accent>
-                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                </TaskAction>
-                <TaskAction label="Stop working" onClick={onClear}>
-                  <Pause className="h-3.5 w-3.5" aria-hidden />
-                </TaskAction>
-              </>
+              <TaskAction label="Stop working" onClick={onClear}>
+                <Pause className="h-3.5 w-3.5" aria-hidden />
+              </TaskAction>
             ) : (
               <TaskAction label="Start working" onClick={onSetActive} accent>
                 <Play className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden />

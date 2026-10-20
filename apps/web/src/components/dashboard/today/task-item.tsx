@@ -1,4 +1,4 @@
-import { Check, Pause, Pencil, Play, Trash2 } from 'lucide-react'
+import { Pause, Pencil, Play, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
@@ -46,11 +46,7 @@ export function TaskItem({
         task.active && 'rounded-md bg-primary/[0.06]'
       )}
     >
-      <Checkbox
-        checked={task.done}
-        onCheckedChange={onTick}
-        className="h-5 w-5 shrink-0 rounded-md"
-      />
+      <Checkbox checked={task.done} onCheckedChange={onTick} />
 
       {editing ? (
         <input
@@ -102,14 +98,9 @@ export function TaskItem({
         <div className="flex shrink-0 items-center gap-0.5">
           {!task.done &&
             (task.active ? (
-              <>
-                <TaskAction label="Complete task" onClick={onTick} accent>
-                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                </TaskAction>
-                <TaskAction label="Stop working" onClick={onClear}>
-                  <Pause className="h-3.5 w-3.5" aria-hidden />
-                </TaskAction>
-              </>
+              <TaskAction label="Stop working" onClick={onClear}>
+                <Pause className="h-3.5 w-3.5" aria-hidden />
+              </TaskAction>
             ) : (
               <TaskAction label="Start working" onClick={onSetActive} accent>
                 <Play className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden />
