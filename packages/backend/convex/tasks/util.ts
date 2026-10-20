@@ -24,6 +24,14 @@ export function byPosition(a: Doc<'task'>, b: Doc<'task'>): number {
   return a._creationTime - b._creationTime
 }
 
+// The displayed order of a Day: Open tasks first, Done tasks after, each group in
+// manual position order. Checking a task therefore drops it to the bottom without
+// rewriting its position, so reopening returns it to its place.
+export function byQueueOrder(a: Doc<'task'>, b: Doc<'task'>): number {
+  if (a.done !== b.done) return a.done ? 1 : -1
+  return byPosition(a, b)
+}
+
 // The final Day order after a drag: the ids the caller sent, in that order, then
 // every other task of the Day in its current order. Extra tasks (added on another
 // device mid-drag) are kept instead of failing the write.

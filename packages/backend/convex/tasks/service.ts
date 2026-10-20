@@ -3,7 +3,7 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../sessions/util'
 import { getMe } from '../users/service'
 import type { ActiveTask, Task } from './types'
-import { byPosition, planOrder } from './util'
+import { byQueueOrder, planOrder } from './util'
 
 const MAX_TASKS = 200
 
@@ -138,8 +138,9 @@ export async function getActive(ctx: QueryCtx): Promise<ActiveTask | null> {
   return { task: toTask(task), activeSince: user.activeSince }
 }
 
-// A Day's tasks, bounded and in manual order. Newest-first at the read so the cap
-// keeps the most recent tasks when a Day is over it.
+// A Day's tasks, bounded and in queue order (Open before Done, then manual
+// position). Newest-first at the read so the cap keeps the most recent tasks
+// when a Day is over it.
 async function dayTasks(
   ctx: QueryCtx,
   userId: Id<'users'>,
@@ -150,7 +151,7 @@ async function dayTasks(
     .withIndex('by_userId_plannedAt', (q) => q.eq('userId', userId).eq('plannedAt', dayStart))
     .order('desc')
     .take(MAX_TASKS)
-  return tasks.sort(byPosition)
+  return tasks.sort(byQueueOrder)
 }
 
 // Where a new task goes. Null while the Day still holds tasks without a position:

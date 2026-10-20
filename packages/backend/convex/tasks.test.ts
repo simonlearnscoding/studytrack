@@ -156,9 +156,11 @@ describe('tasks.reorder', () => {
     })
 
     const result = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
-    expect(result.map((task) => task.title)).toEqual(['Done', 'Active'])
-    expect(result[0].done).toBe(true)
-    expect(result[0].completedAt).toBe(completedBefore)
+    // Done tasks always sink below Open ones, even when a drag asked otherwise.
+    expect(result.map((task) => task.title)).toEqual(['Active', 'Done'])
+    const doneRow = result.find((task) => task.title === 'Done')
+    expect(doneRow?.done).toBe(true)
+    expect(doneRow?.completedAt).toBe(completedBefore)
     expect((await t.withIdentity(ADA).query(api.tasks.getActive, {}))?.task.id).toBe(active)
   })
 
@@ -300,6 +302,19 @@ describe('tasks.toggle', () => {
     ;[after] = await tasksOf(t)
     expect(after.done).toBe(false)
     expect(after.completedAt).toBeUndefined()
+  })
+
+  it('moves a checked task below the Open ones', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'First')
+    await create(t, ADA, 'Second')
+    const [first] = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: first.id })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Second', 'First'])
   })
 
   it('refuses to touch another member task', async () => {

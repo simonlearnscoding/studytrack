@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { Task } from './types'
-import { byPosition, pickUpNext, planOrder } from './util'
+import { byPosition, byQueueOrder, pickUpNext, planOrder } from './util'
 
 function task(id: string, done = false): Task {
   return {
@@ -45,13 +45,13 @@ describe('pickUpNext', () => {
   })
 })
 
-function row(id: string, creationTime: number, position?: number): Doc<'task'> {
+function row(id: string, creationTime: number, position?: number, done = false): Doc<'task'> {
   return {
     _id: id as Id<'task'>,
     _creationTime: creationTime,
     userId: 'user' as Id<'users'>,
     title: id,
-    done: false,
+    done,
     plannedAt: 0,
     position,
   }
@@ -76,6 +76,18 @@ describe('byPosition', () => {
   it('breaks a position tie by creation order', () => {
     const rows = [row('second', 2, 0), row('first', 1, 0)]
     expect(rows.sort(byPosition).map((item) => item._id)).toEqual(['first', 'second'])
+  })
+})
+
+describe('byQueueOrder', () => {
+  it('puts Done tasks after every Open task', () => {
+    const rows = [row('done', 1, 0, true), row('open', 2, 1), row('also-done', 3, 2, true)]
+    expect(rows.sort(byQueueOrder).map((item) => item._id)).toEqual(['open', 'done', 'also-done'])
+  })
+
+  it('keeps manual order inside each group', () => {
+    const rows = [row('open-b', 1, 1), row('open-a', 2, 0), row('done-b', 3, 1, true)]
+    expect(rows.sort(byQueueOrder).map((item) => item._id)).toEqual(['open-a', 'open-b', 'done-b'])
   })
 })
 
