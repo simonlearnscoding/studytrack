@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 import { studyMode } from './bot/types'
+import { metric } from './preferences/types'
 
 export default defineSchema({
   // A person. Created by the bot from the Discord id when first seen; the Clerk
@@ -17,6 +18,15 @@ export default defineSchema({
   })
     .index('by_clerkUserId', ['clerkUserId'])
     .index('by_discordId', ['discordId']),
+
+  // A member's own display choices. One row per member, created on the first
+  // write; a missing row means the defaults in preferences/types. Each setting is
+  // its own column with its own mutation, so changing one can never clear
+  // another. `metric` is the site-wide Focus / Total switch (see GLOSSARY).
+  preference: defineTable({
+    userId: v.id('users'),
+    metric,
+  }).index('by_userId', ['userId']),
 
   // A study stint: from joining a channel until leaving voice. Partials hang off
   // it. For now every voice channel counts as study, so there is no guild config.

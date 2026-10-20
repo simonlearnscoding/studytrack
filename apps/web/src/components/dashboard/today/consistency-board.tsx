@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Avatar } from './avatar'
 import { fmtHrs } from './data'
 import type { BoardRow } from './use-consistency-board'
-import { useMetricStore, type Metric } from '~/state/metric.store'
+import type { Metric } from '@studytrack/backend/convex/preferences/types'
+import { useMetric } from '~/hooks/use-metric-preference'
 
 const periods = ['week', 'month'] as const
 type Period = (typeof periods)[number]
@@ -46,8 +47,8 @@ export function ConsistencyBoard({
 }) {
   // The metric comes from the site-wide switch (see the header's MetricToggle):
   // it leads both the numbers and the rank order here, and the live surfaces
-  // follow it too. In-memory; defaults to Deep focus.
-  const metric = useMetricStore((s) => s.metric)
+  // follow it too. Defaults to Deep focus.
+  const metric = useMetric()
   const [sort, setSort] = useState<Period>('week')
   const [expanded, setExpanded] = useState(false)
   // The column header picks the Period that leads the rank; the other breaks ties.

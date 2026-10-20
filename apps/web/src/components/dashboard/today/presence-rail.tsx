@@ -1,5 +1,5 @@
 import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
-import { useMetricStore } from '~/state/metric.store'
+import { useMetric } from '~/hooks/use-metric-preference'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
 import { cn } from '~/lib/utils'
@@ -26,7 +26,7 @@ export function PresenceRail({
   // with nothing to name still reads as alive rather than stuck.
   const dots = '.'.repeat((Math.floor(now / 1000) % 3) + 1)
   // The live "time in session" cuts follow the site-wide metric switch.
-  const metric = useMetricStore((s) => s.metric)
+  const metric = useMetric()
   const people = members?.map((member) => toRoomPerson(member, mounted ? now : null, metric))
   const loading = people === undefined
   // The room's shared timer: shown whenever someone is here, and gone with the

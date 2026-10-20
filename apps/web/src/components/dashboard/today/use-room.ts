@@ -4,7 +4,7 @@ import type { DashboardMember, DashboardSession } from '@studytrack/backend/conv
 import { formatDurationHM } from '@studytrack/backend/convex/sessions/util'
 import { useQuery } from 'convex/react'
 import { useDayStart } from '~/hooks/use-day-start'
-import type { Metric } from '~/state/metric.store'
+import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { colorFor, initials } from './avatar-identity'
 
 type StudyMode = DashboardMember['sessions'][number]['partials'][number]['mode']

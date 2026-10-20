@@ -12,7 +12,7 @@ import {
 } from '@studytrack/backend/convex/sessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
-import { useMetricStore } from '~/state/metric.store'
+import { useMetric } from '~/hooks/use-metric-preference'
 
 // The month card's view: the Focus month's label and 42 cells, plus the three
 // actions the card exposes. It owns the Focus month (via the shared date store),
@@ -31,7 +31,7 @@ export function useMonthCalendar(now: number): MonthCalendarView {
   const selectDate = useDateStore((state) => state.selectDate)
   const monthStart = useDateStore((state) => state.viewedMonthStart)
   const showMonth = useDateStore((state) => state.showMonth)
-  const metric = useMetricStore((state) => state.metric)
+  const metric = useMetric()
 
   // Normalise the client Date to the shared Europe/Zurich Day start rather than
   // trusting the browser's own midnight. The Focus day only marks the ring; the

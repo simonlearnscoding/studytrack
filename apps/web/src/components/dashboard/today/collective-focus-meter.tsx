@@ -3,7 +3,7 @@ import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
 import { formatDurationClock } from '@studytrack/backend/convex/sessions/util'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
-import type { Metric } from '~/state/metric.store'
+import type { Metric } from '@studytrack/backend/convex/preferences/types'
 
 // The room's shared timer (ST-25, "Collective focus time"): the time everyone in
 // the room has put into this sitting, summed — one second per person per second.

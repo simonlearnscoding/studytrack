@@ -1,12 +1,11 @@
-import { useMetricStore } from '~/state/metric.store'
+import { useMetricPreference } from '~/hooks/use-metric-preference'
 
 // The per-surface metric switch lives here in the site header — the one control
 // every Standing / live-session surface follows (ST-12 "Web Period board").
 const metrics = ['focus', 'total'] as const
 
 export function MetricToggle() {
-  const metric = useMetricStore((s) => s.metric)
-  const setMetric = useMetricStore((s) => s.setMetric)
+  const [metric, setMetric] = useMetricPreference()
 
   return (
     <div

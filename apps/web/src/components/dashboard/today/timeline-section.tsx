@@ -21,7 +21,7 @@ import { useExpansionPreference } from './use-expansion-preference'
 import { useTimeline } from './use-timeline'
 import { SessionPopupContent, type SessionPopupData } from './session-popup'
 import { TimelineSkeleton } from './timeline-skeleton'
-import { useMetricStore } from '~/state/metric.store'
+import { useMetric } from '~/hooks/use-metric-preference'
 
 // The width the track assumes before it has measured itself — the fixed-scale
 // core (18h × 32px/h) from the expansion spec. Server and first paint agree.
@@ -39,7 +39,7 @@ export function TimelineSection() {
   const { members, now, dayStart, me } = useTimeline()
   // The lane tails follow the site-wide metric switch; lanes and their order
   // (sorted by Total) never change with it (ST-12).
-  const metric = useMetricStore((s) => s.metric)
+  const metric = useMetric()
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
   const nowMin = toMinute(now, dayStart)

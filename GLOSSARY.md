@@ -158,6 +158,14 @@ The number of consecutive Days, ending today or yesterday, on which a member
 logged at least the threshold of Study time. One number; never ranked.
 _Avoid_: Chain, run, combo
 
+## Preferences
+
+**Preference**:
+A member's own choice about how the dashboard presents things — today only the
+metric it leads with: Deep focus or Total time. Stored per member, so it follows
+them across devices; a member who never chose gets the defaults.
+_Avoid_: Setting, option, config
+
 ## Views
 
 **Focus view**:
