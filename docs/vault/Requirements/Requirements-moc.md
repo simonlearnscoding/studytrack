@@ -25,6 +25,7 @@ Direction: [[Roadmap]].
 - [[Weekly and monthly leaderboard]] (ST-12): in-review
 - [[Consistency heatmap]] (ST-13): wontfix · parked — the `/beta` month calendar carries it
 - [[Streak]] (ST-14): todo · parked behind the calendar
+- [[ST-28 Month calendar with real data]] (ST-28): todo · #ready-for-agent · real month grid, month navigation, and live Daily totals for the focus month
 
 - [[ST-23 Deep focus counts screen share]] (ST-23): in-review · screen-share-only time now counts as Deep focus
 - [[Collective focus time]] (ST-25): todo · #needs-triage · [[Symbiosis-moc]] · a live meter of the room's shared study
