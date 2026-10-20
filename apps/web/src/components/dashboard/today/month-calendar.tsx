@@ -58,7 +58,7 @@ export function MonthCalendar({ calendar }: { calendar: MonthCalendarView }) {
               onClick={() => calendar.selectDay(cell.dayStart)}
               aria-label={`${cell.dayOfMonth} ${calendar.label}`}
               aria-pressed={cell.isFocus}
-              className={`flex aspect-[1.2] cursor-pointer items-end rounded-md border border-white/[0.04] p-1 font-mono text-label tracking-normal text-subtle-foreground ${bucketFill[cell.bucket]} ${cell.isFocus ? 'ring-primary text-primary ring-1' : ''} ${cell.isFuture ? 'border-dashed opacity-45' : ''}`}
+              className={`flex aspect-[1.2] cursor-pointer items-end rounded-md border border-border p-1 font-mono text-label tracking-normal text-subtle-foreground ${bucketFill[cell.bucket]} ${cell.isFocus ? 'ring-primary text-primary ring-1' : ''} ${cell.isFuture ? 'border-dashed opacity-45' : ''}`}
             >
               {cell.dayOfMonth}
             </button>
