@@ -34,8 +34,8 @@ const DOT_LABEL_MAX = 160
 //
 // Your lane is the hero of the surface: a much taller lane whose fill is
 // clearly visible (a faint fill reads as a 1px hairline however tall the box
-// is), with an inset ring and bigger done-dots. Nothing here is rounded — the
-// lane's ends are squared, and so is every bar in it.
+// is), with an inset ring and bigger done-dots. The lane box itself is square;
+// the only round ends on it are the two caps of a session.
 export function RowTrack({
   row,
   planOverride,
@@ -103,11 +103,12 @@ export function RowTrack({
                 }
               : undefined
           }
-          // Every end is squared off. A session is drawn as one piece per
-          // partial, and a partial boundary is not where study started or
-          // stopped — so a round cap there would turn a continuous line into a
-          // row of pills. Nothing on a lane is rounded: only the fills change.
-          className={`absolute top-0 bottom-0 ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
+          // The round caps belong to the session, not this stretch: the backend
+          // only marks the first visible piece as `roundStart` and the last as
+          // `roundEnd` (and only once the session has ended). Every partial
+          // boundary in between stays square, so a mode change or a pause and
+          // return reads as one continuous line instead of a row of pills.
+          className={`absolute top-0 bottom-0 ${bar.roundStart ? 'rounded-l-full' : ''} ${bar.roundEnd ? 'rounded-r-full' : ''} ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
           style={{ left: bar.leftPx, width: bar.widthPx }}
         />
       ))}

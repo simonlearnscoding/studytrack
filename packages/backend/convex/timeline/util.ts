@@ -197,8 +197,13 @@ function toRow(
 
   for (const session of member.sessions) {
     let hiddenInsideBand = false
+    const sessionBars: TimelineBarVM[] = []
+    // Ascending, so the pieces of one session reach the lane in axis order and
+    // the first/last of them can carry the session's own caps. The payload
+    // hands partials over newest-first.
+    const partials = [...session.partials].sort((a, b) => a.startedAt - b.startedAt)
 
-    for (const partial of session.partials) {
+    for (const partial of partials) {
       const startMin = toMinute(partial.startedAt, dayStart)
       const endMin = toMinute(partial.endedAt ?? now, dayStart)
       forEachVisibleSpan(
@@ -206,18 +211,36 @@ function toRow(
         startMin,
         endMin,
         (leftPx, widthPx) =>
-          bars.push({
+          sessionBars.push({
             sessionId: session.id,
             leftPx,
             widthPx,
             mode: partial.mode,
             live: partial.endedAt === null,
+            roundStart: false,
+            roundEnd: false,
           }),
         () => {
           hiddenInsideBand = true
         }
       )
     }
+
+    // The session's own ends are the only round ones. A start or stop that is
+    // not on screen — swallowed by the collapsed night band, or cut off by the
+    // day's edge — stays square, because the visible edge there is the axis
+    // talking, not study beginning or ending. A session still running keeps its
+    // end square: the now-line is what cuts it.
+    const firstBar = sessionBars[0]
+    const lastBar = sessionBars[sessionBars.length - 1]
+    const startOnScreen =
+      minuteToPx(window.segments, toMinute(session.startedAt, dayStart)) !== null
+    const endOnScreen =
+      session.endedAt !== null &&
+      minuteToPx(window.segments, toMinute(session.endedAt, dayStart)) !== null
+    if (firstBar && startOnScreen) firstBar.roundStart = true
+    if (lastBar && session.status === 'ended' && endOnScreen) lastBar.roundEnd = true
+    bars.push(...sessionBars)
 
     for (const task of session.tasks) {
       // Planned-only entries carry no instant and are not dots.

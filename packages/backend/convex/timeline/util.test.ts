@@ -166,7 +166,15 @@ describe('toTimelineRows', () => {
       input()
     )
     expect(rows[0].bars).toEqual([
-      { sessionId: 's', leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'camera', live: false },
+      {
+        sessionId: 's',
+        leftPx: CORE_LEFT,
+        widthPx: PX_PER_HOUR,
+        mode: 'camera',
+        live: false,
+        roundStart: true,
+        roundEnd: true,
+      },
     ])
     expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2, title: 'Read' }])
   })
@@ -190,6 +198,9 @@ describe('toTimelineRows', () => {
       widthPx: PX_PER_HOUR,
       mode: 'screenShare',
       live: true,
+      roundStart: true,
+      // Still running: the now-line cuts the end, so it stays square.
+      roundEnd: false,
     })
   })
 
@@ -205,9 +216,63 @@ describe('toTimelineRows', () => {
         widthPx: PX_PER_HOUR,
         mode: 'voice',
         live: false,
+        roundStart: true,
+        roundEnd: true,
       },
     ])
     expect(rows[0].hiddenCount).toBe(0)
+  })
+
+  it('caps the session, not its partials, and keeps the middle joins square', () => {
+    const sitting = session([
+      partial('camera', 6 * 60, 7 * 60),
+      partial('break', 7 * 60, 7 * 60 + 30),
+      partial('screenShare', 7 * 60 + 30, 8 * 60),
+    ])
+    // The dashboard hands partials over newest-first; the lane order and the
+    // caps must not depend on that.
+    sitting.partials = [...sitting.partials].reverse()
+
+    const rows = toTimelineRows([member(0, 'Me', [sitting])], input({ now: at(9 * 60) }))
+    expect(rows[0].bars).toEqual([
+      {
+        sessionId: 's',
+        leftPx: CORE_LEFT,
+        widthPx: PX_PER_HOUR,
+        mode: 'camera',
+        live: false,
+        roundStart: true,
+        roundEnd: false,
+      },
+      {
+        sessionId: 's',
+        leftPx: CORE_LEFT + PX_PER_HOUR,
+        widthPx: PX_PER_HOUR / 2,
+        mode: 'break',
+        live: false,
+        roundStart: false,
+        roundEnd: false,
+      },
+      {
+        sessionId: 's',
+        leftPx: CORE_LEFT + 1.5 * PX_PER_HOUR,
+        widthPx: PX_PER_HOUR / 2,
+        mode: 'screenShare',
+        live: false,
+        roundStart: false,
+        roundEnd: true,
+      },
+    ])
+  })
+
+  it('leaves a cap square when the real start or stop is off screen', () => {
+    // 04:00 is inside the collapsed night band, so the first drawn piece starts
+    // at 06:00 — the axis edge, not where study began.
+    const rows = toTimelineRows(
+      [member(0, 'Me', [session([partial('voice', 4 * 60, 7 * 60)])])],
+      input({ now: at(7 * 60) })
+    )
+    expect(rows[0].bars[0]).toMatchObject({ roundStart: false, roundEnd: true })
   })
 
   it('clips a bar at the night boundary and counts the hidden part', () => {
@@ -217,7 +282,15 @@ describe('toTimelineRows', () => {
     )
     // 06:00–07:00 visible in the core; 04:00–06:00 hidden in the night band.
     expect(rows[0].bars).toEqual([
-      { sessionId: 's', leftPx: CORE_LEFT, widthPx: PX_PER_HOUR, mode: 'voice', live: false },
+      {
+        sessionId: 's',
+        leftPx: CORE_LEFT,
+        widthPx: PX_PER_HOUR,
+        mode: 'voice',
+        live: false,
+        roundStart: false,
+        roundEnd: true,
+      },
     ])
     expect(rows[0].hiddenCount).toBe(1)
   })

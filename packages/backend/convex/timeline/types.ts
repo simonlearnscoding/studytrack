@@ -39,12 +39,19 @@ export type TimelineWindow = {
 // One stretch of a member's day on the track. `live` marks a running partial.
 // `sessionId` is the sitting the stretch belongs to, so a click can open that
 // session's details.
+//
+// The caps belong to the *session*, not to the stretch: only its first visible
+// piece carries `roundStart`, and only its last carries `roundEnd` once the
+// session has ended. Partial boundaries stay square, so a mode change or a
+// pause-and-return reads as one continuous line instead of a row of pills.
 export type TimelineBarVM = {
   sessionId: Id<'session'>
   leftPx: number
   widthPx: number
   mode: StudyMode
   live: boolean
+  roundStart: boolean
+  roundEnd: boolean
 }
 
 // A completed task, marked where it was ticked off — it carries its title so the
