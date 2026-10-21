@@ -9,66 +9,61 @@ import {
   startOfWeek,
 } from '@studytrack/backend/convex/sessions/util'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { MetricToggle } from '~/components/dashboard/metric-toggle'
 import { Button } from '~/components/ui/button'
 import { useDateStore } from '~/state/date.store'
 
 export type LeaderboardPeriod = 'week' | 'month'
 
-// The week/month range over the board, formatted the compact European way the
-// ranking reads in: `05.10. - 11.10.`. The arrows step the shared Focus day by
-// the period the board is currently ranking on, so the ranges and rows move
-// together.
+// The week/month range over the board. A week reads as the compact European
+// date range `05.10. - 11.10.`; a month reads as its name, `October`. The arrows
+// step the shared Focus day by the period the board is currently ranking on, so
+// the range and the rows move together.
 const rangeFormat = new Intl.DateTimeFormat('de-DE', {
   timeZone: DASHBOARD_TIME_ZONE,
   day: '2-digit',
   month: '2-digit',
 })
 
+const monthFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: DASHBOARD_TIME_ZONE,
+  month: 'long',
+})
+
 const HOUR_MS = 60 * 60 * 1000
 
-export function LeaderboardRange({
-  period,
-  compact = false,
-}: {
-  period: LeaderboardPeriod
-  compact?: boolean
-}) {
+export function LeaderboardRange({ period }: { period: LeaderboardPeriod }) {
   const selectedDate = useDateStore((state) => state.selectedDate)
   const selectDate = useDateStore((state) => state.selectDate)
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
   const { start, end } = periodBounds(dayStart, period)
 
   return (
-    <div
-      className={`flex flex-wrap items-center justify-between gap-2 pb-2 ${compact ? '' : 'gap-x-4'}`}
-    >
-      <div className="flex min-w-0 items-center gap-1">
-        <span className="text-label whitespace-nowrap tracking-[0.18em]">
-          {rangeFormat.format(start)} - {rangeFormat.format(end)}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Previous ${period}`}
-          onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, -1)))}
-          className="text-subtle-foreground hover:text-foreground h-7 w-7"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Next ${period}`}
-          onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, 1)))}
-          className="text-subtle-foreground hover:text-foreground h-7 w-7"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-      <MetricToggle />
+    <div className="flex min-w-0 items-center gap-1 pb-2">
+      <span className="text-label whitespace-nowrap tracking-[0.18em]">
+        {period === 'month'
+          ? monthFormat.format(start)
+          : `${rangeFormat.format(start)} - ${rangeFormat.format(end)}`}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={`Previous ${period}`}
+        onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, -1)))}
+        className="text-subtle-foreground hover:text-foreground h-7 w-7"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={`Next ${period}`}
+        onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, 1)))}
+        className="text-subtle-foreground hover:text-foreground h-7 w-7"
+      >
+        <ChevronRight className="h-3.5 w-3.5" />
+      </Button>
     </div>
   )
 }

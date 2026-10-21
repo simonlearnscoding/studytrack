@@ -4,6 +4,7 @@ import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
 import { cn } from '~/lib/utils'
 import { LiveDot } from '../live-dot'
+import { MetricToggle } from '../metric-toggle'
 import { MODE_ICON, MODE_LABEL, MODE_TEXT } from '../mode-colors'
 import { Avatar } from './avatar'
 import { CollectiveFocusMeter } from './collective-focus-meter'
@@ -35,17 +36,22 @@ export function PresenceRail({
 
   return (
     <aside className={cn('flex min-h-0 flex-col lg:order-none', className)}>
-      <div className={`flex items-center gap-2 pb-2.5 pl-0.5 ${label}`}>
-        <LiveDot className="h-1.5 w-1.5 text-primary" />
-        In the room
-        <span className="text-muted-foreground tracking-normal">
-          ·{' '}
-          {loading ? (
-            <span className="skeleton inline-block h-3 w-3 translate-y-px rounded" />
-          ) : (
-            people.length
-          )}
-        </span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2.5 pl-0.5">
+        <div className={`flex items-center gap-2 ${label}`}>
+          <LiveDot className="h-1.5 w-1.5 text-primary" />
+          In the room
+          <span className="text-muted-foreground tracking-normal">
+            ·{' '}
+            {loading ? (
+              <span className="skeleton inline-block h-3 w-3 translate-y-px rounded" />
+            ) : (
+              people.length
+            )}
+          </span>
+        </div>
+        <div className="ml-auto">
+          <MetricToggle />
+        </div>
       </div>
 
       {showMeter && <CollectiveFocusMeter members={members ?? []} metric={metric} />}
