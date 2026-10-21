@@ -610,7 +610,7 @@ export function PinnedDesktopBar({
                 ))}
               {drag && dragWidth >= DRAG_PX_THRESHOLD && (
                 <div
-                  className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 rounded-[2px] border border-dashed"
+                  className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 border border-dashed"
                   style={{ left: dragLeft, width: dragWidth }}
                 />
               )}

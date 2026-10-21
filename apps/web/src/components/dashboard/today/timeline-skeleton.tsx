@@ -27,12 +27,12 @@ export function TimelineSkeleton({ className }: { className?: string }) {
 
       {/* lanes — a full-width bar stands in for the pinned desktop bar on lg */}
       <div className="relative flex flex-col gap-3.5">
-        <span className="skeleton hidden h-3 w-full rounded-full lg:block" />
+        <span className="skeleton hidden h-3 w-full lg:block" />
         {LANES.map((fill, i) => (
           <div key={i} className="flex h-6 items-center gap-2">
             <span className="skeleton h-2.5 w-24 shrink-0 rounded-full max-lg:w-16" />
             <span
-              className={cn('skeleton rounded-full', i === YOUR_LANE ? 'h-3' : 'h-2.5')}
+              className={cn('skeleton', i === YOUR_LANE ? 'h-3' : 'h-2.5')}
               style={{ width: fill }}
             />
           </div>

@@ -4,11 +4,11 @@ import { label } from '../data'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
 const legend = [
-  { label: 'cam', swatch: 'bg-primary h-1 w-3 rounded-full' },
-  { label: 'screen', swatch: `h-1 w-3 rounded-full ${BAR_LIVE.screenShare}` },
-  { label: 'voice', swatch: 'bg-primary/40 h-1 w-3 rounded-full' },
-  { label: 'tracked', swatch: 'border-primary/55 bg-primary/10 h-1.5 w-3 rounded-[2px] border' },
-  { label: 'planned', swatch: 'border-primary/55 h-[7px] w-3 rounded-[2px] border border-dashed' },
+  { label: 'cam', swatch: 'bg-primary h-1 w-3' },
+  { label: 'screen', swatch: `h-1 w-3 ${BAR_LIVE.screenShare}` },
+  { label: 'voice', swatch: 'bg-primary/40 h-1 w-3' },
+  { label: 'tracked', swatch: 'border-primary/55 bg-primary/10 h-1.5 w-3 border' },
+  { label: 'planned', swatch: 'border-primary/55 h-[7px] w-3 border border-dashed' },
   {
     label: 'done',
     swatch: 'border-primary/75 bg-background h-1.5 w-1.5 rounded-[2px] border-[1.5px]',

@@ -32,9 +32,10 @@ const DOT_LABEL_MAX = 160
 // Bars are positioned slices; dots mark completed tasks on the bar, each named
 // by the task it marks (your lane only — the room's lanes are too short to read).
 //
-// Your lane is the hero of the surface: a much taller capsule whose fill is
+// Your lane is the hero of the surface: a much taller lane whose fill is
 // clearly visible (a faint fill reads as a 1px hairline however tall the box
-// is), with an inset ring and bigger done-dots.
+// is), with an inset ring and bigger done-dots. Nothing here is rounded — the
+// lane's ends are squared, and so is every bar in it.
 export function RowTrack({
   row,
   planOverride,
@@ -50,7 +51,7 @@ export function RowTrack({
 
   return (
     <div
-      className={`relative w-full rounded-full ${
+      className={`relative w-full ${
         row.you
           ? 'bg-white/[0.12] ring-1 ring-white/[0.1] h-9 cursor-crosshair ring-inset'
           : 'h-2.5 bg-white/[0.035]'
@@ -65,7 +66,7 @@ export function RowTrack({
           <div
             key={`plan-${i}`}
             title={plan.missed ? 'Missed plan' : 'Planned session'}
-            className={`absolute top-0 bottom-0 rounded-[2px] border border-dashed ${
+            className={`absolute top-0 bottom-0 border border-dashed ${
               plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
             }`}
             style={{ left: live.leftPx, width: live.widthPx }}
@@ -102,10 +103,11 @@ export function RowTrack({
                 }
               : undefined
           }
-          // A live bar is cut by the now-line, so its right end is squared off —
-          // it is still running, the line just clips it. Every other end keeps
-          // its round cap, since that is where study really started or stopped.
-          className={`absolute top-0 bottom-0 ${bar.live ? 'rounded-l-full' : 'rounded-full'} ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
+          // Every end is squared off. A session is drawn as one piece per
+          // partial, and a partial boundary is not where study started or
+          // stopped — so a round cap there would turn a continuous line into a
+          // row of pills. Nothing on a lane is rounded: only the fills change.
+          className={`absolute top-0 bottom-0 ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
           style={{ left: bar.leftPx, width: bar.widthPx }}
         />
       ))}
