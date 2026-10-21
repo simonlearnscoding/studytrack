@@ -46,9 +46,9 @@ export function ConsistencyBoard({
   /** rows shown before the "show more" affordance */
   initial?: number
 }) {
-  // The metric comes from the board's own switch, which leads both the numbers
-  // and the rank order here; the live surfaces follow it too. Defaults to Deep
-  // focus.
+  // The metric comes from the live-room rail's switch, which leads both the
+  // numbers and the rank order here; the live surfaces follow it too. Defaults
+  // to Deep focus.
   const metric = useMetric()
   const [sort, setSort] = useState<Period>('week')
   const [expanded, setExpanded] = useState(false)
@@ -72,7 +72,7 @@ export function ConsistencyBoard({
 
   return (
     <section>
-      <LeaderboardRange period={sort} compact={compact} />
+      <LeaderboardRange period={sort} />
       <div className={`grid items-center ${grid} border-b border-white/[0.06] pb-1.5`}>
         <span className="col-span-2" />
         <span aria-hidden />

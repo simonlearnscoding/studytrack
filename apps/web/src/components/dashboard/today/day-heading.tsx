@@ -13,10 +13,15 @@ import { useDateStore } from '~/state/date.store'
 // used to live in the site header; it belongs with the day it describes. The
 // arrows follow the calendar's arrow pattern and move the same shared Focus day
 // the board and the task list already read.
-const dayFormat = new Intl.DateTimeFormat('en-US', {
+const weekdayFormat = new Intl.DateTimeFormat('en-US', {
   timeZone: DASHBOARD_TIME_ZONE,
   weekday: 'long',
-  month: 'long',
+})
+
+const dateFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: DASHBOARD_TIME_ZONE,
+  weekday: 'long',
+  month: 'short',
   day: 'numeric',
 })
 
@@ -32,14 +37,20 @@ export function DayHeading({ now }: { now: number }) {
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <h1 className="text-label truncate tracking-[0.18em]">
+      {/* A fixed-width label slot keeps the arrows in the same spot for every
+          day, whether the label reads `Today, Sunday` or `Wednesday, Oct 21`. */}
+      <h1 className="text-label w-40 shrink-0 truncate tracking-[0.18em]">
         {mounted ? (
-          dayFormat.format(selectedDate)
+          isToday ? (
+            `Today, ${weekdayFormat.format(selectedDate)}`
+          ) : (
+            dateFormat.format(selectedDate)
+          )
         ) : (
-          <span className="skeleton inline-block h-3 w-40 rounded" />
+          <span className="skeleton inline-block h-3 w-28 rounded" />
         )}
       </h1>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
           variant="ghost"
@@ -61,19 +72,21 @@ export function DayHeading({ now }: { now: number }) {
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </div>
-      {!isToday && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          title="Back to today"
-          aria-label="Back to today"
-          onClick={() => selectToday(new Date())}
-          className="h-7 rounded-full border-primary/30 bg-primary-tint px-3 font-semibold text-primary hover:bg-primary/15"
-        >
-          Today
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant={isToday ? 'ghost' : 'outline'}
+        size="sm"
+        title={isToday ? 'You are viewing today' : 'Back to today'}
+        aria-label={isToday ? 'You are viewing today' : 'Back to today'}
+        onClick={() => selectToday(new Date())}
+        className={
+          isToday
+            ? 'text-subtle-foreground h-7 shrink-0 rounded-full px-3 hover:bg-white/[0.04]'
+            : 'border-primary/30 bg-primary-tint text-primary hover:bg-primary/15 h-7 shrink-0 rounded-full px-3 font-semibold'
+        }
+      >
+        Today
+      </Button>
     </div>
   )
 }
