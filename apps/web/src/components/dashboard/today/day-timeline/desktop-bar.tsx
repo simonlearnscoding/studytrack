@@ -28,6 +28,8 @@ const DRAG_PX_THRESHOLD = 4
 const SNAP_MIN = 15
 // A double-click on the lane plans a two-hour session at the clicked mark.
 const DOUBLE_CLICK_PLAN_MIN = 2 * 60
+// Keeps the cursor readout fully on the axis when the pointer nears an edge.
+const CURSOR_LABEL_EDGE_PX = 28
 
 export type PlanDrag = { startMin: number; endMin: number }
 export type PlanUpdate = {
@@ -84,6 +86,21 @@ function PlanSpanLabel({ leftPx, label }: { leftPx: number; label: string }) {
   return (
     <span
       className="bg-primary-tint text-primary pointer-events-none absolute -top-4 z-[5] block w-max rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap"
+      style={{ left: leftPx }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// A readout, not a plan: the quarter-hour a click or drag would start on. It
+// follows the pointer and wears a neutral chip so it never reads as the
+// emerald from – until label a real plan (or gesture) carries.
+function CursorTimeLabel({ leftPx, label }: { leftPx: number; label: string }) {
+  return (
+    <span
+      aria-hidden
+      className="bg-background/95 text-foreground ring-white/15 pointer-events-none absolute -top-4 z-[5] block w-max -translate-x-1/2 rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap ring-1"
       style={{ left: leftPx }}
     >
       {label}
@@ -221,6 +238,10 @@ export function PinnedDesktopBar({
   // them. A gesture in flight owns the label instead, so it is suppressed then.
   const [hoveredPlanId, setHoveredPlanId] = useState<TimelinePlanBlockVM['id'] | null>(null)
 
+  // Where the pointer rests on your lane, in axis pixels — the anchor for the
+  // cursor time readout. Null whenever the pointer is off the lane.
+  const [cursorPx, setCursorPx] = useState<number | null>(null)
+
   useEffect(() => {
     if (!pending) return
     const timer = setTimeout(() => setPending(null), 1200)
@@ -248,6 +269,7 @@ export function PinnedDesktopBar({
 
   const onLanePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const pointerPx = lanePx(event)
+    setCursorPx(pointerPx)
     const hovered = row?.planBlocks.find(
       (block) => pointerPx >= block.startPx && pointerPx < block.endPx
     )
@@ -489,6 +511,25 @@ export function PinnedDesktopBar({
     : null
   const hoverLabelLeftPx = hoveredGeometry?.leftPx ?? 0
 
+  // The time a click or drag at the pointer would start on: the same floor and
+  // quarter-hour snap the planning gestures use. Nothing to read in the past,
+  // over a plan, or mid-gesture — each of those already means no new plan
+  // starts here, and the gesture or hover label owns the readout.
+  const cursorFloorPx = planFloorPx(axis.segments, now)
+  const cursorSnappedPx =
+    cursorPx != null && cursorPx >= cursorFloorPx
+      ? snapPx(axis.segments, cursorPx, cursorFloorPx)
+      : null
+  const cursorMinute = cursorSnappedPx == null ? null : pxToMinute(axis.segments, cursorSnappedPx)
+  const cursorLabel =
+    cursorMinute != null && !drag && !resize && !move && hoveredPlanId == null
+      ? formatClock(Math.round(cursorMinute))
+      : null
+  const cursorLabelLeftPx =
+    cursorPx == null
+      ? 0
+      : Math.max(CURSOR_LABEL_EDGE_PX, Math.min(cursorPx, axis.widthPx - CURSOR_LABEL_EDGE_PX))
+
   return (
     <div
       ref={barRef}
@@ -530,7 +571,10 @@ export function PinnedDesktopBar({
               onPointerMove={onLanePointerMove}
               onPointerUp={onLanePointerUp}
               onPointerCancel={() => setDrag(null)}
-              onPointerLeave={() => setHoveredPlanId(null)}
+              onPointerLeave={() => {
+                setHoveredPlanId(null)
+                setCursorPx(null)
+              }}
               onDoubleClick={onLaneDoubleClick}
             >
               <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
@@ -573,6 +617,7 @@ export function PinnedDesktopBar({
               {dragLabel && <PlanSpanLabel leftPx={dragLeft} label={dragLabel} />}
               {updateLabel && <PlanSpanLabel leftPx={updateLabelLeftPx} label={updateLabel} />}
               {hoverLabel && <PlanSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
+              {cursorLabel && <CursorTimeLabel leftPx={cursorLabelLeftPx} label={cursorLabel} />}
             </div>
           </div>
         )}
