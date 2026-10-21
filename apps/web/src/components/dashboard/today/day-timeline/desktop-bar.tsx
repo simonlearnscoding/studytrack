@@ -215,6 +215,12 @@ export function PinnedDesktopBar({
   // released block never snaps back to its old position for a frame.
   const [pending, setPending] = useState<PlanOverride | null>(null)
 
+  // The plan under a resting pointer, shown with the same from – until label
+  // the gestures wear. Tracked by lane position rather than child enter/leave so
+  // the resize handles can never make the label flicker as the pointer crosses
+  // them. A gesture in flight owns the label instead, so it is suppressed then.
+  const [hoveredPlanId, setHoveredPlanId] = useState<TimelinePlanBlockVM['id'] | null>(null)
+
   useEffect(() => {
     if (!pending) return
     const timer = setTimeout(() => setPending(null), 1200)
@@ -241,9 +247,14 @@ export function PinnedDesktopBar({
   }
 
   const onLanePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pointerPx = lanePx(event)
+    const hovered = row?.planBlocks.find(
+      (block) => pointerPx >= block.startPx && pointerPx < block.endPx
+    )
+    setHoveredPlanId(hovered?.id ?? null)
     if (!drag) return
     const toPx = clampToPlans(
-      lanePx(event),
+      pointerPx,
       drag.fromPx,
       drag.floorPx,
       axis.widthPx,
@@ -460,6 +471,24 @@ export function PinnedDesktopBar({
       : null
   const updateLabelLeftPx = resize ? resizeStartPx : (move?.leftPx ?? 0)
 
+  // The from – until label for the plan a resting pointer sits on. Suppressed
+  // for the whole of a gesture, which already carries its own live label, and
+  // follows the committed geometry while a released block waits for the read.
+  const hoveredBlock =
+    !drag && !resize && !move && hoveredPlanId != null
+      ? (row?.planBlocks.find((block) => block.id === hoveredPlanId) ?? null)
+      : null
+  const hoveredGeometry =
+    hoveredBlock && pending?.planId === hoveredBlock.id
+      ? { leftPx: pending.leftPx, widthPx: pending.widthPx }
+      : hoveredBlock
+        ? { leftPx: hoveredBlock.startPx, widthPx: hoveredBlock.endPx - hoveredBlock.startPx }
+        : null
+  const hoverLabel = hoveredGeometry
+    ? spanLabel(axis.segments, hoveredGeometry.leftPx, hoveredGeometry.widthPx)
+    : null
+  const hoverLabelLeftPx = hoveredGeometry?.leftPx ?? 0
+
   return (
     <div
       ref={barRef}
@@ -501,6 +530,7 @@ export function PinnedDesktopBar({
               onPointerMove={onLanePointerMove}
               onPointerUp={onLanePointerUp}
               onPointerCancel={() => setDrag(null)}
+              onPointerLeave={() => setHoveredPlanId(null)}
               onDoubleClick={onLaneDoubleClick}
             >
               <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
@@ -542,6 +572,7 @@ export function PinnedDesktopBar({
               )}
               {dragLabel && <PlanSpanLabel leftPx={dragLeft} label={dragLabel} />}
               {updateLabel && <PlanSpanLabel leftPx={updateLabelLeftPx} label={updateLabel} />}
+              {hoverLabel && <PlanSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
             </div>
           </div>
         )}
