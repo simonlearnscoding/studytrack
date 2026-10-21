@@ -5,9 +5,11 @@ const NAME_CELL = 'flex h-6 w-40 items-center gap-1.5 lg:w-44 lg:pr-2'
 
 // Your name cell is the desktop bar's twin: same height (7rem = hour strip +
 // title band + lane), same surface, both lg-sticky — so name and lane pin
-// together, with the name vertically centered in the lane. On <lg your cell
-// hides here and the pinned mobile lane owns it.
-const YOUR_NAME_CELL = `${NAME_CELL} max-lg:hidden lg:sticky lg:top-19 lg:z-[5] lg:h-28 lg:bg-background/80 lg:backdrop-blur`
+// together. The lg:pt-7 offsets the centre to the lane line itself (hour strip
+// 1.5rem + title band 2rem + half the h-7 track = 4.375rem), so your name sits
+// exactly on your lane, not on the cell's midpoint. On <lg your cell hides
+// here and the pinned mobile lane owns it.
+const YOUR_NAME_CELL = `${NAME_CELL} max-lg:hidden lg:sticky lg:top-19 lg:z-[5] lg:h-28 lg:pt-7 lg:bg-background/80 lg:backdrop-blur`
 
 // The names column — the scroller's pinned sibling. Names never scroll
 // sideways, so you always know whose lane is whose.
