@@ -32,8 +32,9 @@ const DOT_LABEL_MAX = 160
 // Bars are positioned slices; dots mark completed tasks on the bar, each named
 // by the task it marks (your lane only — the room's lanes are too short to read).
 //
-// Your lane is the hero of the surface: a taller capsule with real body (a
-// visible fill, not just a hairline ring), an inset ring and bigger done-dots.
+// Your lane is the hero of the surface: a much taller capsule whose fill is
+// clearly visible (a faint fill reads as a 1px hairline however tall the box
+// is), with an inset ring and bigger done-dots.
 export function RowTrack({
   row,
   planOverride,
@@ -51,7 +52,7 @@ export function RowTrack({
     <div
       className={`relative w-full rounded-full ${
         row.you
-          ? 'bg-white/[0.07] ring-1 ring-white/[0.08] h-6 cursor-crosshair ring-inset'
+          ? 'bg-white/[0.12] ring-1 ring-white/[0.1] h-7 cursor-crosshair ring-inset'
           : 'h-2.5 bg-white/[0.035]'
       }`}
     >
