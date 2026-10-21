@@ -26,6 +26,8 @@ const DRAG_PX_THRESHOLD = 4
 // Planning snaps to 15-minute marks — the dashed preview, the reported span and
 // the gridlines it aims at all share this grain (LD-6 leans 15).
 const SNAP_MIN = 15
+// A double-click on the lane plans a two-hour session at the clicked mark.
+const DOUBLE_CLICK_PLAN_MIN = 2 * 60
 
 export type PlanDrag = { startMin: number; endMin: number }
 export type PlanUpdate = {
@@ -131,7 +133,7 @@ function clampToPlans(
 // scroller — the bar itself is a picture, not a scroll box). A drag across your
 // lane is a *planning* gesture (LD-6), not a pan: it previews a dashed span
 // live and reports `{ startMin, endMin }` on release. A double-click on empty
-// future lane creates a one-hour plan at that position instead. Planning is
+// future lane creates a two-hour plan at that position instead. Planning is
 // future-only — the preview refuses to snap back past now's quarter-hour, and a
 // drag or double-click that begins before now plans nothing. Mobile plans by
 // tap instead — see the pinned mobile lane.
@@ -268,7 +270,7 @@ export function PinnedDesktopBar({
     setDrag(null)
   }
 
-  // Double-click the empty future lane for a one-hour plan snapped to the same
+  // Double-click the empty future lane for a two-hour plan snapped to the same
   // quarter-hour grid as a drag. Start on a plan or in the past plans nothing.
   const onLaneDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
@@ -281,7 +283,7 @@ export function PinnedDesktopBar({
     if (startMin == null) return
     onPlanDoubleClick?.({
       startMin: Math.round(startMin),
-      endMin: Math.round(startMin) + 60,
+      endMin: Math.round(startMin) + DOUBLE_CLICK_PLAN_MIN,
     })
   }
 

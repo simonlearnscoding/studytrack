@@ -87,7 +87,7 @@ export function TimelineSection() {
   }
 
   // Both planning gestures land on the same create mutation; the gesture decides
-  // the span (a drag draws it, a double-click asks for one hour).
+  // the span (a drag draws it, a double-click asks for two hours).
   const createPlanAt = (span: PlanDrag) => {
     void createPlan({
       dayStart,
