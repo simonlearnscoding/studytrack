@@ -52,7 +52,7 @@ export function RowTrack({
     <div
       className={`relative w-full rounded-full ${
         row.you
-          ? 'bg-white/[0.12] ring-1 ring-white/[0.1] h-7 cursor-crosshair ring-inset'
+          ? 'bg-white/[0.12] ring-1 ring-white/[0.1] h-9 cursor-crosshair ring-inset'
           : 'h-2.5 bg-white/[0.035]'
       }`}
     >

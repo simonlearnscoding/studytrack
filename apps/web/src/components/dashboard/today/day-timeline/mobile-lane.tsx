@@ -48,7 +48,7 @@ export function PinnedMobileLane({
               <HourLabels ticks={axis.ticks} widthPx={axis.widthPx} className="bottom-0" />
               <NowPill label={nowLabel} left={now} className="top-0 z-[3]" />
             </div>
-            <div className="flex h-7 items-center">
+            <div className="flex h-9 items-center">
               <RowTrack row={row} onSessionClick={onSessionClick} />
             </div>
           </div>
