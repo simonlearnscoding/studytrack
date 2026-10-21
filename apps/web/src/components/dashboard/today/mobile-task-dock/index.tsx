@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useMounted } from '~/hooks/use-mounted'
-import { useNow } from '~/hooks/use-now'
 import type { TaskQueue } from '../use-task-queue'
 import { NowBar } from './now-bar'
 import { TaskSheet } from './task-sheet'
@@ -10,27 +8,10 @@ import { TaskSheet } from './task-sheet'
 // is owned by TodayLayout so the desktop pane and this dock share one source of
 // truth; the dock owns only whether its sheet is open.
 export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCount: number }) {
-  const mounted = useMounted()
-  const now = useNow(1000)
   const [open, setOpen] = useState(false)
 
-  const {
-    loading,
-    items,
-    live,
-    active,
-    next,
-    activeSince,
-    add,
-    rename,
-    remove,
-    tick,
-    setActive,
-    clearActive,
-    startTracking,
-    toggleTracking,
-  } = queue
-  const elapsedMs = activeSince != null ? now - activeSince : 0
+  const { loading, items, live, now, add, rename, remove, tick, startTracking, toggleTracking } =
+    queue
 
   // Lock the page behind the sheet and close it on Escape.
   useEffect(() => {
@@ -50,27 +31,21 @@ export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCou
     <>
       <NowBar
         live={live}
-        active={active}
-        suggestion={next}
-        elapsedMs={elapsedMs}
-        showElapsed={mounted && !!active}
+        now={now}
         roomCount={roomCount}
         onStart={startTracking}
         onOpen={() => setOpen(true)}
-        onTick={() => active && tick(active.id)}
-        onSetActive={setActive}
-        onClear={clearActive}
+        onTick={() => now && tick(now.id)}
       />
       <TaskSheet
         open={open}
         live={live}
         loading={loading}
         tasks={items}
+        nowId={now?.id ?? null}
         onClose={() => setOpen(false)}
         onAdd={add}
         onTick={tick}
-        onSetActive={setActive}
-        onClear={clearActive}
         onRename={rename}
         onRemove={remove}
         onToggleTracking={toggleTracking}

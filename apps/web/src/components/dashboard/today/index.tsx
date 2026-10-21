@@ -25,8 +25,8 @@ import { useTaskQueue } from './use-task-queue'
 import { useNow } from '~/hooks/use-now'
 
 export function TodayLayout() {
-  // The queue is the one source of truth for the active task + up-next; both the
-  // desktop pane and the mobile dock read the same state.
+  // The queue is the one source of truth for the Now task — the first open task
+  // of the Day; the desktop pane, the mobile dock and the hero all read it.
   const queue = useTaskQueue(live)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useRoom()
@@ -54,11 +54,7 @@ export function TodayLayout() {
         <main
           className={`flex min-h-0 flex-col gap-6 max-lg:gap-5 max-lg:overflow-visible lg:overflow-y-auto ${queue.live ? 'max-lg:order-3' : 'max-lg:order-2'}`}
         >
-          <Hero
-            live={queue.live}
-            active={queue.active?.title ?? null}
-            next={queue.next?.title ?? null}
-          />
+          <Hero live={queue.live} task={queue.now?.title ?? null} />
           <DayHeading now={now} />
           <TimelineSection />
           <div className="flex flex-col gap-6">

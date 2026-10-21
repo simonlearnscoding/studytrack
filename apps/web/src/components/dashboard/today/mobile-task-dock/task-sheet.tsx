@@ -1,4 +1,4 @@
-import { Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
@@ -18,11 +18,10 @@ export function TaskSheet({
   live,
   loading,
   tasks,
+  nowId,
   onClose,
   onAdd,
   onTick,
-  onSetActive,
-  onClear,
   onRename,
   onRemove,
   onToggleTracking,
@@ -31,11 +30,10 @@ export function TaskSheet({
   live: boolean
   loading: boolean
   tasks: DockTask[]
+  nowId: TaskId | null
   onClose: () => void
   onAdd: (title: string) => void
   onTick: (id: TaskId) => void
-  onSetActive: (id: TaskId) => void
-  onClear: () => void
   onRename: (id: TaskId, title: string) => void
   onRemove: (id: TaskId) => void
   onToggleTracking: () => void
@@ -76,7 +74,6 @@ export function TaskSheet({
 
         <div className="flex items-center gap-2 px-4 pt-2.5 pb-2">
           <h2 className="text-label">Tasks</h2>
-          <span className="text-caption ml-auto">play = now</span>
         </div>
 
         <ul className="min-h-0 flex-1 overflow-y-auto px-2">
@@ -93,9 +90,8 @@ export function TaskSheet({
               <SheetRow
                 key={task.id}
                 task={task}
+                isNow={task.id === nowId}
                 onTick={() => onTick(task.id)}
-                onSetActive={() => onSetActive(task.id)}
-                onClear={onClear}
                 onRename={(title) => onRename(task.id, title)}
                 onRemove={() => onRemove(task.id)}
               />
@@ -143,16 +139,14 @@ export function TaskSheet({
 
 function SheetRow({
   task,
+  isNow,
   onTick,
-  onSetActive,
-  onClear,
   onRename,
   onRemove,
 }: {
   task: DockTask
+  isNow: boolean
   onTick: () => void
-  onSetActive: () => void
-  onClear: () => void
   onRename: (title: string) => void
   onRemove: () => void
 }) {
@@ -174,7 +168,7 @@ function SheetRow({
     <li
       className={cn(
         'flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors',
-        task.active && 'bg-primary/[0.06]'
+        isNow && 'bg-primary/[0.06]'
       )}
     >
       <Checkbox checked={task.done} onCheckedChange={onTick} />
@@ -199,7 +193,7 @@ function SheetRow({
         />
       ) : (
         <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm leading-5">
-          {task.active && (
+          {isNow && (
             <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
               NOW
             </span>
@@ -222,16 +216,6 @@ function SheetRow({
 
       {!editing && (
         <div className="flex shrink-0 items-center gap-0.5">
-          {!task.done &&
-            (task.active ? (
-              <TaskAction label="Stop working" onClick={onClear}>
-                <Pause className="h-3.5 w-3.5" aria-hidden />
-              </TaskAction>
-            ) : (
-              <TaskAction label="Start working" onClick={onSetActive} accent>
-                <Play className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden />
-              </TaskAction>
-            ))}
           <TaskAction label="Rename task" onClick={startEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>

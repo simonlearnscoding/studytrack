@@ -1,4 +1,4 @@
-import { Pause, Pencil, Play, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
@@ -6,7 +6,7 @@ import type { QueueTask } from '../task-types'
 
 export function TaskRow({
   task,
-  isNext,
+  isNow,
   editing,
   draft,
   onDraft,
@@ -14,13 +14,11 @@ export function TaskRow({
   onCancel,
   onStartEditing,
   onTick,
-  onSetActive,
-  onClear,
   onRemove,
   overlay = false,
 }: {
   task: QueueTask
-  isNext?: boolean
+  isNow?: boolean
   editing: boolean
   draft: string
   onDraft: (value: string) => void
@@ -28,8 +26,6 @@ export function TaskRow({
   onCancel: () => void
   onStartEditing: () => void
   onTick: () => void
-  onSetActive: () => void
-  onClear: () => void
   onRemove: () => void
   overlay?: boolean
 }) {
@@ -78,16 +74,10 @@ export function TaskRow({
               </span>
             )}
           </p>
-          {task.active && (
+          {isNow && (
             <span className="bg-primary-tint text-primary text-label flex w-max items-center gap-1 rounded px-1 py-0.5 font-mono">
               <span className="bg-primary h-1 w-1 rounded-full" />
               NOW
-            </span>
-          )}
-          {!task.active && !task.done && isNext && (
-            <span className="text-label border-border text-muted-foreground flex w-max items-center gap-1 rounded border px-1 py-0.5 font-mono">
-              <span className="bg-primary h-1 w-1 rounded-full" />
-              NEXT
             </span>
           )}
         </div>
@@ -104,16 +94,6 @@ export function TaskRow({
               : 'pointer-events-none absolute top-1 right-1 z-10 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:[&>button]:opacity-60 [&>button:hover]:opacity-100'
           )}
         >
-          {!task.done &&
-            (task.active ? (
-              <TaskAction label="Stop working" onClick={onClear}>
-                <Pause className="h-3.5 w-3.5" aria-hidden />
-              </TaskAction>
-            ) : (
-              <TaskAction label="Start working" onClick={onSetActive} accent>
-                <Play className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden />
-              </TaskAction>
-            ))}
           <TaskAction label="Rename task" onClick={onStartEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>

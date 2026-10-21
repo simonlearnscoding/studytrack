@@ -3,12 +3,12 @@ import { TaskRow } from './task-item/row'
 
 const noop = () => {}
 
-export function TaskOverlay({ task, isNext }: { task: QueueTask; isNext?: boolean }) {
+export function TaskOverlay({ task, isNow }: { task: QueueTask; isNow?: boolean }) {
   return (
     <div className="card-surface shadow-popover flex rotate-[-1deg] scale-[1.02] items-center gap-2 px-3 py-2.5">
       <TaskRow
         task={task}
-        isNext={isNext}
+        isNow={isNow}
         editing={false}
         draft={task.title}
         onDraft={noop}
@@ -16,8 +16,6 @@ export function TaskOverlay({ task, isNext }: { task: QueueTask; isNext?: boolea
         onCancel={noop}
         onStartEditing={noop}
         onTick={noop}
-        onSetActive={noop}
-        onClear={noop}
         onRemove={noop}
         overlay
       />

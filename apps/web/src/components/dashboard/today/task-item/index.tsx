@@ -7,18 +7,14 @@ import { TaskRow } from './row'
 
 export function TaskItem({
   task,
-  isNext,
-  onSetActive,
+  isNow,
   onTick,
-  onClear,
   onRename,
   onRemove,
 }: {
   task: QueueTask
-  isNext?: boolean
-  onSetActive: () => void
+  isNow?: boolean
   onTick: () => void
-  onClear: () => void
   onRename: (title: string) => void
   onRemove: () => void
 }) {
@@ -57,14 +53,14 @@ export function TaskItem({
         'group relative flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 outline-none last:border-0',
         !editing && 'cursor-grab select-none active:cursor-grabbing',
         isDragging && 'cursor-grabbing opacity-40',
-        task.active && 'rounded-md bg-primary/[0.06]',
+        isNow && 'rounded-md bg-primary/[0.06]',
         'focus-visible:ring-2 focus-visible:ring-primary/20'
       )}
       {...(editing ? {} : listeners)}
     >
       <TaskRow
         task={task}
-        isNext={isNext}
+        isNow={isNow}
         editing={editing}
         draft={draft}
         onDraft={setDraft}
@@ -72,8 +68,6 @@ export function TaskItem({
         onCancel={cancel}
         onStartEditing={startEditing}
         onTick={onTick}
-        onSetActive={onSetActive}
-        onClear={onClear}
         onRemove={onRemove}
       />
     </li>

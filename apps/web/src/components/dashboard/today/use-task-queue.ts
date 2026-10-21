@@ -19,15 +19,15 @@ const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
  * pane and the mobile dock. Reads and writes go straight to Convex, so both
  * surfaces update live and the list survives a reload.
  *
- * `live` is the tracking indicator the around-the-room UI uses; the active task
- * itself is user-level and is not cleared when tracking stops (ST-27).
+ * `live` is the tracking indicator the around-the-room UI uses. The task you are
+ * on needs no pointer: Now is always the first open task in the queue, so a
+ * stored active task can never change what the screen shows.
  */
 export function useTaskQueue(initialLive: boolean) {
   const selectedDate = useDateStore((state) => state.selectedDate)
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
 
   const tasks = useQuery(api.tasks.listMine, { dayStart })
-  const activeTask = useQuery(api.tasks.getActive)
   const create = useMutation(api.tasks.create)
   const toggle = useMutation(api.tasks.toggle)
   const renameTask = useMutation(api.tasks.rename)
@@ -46,8 +46,6 @@ export function useTaskQueue(initialLive: boolean) {
     const rest = current.filter((task) => !sent.has(task.id))
     localStore.setQuery(api.tasks.listMine, { dayStart: day }, [...ordered, ...rest])
   })
-  const setActiveTask = useMutation(api.tasks.setActive)
-  const clearActiveTask = useMutation(api.tasks.clearActive)
 
   const [live, setLive] = useState(initialLive)
   // Convex's `useQuery` only exposes results for active subscriptions, so a Day
@@ -62,10 +60,10 @@ export function useTaskQueue(initialLive: boolean) {
     if (tasks !== undefined) remember(dayStart, tasks)
   }, [tasks, dayStart, remember])
 
-  const items =
-    visibleTasks?.map((task) => toQueueTask(task, activeTask?.task.id === task.id)) ?? []
-  const active = activeTask ? toQueueTask(activeTask.task, true) : undefined
-  const next = upNext(items)
+  const items = visibleTasks?.map(toQueueTask) ?? []
+  // Now is the topmost open task of the Day. Nothing is stored: completing or
+  // reordering the queue moves the marker by itself.
+  const now = items.find((task) => !task.done)
 
   const add = (title: string) => {
     void create({ title, plannedAt: dayStart }).catch(logTaskError)
@@ -87,38 +85,20 @@ export function useTaskQueue(initialLive: boolean) {
     void reorderTasks({ dayStart, orderedTaskIds }).catch(logTaskError)
   }
 
-  const setActive = (id: TaskId) => {
-    const task = items.find((item) => item.id === id)
-    if (!task || task.done) return
-    if (task.active) {
-      clearActive()
-      return
-    }
-    void setActiveTask({ taskId: id }).catch(logTaskError)
-  }
-
-  const clearActive = () => {
-    void clearActiveTask({}).catch(logTaskError)
-  }
-
   const startTracking = () => setLive(true)
 
   const toggleTracking = () => setLive((current) => !current)
 
   return {
-    loading: visibleTasks === undefined || activeTask === undefined,
+    loading: visibleTasks === undefined,
     items,
     live,
-    active,
-    next,
-    activeSince: activeTask?.activeSince ?? null,
+    now,
     add,
     rename,
     remove,
     tick,
     reorder,
-    setActive,
-    clearActive,
     startTracking,
     toggleTracking,
   }
@@ -126,19 +106,11 @@ export function useTaskQueue(initialLive: boolean) {
 
 export type TaskQueue = ReturnType<typeof useTaskQueue>
 
-function toQueueTask(task: Task, active: boolean): QueueTask {
+function toQueueTask(task: Task): QueueTask {
   return {
     ...task,
-    active,
     doneAt: task.completedAt === null ? null : DONE_AT_FORMAT.format(new Date(task.completedAt)),
   }
-}
-
-// The first Open task below the active row, or the first Open task in the
-// oldest-first list when nothing is active. Never wraps back to the top.
-function upNext(tasks: QueueTask[]): QueueTask | undefined {
-  const activeIndex = tasks.findIndex((task) => task.active && !task.done)
-  return tasks.slice(activeIndex + 1).find((task) => !task.done)
 }
 
 function logTaskError(error: unknown) {

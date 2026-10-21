@@ -105,7 +105,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
         </Button>
       </form>
 
-      {/* contract: checkbox = complete · play/pause = start or stop · pencil = rename · trash = delete */}
+      {/* contract: checkbox = complete · pencil = rename · trash = delete */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -128,10 +128,8 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
                   <TaskItem
                     key={task.id}
                     task={task}
-                    isNext={task === queue.next}
-                    onSetActive={() => queue.setActive(task.id)}
+                    isNow={task.id === queue.now?.id}
                     onTick={() => queue.tick(task.id)}
-                    onClear={queue.clearActive}
                     onRename={(title) => queue.rename(task.id, title)}
                     onRemove={() => queue.remove(task.id)}
                   />
@@ -142,7 +140,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
         </div>
 
         <DragOverlay>
-          {dragging ? <TaskOverlay task={dragging} isNext={dragging === queue.next} /> : null}
+          {dragging ? <TaskOverlay task={dragging} isNow={dragging.id === queue.now?.id} /> : null}
         </DragOverlay>
       </DndContext>
     </section>

@@ -1,9 +1,8 @@
 import type { Task } from '@studytrack/backend/convex/tasks/types'
 
-// The beta's row shape: the stored task plus the two things the UI derives — the
-// NOW marker and the formatted completion time.
+// The beta's row shape: the stored task plus the formatted completion time. The
+// Now marker is not carried on the row — the queue derives it from position.
 export type QueueTask = Task & {
-  active: boolean
   doneAt: string | null
 }
 
