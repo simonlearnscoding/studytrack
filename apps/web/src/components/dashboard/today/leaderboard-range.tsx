@@ -39,31 +39,36 @@ export function LeaderboardRange({ period }: { period: LeaderboardPeriod }) {
 
   return (
     <div className="flex min-w-0 items-center gap-1 pb-2">
-      <span className="text-label whitespace-nowrap tracking-[0.18em]">
+      {/* A fixed-width label slot keeps the arrows in the same spot for every
+          period, whether the label reads `05.10. - 11.10.` or `October`. A
+          long label truncates instead of pushing the arrows around. */}
+      <span className="text-label w-28 shrink-0 truncate tracking-[0.18em]">
         {period === 'month'
           ? monthFormat.format(start)
           : `${rangeFormat.format(start)} - ${rangeFormat.format(end)}`}
       </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Previous ${period}`}
-        onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, -1)))}
-        className="text-subtle-foreground hover:text-foreground h-7 w-7"
-      >
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Next ${period}`}
-        onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, 1)))}
-        className="text-subtle-foreground hover:text-foreground h-7 w-7"
-      >
-        <ChevronRight className="h-3.5 w-3.5" />
-      </Button>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Previous ${period}`}
+          onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, -1)))}
+          className="text-subtle-foreground hover:text-foreground h-7 w-7"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Next ${period}`}
+          onClick={() => selectDate(new Date(stepFocusDay(dayStart, period, 1)))}
+          className="text-subtle-foreground hover:text-foreground h-7 w-7"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
   )
 }

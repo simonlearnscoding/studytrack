@@ -49,7 +49,7 @@ export function PresenceRail({
             )}
           </span>
         </div>
-        <div className="ml-auto">
+        <div className="shrink-0">
           <MetricToggle />
         </div>
       </div>
