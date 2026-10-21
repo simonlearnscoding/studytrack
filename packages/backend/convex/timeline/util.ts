@@ -226,20 +226,23 @@ function toRow(
       )
     }
 
-    // The session's own ends are the only round ones. A start or stop that is
-    // not on screen — swallowed by the collapsed night band, or cut off by the
-    // day's edge — stays square, because the visible edge there is the axis
-    // talking, not study beginning or ending. A session still running keeps its
-    // end square: the now-line is what cuts it.
+    // The session's own ends are the only round ones. The first visible piece
+    // always wears the round start — even when study began off screen (before
+    // the day, or inside the collapsed night band), that edge is where the
+    // session enters the lane and must read as its beginning. The last piece
+    // wears a round end only once the session has really ended on screen; while
+    // it runs, the now-line is what cuts the line, so that edge stays square.
     const firstBar = sessionBars[0]
     const lastBar = sessionBars[sessionBars.length - 1]
-    const startOnScreen =
-      minuteToPx(window.segments, toMinute(session.startedAt, dayStart)) !== null
-    const endOnScreen =
+    if (firstBar) firstBar.roundStart = true
+    if (
+      lastBar &&
+      session.status === 'ended' &&
       session.endedAt !== null &&
       minuteToPx(window.segments, toMinute(session.endedAt, dayStart)) !== null
-    if (firstBar && startOnScreen) firstBar.roundStart = true
-    if (lastBar && session.status === 'ended' && endOnScreen) lastBar.roundEnd = true
+    ) {
+      lastBar.roundEnd = true
+    }
     bars.push(...sessionBars)
 
     for (const task of session.tasks) {

@@ -40,9 +40,9 @@ export type TimelineWindow = {
 // `sessionId` is the sitting the stretch belongs to, so a click can open that
 // session's details.
 //
-// The caps belong to the *session*, not to the stretch: only its first visible
-// piece carries `roundStart`, and only its last carries `roundEnd` once the
-// session has ended. Partial boundaries stay square, so a mode change or a
+// The caps belong to the *session*, not to the stretch: its first visible piece
+// always carries `roundStart`, and its last carries `roundEnd` once the session
+// has ended on screen. Partial boundaries stay square, so a mode change or a
 // pause-and-return reads as one continuous line instead of a row of pills.
 export type TimelineBarVM = {
   sessionId: Id<'session'>

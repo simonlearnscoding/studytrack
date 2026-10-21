@@ -265,14 +265,39 @@ describe('toTimelineRows', () => {
     ])
   })
 
-  it('leaves a cap square when the real start or stop is off screen', () => {
+  it('rounds the start even when study began off screen', () => {
     // 04:00 is inside the collapsed night band, so the first drawn piece starts
-    // at 06:00 — the axis edge, not where study began.
+    // at 06:00 — but that edge is where the session enters the lane, and the
+    // start cap is unconditional: it always reads as a beginning.
     const rows = toTimelineRows(
       [member(0, 'Me', [session([partial('voice', 4 * 60, 7 * 60)])])],
       input({ now: at(7 * 60) })
     )
-    expect(rows[0].bars[0]).toMatchObject({ roundStart: false, roundEnd: true })
+    expect(rows[0].bars[0]).toMatchObject({ roundStart: true, roundEnd: true })
+  })
+
+  it('rounds the start of a session that began before today', () => {
+    // 22:30 yesterday → 07:00 today: the visible piece starts at 00:00 of the
+    // collapsed band, still the session's entrance into the lane.
+    const rows = toTimelineRows(
+      [member(0, 'Me', [session([partial('voice', -90, 7 * 60)])])],
+      input({ now: at(7 * 60) })
+    )
+    expect(rows[0].bars[0]).toMatchObject({ roundStart: true, roundEnd: true })
+  })
+
+  it('keeps the end square when the day cut it, not the session', () => {
+    // Ended at 26:00 — past midnight, off the day. The visible right edge is
+    // midnight, and study did not stop there, so no end cap.
+    const rows = toTimelineRows(
+      [member(0, 'Me', [session([partial('voice', 23 * 60, 26 * 60)])])],
+      input({ now: at(23 * 60 + 30) })
+    )
+    expect(rows[0].bars[0]).toMatchObject({
+      leftPx: CORE_LEFT + 17 * PX_PER_HOUR,
+      roundStart: true,
+      roundEnd: false,
+    })
   })
 
   it('clips a bar at the night boundary and counts the hidden part', () => {
@@ -281,6 +306,8 @@ describe('toTimelineRows', () => {
       input({ now: at(7 * 60) })
     )
     // 06:00–07:00 visible in the core; 04:00–06:00 hidden in the night band.
+    // The visible piece is the session's entrance into the lane, so it wears
+    // the start cap even though study really began at 04:00.
     expect(rows[0].bars).toEqual([
       {
         sessionId: 's',
@@ -288,7 +315,7 @@ describe('toTimelineRows', () => {
         widthPx: PX_PER_HOUR,
         mode: 'voice',
         live: false,
-        roundStart: false,
+        roundStart: true,
         roundEnd: true,
       },
     ])

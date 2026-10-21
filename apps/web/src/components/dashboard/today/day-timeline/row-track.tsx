@@ -103,11 +103,12 @@ export function RowTrack({
                 }
               : undefined
           }
-          // The round caps belong to the session, not this stretch: the backend
-          // only marks the first visible piece as `roundStart` and the last as
-          // `roundEnd` (and only once the session has ended). Every partial
-          // boundary in between stays square, so a mode change or a pause and
-          // return reads as one continuous line instead of a row of pills.
+          // The round caps belong to the session, not this stretch: the adapter
+          // marks the first visible piece `roundStart` (always — a session
+          // beginning is a beginning even when it began off screen) and the last
+          // `roundEnd` only once the session has ended. Partial boundaries in
+          // between stay square, so a mode change or a pause and return reads
+          // as one continuous line instead of a row of pills.
           className={`absolute top-0 bottom-0 ${bar.roundStart ? 'rounded-l-full' : ''} ${bar.roundEnd ? 'rounded-r-full' : ''} ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
           style={{ left: bar.leftPx, width: bar.widthPx }}
         />
