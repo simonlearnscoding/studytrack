@@ -1,10 +1,18 @@
 import { v, type Infer } from 'convex/values'
 import type { Id } from '../_generated/dataModel'
 
+// Where a new task lands in the Day's queue: at the bottom (Enter), right after
+// the current Now (Shift+Enter), or at the top so it becomes Now (Ctrl+Enter).
+export const taskPlacement = v.union(v.literal('end'), v.literal('next'), v.literal('now'))
+
 // The dashboard's "today" is a shared calendar day; the caller passes its start
 // so queries never read the wall clock (see ../sessions/util `startOfDay`).
 export const listMineArgs = v.object({ dayStart: v.number() })
-export const createTaskArgs = v.object({ title: v.string(), plannedAt: v.number() })
+export const createTaskArgs = v.object({
+  title: v.string(),
+  plannedAt: v.number(),
+  placement: v.optional(taskPlacement),
+})
 export const toggleTaskArgs = v.object({ taskId: v.id('task') })
 export const renameTaskArgs = v.object({ taskId: v.id('task'), title: v.string() })
 export const removeTaskArgs = v.object({ taskId: v.id('task') })
@@ -15,6 +23,7 @@ export const reorderTasksArgs = v.object({
 export const setActiveTaskArgs = v.object({ taskId: v.id('task') })
 export const clearActiveArgs = v.object({})
 
+export type TaskPlacement = Infer<typeof taskPlacement>
 export type ListMineArgs = Infer<typeof listMineArgs>
 export type CreateTaskArgs = Infer<typeof createTaskArgs>
 export type ToggleTaskArgs = Infer<typeof toggleTaskArgs>

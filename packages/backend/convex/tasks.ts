@@ -31,7 +31,7 @@ export const listMine = query({
 export const create = mutation({
   args: createTaskArgs.fields,
   handler: async (ctx, args) => {
-    await createTask(ctx, args.title, args.plannedAt)
+    await createTask(ctx, args.title, args.plannedAt, args.placement)
   },
 })
 

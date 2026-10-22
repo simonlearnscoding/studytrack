@@ -1,8 +1,9 @@
+import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
-import { handleComposerEscape, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 
 // The single add-task entry point, shared by the rail widget (compact icon
@@ -11,21 +12,25 @@ export function AddTaskForm({
   create,
   compact = false,
 }: {
-  create: (args: { title: string }) => Promise<unknown>
+  create: (args: { title: string; placement?: TaskPlacement }) => Promise<unknown>
   compact?: boolean
 }) {
   const [title, setTitle] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef)
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
+  const add = (placement: TaskPlacement) => {
     const trimmed = title.trim()
     if (!trimmed) return
     setTitle('')
-    create({ title: trimmed }).catch((error) =>
+    create({ title: trimmed, placement }).catch((error) =>
       console.error('[studytrack] failed to add task', error)
     )
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    add('end')
   }
 
   return (
@@ -35,7 +40,7 @@ export function AddTaskForm({
           ref={inputRef}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          onKeyDown={(event) => handleComposerEscape(event, () => setTitle(''))}
+          onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
           placeholder=" "
           aria-label="New task"
           className="peer h-9 w-full rounded-lg border border-input bg-background/60 px-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"

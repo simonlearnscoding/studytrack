@@ -16,12 +16,13 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { handleComposerEscape, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { TaskItem } from './task-item'
 import { TaskOverlay } from './task-overlay'
 import type { TaskId } from './task-types'
@@ -76,12 +77,16 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
     queue.reorder(arrayMove(ids, from, to))
   }
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
+  const add = (placement: TaskPlacement) => {
     const trimmed = title.trim()
     if (!trimmed) return
     setTitle('')
-    queue.add(trimmed)
+    queue.add(trimmed, placement)
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    add('end')
   }
 
   return (
@@ -93,7 +98,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
             ref={inputRef}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            onKeyDown={(event) => handleComposerEscape(event, () => setTitle(''))}
+            onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
             placeholder=" "
             aria-label="New task"
             className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"

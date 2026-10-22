@@ -1,5 +1,5 @@
 import type { Doc, Id } from '../_generated/dataModel'
-import type { Task } from './types'
+import type { Task, TaskPlacement } from './types'
 
 // The up-next suggestion, derived from an oldest-first Day list. It is the first
 // Open task below the active row, or the first Open task when nothing is active.
@@ -30,6 +30,15 @@ export function byPosition(a: Doc<'task'>, b: Doc<'task'>): number {
 export function byQueueOrder(a: Doc<'task'>, b: Doc<'task'>): number {
   if (a.done !== b.done) return a.done ? 1 : -1
   return byPosition(a, b)
+}
+
+// Where a new Open task lands in a Day already in queue order. `now` goes to the
+// very top (the first Open task is Now), `next` right after the current Now, and
+// `end` at the bottom. An empty Day accepts every placement at index 0.
+export function insertionIndex(tasks: Doc<'task'>[], placement: TaskPlacement): number {
+  if (placement === 'end') return tasks.length
+  if (placement === 'now') return 0
+  return tasks.some((task) => !task.done) ? 1 : 0
 }
 
 // The final Day order after a drag: the ids the caller sent, in that order, then

@@ -1,4 +1,5 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
+import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
 
 // Shared view over the owner's tasks for the viewed Day, consumed by the rail's
@@ -11,7 +12,8 @@ export function useMyTasks(dayStart: number) {
   const rename = useMutation(api.tasks.rename)
   const remove = useMutation(api.tasks.remove)
 
-  const create = (args: { title: string }) => createTask({ ...args, plannedAt: dayStart })
+  const create = (args: { title: string; placement?: TaskPlacement }) =>
+    createTask({ ...args, plannedAt: dayStart })
 
   const done = tasks?.filter((task) => task.done).length ?? 0
   const total = tasks?.length ?? 0

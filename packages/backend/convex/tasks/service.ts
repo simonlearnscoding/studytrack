@@ -2,8 +2,8 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../sessions/util'
 import { getMe } from '../users/service'
-import type { ActiveTask, Task } from './types'
-import { byQueueOrder, planOrder } from './util'
+import type { ActiveTask, Task, TaskPlacement } from './types'
+import { byQueueOrder, insertionIndex, planOrder } from './util'
 
 const MAX_TASKS = 200
 
@@ -21,12 +21,14 @@ export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Task[]>
   return tasks.map(toTask)
 }
 
-// Add a task planned for the Day the caller is viewing, at the bottom of that
-// Day's list. Rejects an empty title.
+// Add a task planned for the Day the caller is viewing. `end` (the default)
+// appends it; `now` puts it on top so it becomes Now; `next` puts it right after
+// the current Now. Rejects an empty title.
 export async function createTask(
   ctx: MutationCtx,
   title: string,
-  plannedAt: number
+  plannedAt: number,
+  placement: TaskPlacement = 'end'
 ): Promise<void> {
   const user = await requireUser(ctx)
   const trimmed = title.trim()
@@ -36,14 +38,33 @@ export async function createTask(
   }
 
   const existing = await dayTasks(ctx, user._id, plannedAt)
-  const next = nextPosition(existing)
+  if (placement === 'end') {
+    const next = nextPosition(existing)
+    await ctx.db.insert('task', {
+      userId: user._id,
+      title: trimmed,
+      done: false,
+      plannedAt,
+      ...(next === null ? {} : { position: next }),
+    })
+    return
+  }
 
+  const index = insertionIndex(existing, placement)
+  // Give the new task room at `index`. Every task from there down shifts one
+  // place, which also positions legacy unpositioned tasks on the way.
+  for (let i = existing.length - 1; i >= index; i--) {
+    await ctx.db.patch(existing[i]._id, { position: i + 1 })
+  }
+  for (let i = 0; i < index; i++) {
+    if (existing[i].position !== i) await ctx.db.patch(existing[i]._id, { position: i })
+  }
   await ctx.db.insert('task', {
     userId: user._id,
     title: trimmed,
     done: false,
     plannedAt,
-    ...(next === null ? {} : { position: next }),
+    position: index,
   })
 }
 
