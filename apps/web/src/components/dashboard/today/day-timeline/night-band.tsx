@@ -1,5 +1,5 @@
+import type { NightBandSegment, NightBandVM } from '@studytrack/backend/convex/timeline/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { NightBandSegment, NightBandVM } from './types'
 
 const BAND_HANDLE_PX = 24
 

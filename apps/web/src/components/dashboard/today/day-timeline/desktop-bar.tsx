@@ -1,10 +1,16 @@
 import type {
-  TimelineBarVM,
   TimelinePlanBlockVM,
   TimelineRowVM,
   TimelineWindow,
 } from '@studytrack/backend/convex/timeline/types'
-import { formatClock, minuteToPx } from '@studytrack/backend/convex/timeline/util'
+import {
+  planAt,
+  resolvePlanDraft,
+  resolvePlanEdit,
+  resolvePlanStart,
+  type PlanSpan,
+} from '@studytrack/backend/convex/timeline/gesture'
+import { formatClock, pxToMinute } from '@studytrack/backend/convex/timeline/util'
 import {
   Fragment,
   useEffect,
@@ -16,16 +22,12 @@ import {
 } from 'react'
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
-import { pxToMinute } from './px-to-minute'
 import { RowTrack, type PlanOverride, type SessionClick } from './row-track'
 import type { AxisSurface } from './types'
 import { useMirrorScroll } from './use-mirror-scroll'
 
 // A drag shorter than this is a click, not a plan.
 const DRAG_PX_THRESHOLD = 4
-// Planning snaps to 15-minute marks — the dashed preview, the reported span and
-// the gridlines it aims at all share this grain (LD-6 leans 15).
-const SNAP_MIN = 15
 // A double-click on the lane plans a two-hour session at the clicked mark.
 const DOUBLE_CLICK_PLAN_MIN = 2 * 60
 // Keeps the cursor readout fully on the axis when the pointer nears an edge.
@@ -39,39 +41,39 @@ export type PlanUpdate = {
 }
 export type PlanClick = PlanUpdate & { x: number; y: number }
 
-// The earliest pixel a plan may start: the first 15-minute mark at and after
-// "now". A plan never contains a past minute (LD-6), so this is the wall both
-// the snapped preview and the reported span stop at.
-function planFloorPx(segments: TimelineWindow['segments'], nowPx: number): number {
-  const nowMin = pxToMinute(segments, nowPx)
-  if (nowMin == null) return nowPx
-  const floorMin = Math.ceil(nowMin / SNAP_MIN) * SNAP_MIN
-  return minuteToPx(segments, floorMin) ?? nowPx
+type MoveGesture = {
+  kind: 'move'
+  planId: TimelinePlanBlockVM['id']
+  grabPx: number
+  blocks: TimelinePlanBlockVM[]
+  nowPx: number
+  span: PlanSpan
+  moved: boolean
 }
 
-// Snap an axis pixel to the nearest 15-minute boundary, still in pixels:
-// px → minute → snap → px. Raw pixels (and band-hidden positions) pass through.
-// Never lands left of `floorPx`: dragging back is refused, exactly like the snap.
-function snapPx(segments: TimelineWindow['segments'], px: number, floorPx: number): number {
-  const minute = pxToMinute(segments, px)
-  if (minute == null) return px
-  const snapped = Math.round(minute / SNAP_MIN) * SNAP_MIN
-  return Math.max(minuteToPx(segments, snapped) ?? px, floorPx)
+type ResizeGesture = {
+  kind: 'resize'
+  planId: TimelinePlanBlockVM['id']
+  edge: 'start' | 'end'
+  blocks: TimelinePlanBlockVM[]
+  nowPx: number
+  span: PlanSpan
 }
 
-// One 15-minute step in pixels at this point on the axis.
-function snapStepPx(segments: TimelineWindow['segments'], px: number): number {
-  const minute = pxToMinute(segments, px)
-  if (minute == null) return 0
-  const from = minuteToPx(segments, minute)
-  const to = minuteToPx(segments, minute + SNAP_MIN)
-  return from === null || to === null ? 0 : to - from
+// The gesture in flight. Both the geometry and its input snapshot live here, so
+// a live query update cannot move the walls mid-drag and the render reads one
+// resolved span instead of re-deriving pixels.
+type PlanGesture = MoveGesture | ResizeGesture
+
+// The from – until label a resolved span wears. Gestures and the resting
+// pointer all route through this, so the times read the same whichever is in
+// flight.
+function spanText(span: PlanSpan): string {
+  return `${formatClock(span.startMin)} – ${formatClock(span.endMin)}`
 }
 
-// The from – until label every plan gesture wears. Creating a span, moving a
-// block and resizing an edge all route through this, so the times read the same
-// whichever gesture is in flight.
-function spanLabel(
+// The same label for a stored block, whose geometry is pixels only.
+function blockSpanText(
   segments: TimelineWindow['segments'],
   leftPx: number,
   widthPx: number
@@ -108,35 +110,6 @@ function CursorTimeLabel({ leftPx, label }: { leftPx: number; label: string }) {
   )
 }
 
-// Is this pixel on top of an existing planned session? The half-open end lets a
-// new plan start exactly where the previous one ends.
-function insidePlan(px: number, blocks: TimelinePlanBlockVM[]): boolean {
-  return blocks.some((block) => px >= block.startPx && px < block.endPx)
-}
-
-// Stop a drag at the next plan in the direction of travel, and never let it go
-// left of the past wall. The from-pixel is always outside a plan (pointer-down
-// rejects that), so only the blocks ahead of it can be walls.
-function clampToPlans(
-  px: number,
-  fromPx: number,
-  floorPx: number,
-  widthPx: number,
-  blocks: TimelinePlanBlockVM[]
-): number {
-  if (px >= fromPx) {
-    const wall = blocks
-      .filter((block) => block.startPx >= fromPx)
-      .reduce((nearest, block) => Math.min(nearest, block.startPx), widthPx)
-    return Math.min(Math.max(px, floorPx), widthPx, wall)
-  }
-
-  const wall = blocks
-    .filter((block) => block.endPx <= fromPx)
-    .reduce((nearest, block) => Math.max(nearest, block.endPx), floorPx)
-  return Math.max(Math.min(px, widthPx), floorPx, wall)
-}
-
 // lg+ your labels + track pin as one bar directly under the hero (0..7rem),
 // with the same bg + blur so the stack reads as a single element.
 //
@@ -154,6 +127,11 @@ function clampToPlans(
 // future-only — the preview refuses to snap back past now's quarter-hour, and a
 // drag or double-click that begins before now plans nothing. Mobile plans by
 // tap instead — see the pinned mobile lane.
+//
+// The gesture geometry itself — the quarter-hour grid, the past wall, the plan
+// neighbours, the start/end caps — lives in the timeline pure seam
+// (`resolvePlanStart`, `resolvePlanDraft`, `resolvePlanEdit`). This module only
+// owns the pointer state and the pixels' presentation.
 export function PinnedDesktopBar({
   surface: { axis, bands, hidden, locked, onToggleBand },
   row,
@@ -195,40 +173,17 @@ export function PinnedDesktopBar({
     return () => bar.removeEventListener('wheel', onWheel)
   }, [scrollerRef])
 
-  // The drag-to-plan selection, in axis pixels. `floorPx` is the past wall,
-  // captured when the gesture starts so a ticking clock cannot drift it mid-drag.
-  const [drag, setDrag] = useState<{
-    fromPx: number
-    toPx: number
-    floorPx: number
-  } | null>(null)
+  // The drag-to-plan selection, in axis pixels. `nowPx` is the past wall,
+  // captured when the gesture starts so a ticking clock cannot drift it
+  // mid-drag.
+  const [drag, setDrag] = useState<{ fromPx: number; toPx: number; nowPx: number } | null>(null)
 
-  // The edge being dragged on an existing plan. `edgePx` is the live snapped
-  // edge; `minPx`/`maxPx` are the legal walls captured at pointer-down.
-  const [resize, setResize] = useState<{
-    planId: TimelinePlanBlockVM['id']
-    edge: 'start' | 'end'
-    startPx: number
-    endPx: number
-    edgePx: number
-    minPx: number
-    maxPx: number
-  } | null>(null)
+  // The plan gesture in flight: which plan, which part, and the geometry the
+  // pure seam last resolved. `blocks` and `nowPx` are the snapshot the walls
+  // are computed from.
+  const [edit, setEdit] = useState<PlanGesture | null>(null)
 
-  // The whole block being moved. `leftPx` is the optimistic position; the
-  // duration and the legal range are captured at pointer-down.
-  const [move, setMove] = useState<{
-    planId: TimelinePlanBlockVM['id']
-    startPx: number
-    widthPx: number
-    grabPx: number
-    leftPx: number
-    minLeftPx: number
-    maxLeftPx: number
-    moved: boolean
-  } | null>(null)
-
-  // The committed geometry held on screen until the live read catches up, so a
+  // Committed geometry held on screen until the live read catches up, so a
   // released block never snaps back to its old position for a frame.
   const [pending, setPending] = useState<PlanOverride | null>(null)
 
@@ -258,46 +213,40 @@ export function PinnedDesktopBar({
   const onLanePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     const fromPx = lanePx(event)
-    const floorPx = planFloorPx(axis.segments, now)
+    const start = resolvePlanStart({
+      segments: axis.segments,
+      px: fromPx,
+      nowPx: now,
+      blocks: row?.planBlocks ?? [],
+    })
     // A gesture that begins in the past, or on top of an existing plan, plans
     // nothing at all: both walls are hard at the start.
-    if (fromPx < floorPx) return
-    if (insidePlan(fromPx, row?.planBlocks ?? [])) return
+    if (!start) return
     event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({ fromPx, toPx: fromPx, floorPx })
+    setDrag({ fromPx, toPx: fromPx, nowPx: now })
   }
 
   const onLanePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const pointerPx = lanePx(event)
     setCursorPx(pointerPx)
-    const hovered = row?.planBlocks.find(
-      (block) => pointerPx >= block.startPx && pointerPx < block.endPx
-    )
-    setHoveredPlanId(hovered?.id ?? null)
+    setHoveredPlanId(planAt(row?.planBlocks ?? [], pointerPx)?.id ?? null)
     if (!drag) return
-    const toPx = clampToPlans(
-      pointerPx,
-      drag.fromPx,
-      drag.floorPx,
-      axis.widthPx,
-      row?.planBlocks ?? []
-    )
-    if (drag.toPx === toPx) return
-    // `fromPx` and `floorPx` are frozen when the gesture starts, so the closure
-    // values are safe here.
-    setDrag({ fromPx: drag.fromPx, toPx, floorPx: drag.floorPx })
+    if (drag.toPx === pointerPx) return
+    setDrag({ ...drag, toPx: pointerPx })
   }
 
   const onLanePointerUp = () => {
     if (drag) {
-      const from = snapPx(axis.segments, Math.min(drag.fromPx, drag.toPx), drag.floorPx)
-      const to = snapPx(axis.segments, Math.max(drag.fromPx, drag.toPx), drag.floorPx)
-      if (to - from >= DRAG_PX_THRESHOLD) {
-        const startMin = pxToMinute(axis.segments, from)
-        const endMin = pxToMinute(axis.segments, to)
-        if (startMin != null && endMin != null) {
-          onPlanDrag?.({ startMin: Math.round(startMin), endMin: Math.round(endMin) })
-        }
+      const span = resolvePlanDraft({
+        segments: axis.segments,
+        axisWidthPx: axis.widthPx,
+        blocks: row?.planBlocks ?? [],
+        fromPx: drag.fromPx,
+        toPx: drag.toPx,
+        nowPx: drag.nowPx,
+      })
+      if (span && span.widthPx >= DRAG_PX_THRESHOLD) {
+        onPlanDrag?.({ startMin: span.startMin, endMin: span.endMin })
       }
     }
     setDrag(null)
@@ -307,90 +256,82 @@ export function PinnedDesktopBar({
   // quarter-hour grid as a drag. Start on a plan or in the past plans nothing.
   const onLaneDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
-    const px = lanePx(event)
-    const floorPx = planFloorPx(axis.segments, now)
-    if (px < floorPx) return
-    const startPx = snapPx(axis.segments, px, floorPx)
-    if (insidePlan(startPx, row?.planBlocks ?? [])) return
-    const startMin = pxToMinute(axis.segments, startPx)
-    if (startMin == null) return
+    const start = resolvePlanStart({
+      segments: axis.segments,
+      px: lanePx(event),
+      nowPx: now,
+      blocks: row?.planBlocks ?? [],
+    })
+    if (!start) return
     onPlanDoubleClick?.({
-      startMin: Math.round(startMin),
-      endMin: Math.round(startMin) + DOUBLE_CLICK_PLAN_MIN,
+      startMin: start.startMin,
+      endMin: start.startMin + DOUBLE_CLICK_PLAN_MIN,
     })
   }
 
-  // Start moving a whole block. Duration is frozen; the legal left range is the
-  // gap between the past floor/previous plan and the next plan (or axis end).
+  // Start moving a whole block. Duration and walls are the seam's job; the
+  // snapshot of the blocks freezes them for the gesture.
   const startMove = (event: ReactPointerEvent<HTMLSpanElement>, block: TimelinePlanBlockVM) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     event.stopPropagation()
-    const widthPx = block.endPx - block.startPx
-    if (widthPx <= 0) return
-    setPending(null)
-    const floorPx = planFloorPx(axis.segments, now)
-    const others = row?.planBlocks ?? []
-    const previousEnd = others
-      .filter((other) => other.id !== block.id && other.endPx <= block.startPx)
-      .reduce((nearest, other) => Math.max(nearest, other.endPx), 0)
-    const nextStart = others
-      .filter((other) => other.id !== block.id && other.startPx >= block.endPx)
-      .reduce((nearest, other) => Math.min(nearest, other.startPx), axis.widthPx)
-    const minLeftPx = Math.max(floorPx, previousEnd)
-    const maxLeftPx = Math.min(axis.widthPx - widthPx, nextStart - widthPx)
-    if (maxLeftPx < minLeftPx) return
-
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setMove({
+    const grabPx = lanePx(event)
+    const blocks = row?.planBlocks ?? []
+    const span = resolvePlanEdit({
+      segments: axis.segments,
+      axisWidthPx: axis.widthPx,
+      blocks,
       planId: block.id,
-      startPx: block.startPx,
-      widthPx,
-      grabPx: lanePx(event),
-      leftPx: block.startPx,
-      minLeftPx,
-      maxLeftPx,
-      moved: false,
+      edge: 'move',
+      pointerPx: grabPx,
+      grabPx,
+      nowPx: now,
     })
+    if (!span) return
+    setPending(null)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setEdit({ kind: 'move', planId: block.id, grabPx, blocks, nowPx: now, span, moved: false })
   }
 
   const onMoveMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
-    if (!move) return
+    if (edit?.kind !== 'move') return
     const pointerPx = lanePx(event)
-    const delta = pointerPx - move.grabPx
-    const snapped = snapPx(axis.segments, move.startPx + delta, 0)
-    const leftPx = Math.max(move.minLeftPx, Math.min(snapped, move.maxLeftPx))
-    const moved = move.moved || Math.abs(delta) >= DRAG_PX_THRESHOLD
-    if (leftPx === move.leftPx && moved === move.moved) return
-    setMove({ ...move, leftPx, moved })
+    const span = resolvePlanEdit({
+      segments: axis.segments,
+      axisWidthPx: axis.widthPx,
+      blocks: edit.blocks,
+      planId: edit.planId,
+      edge: 'move',
+      pointerPx,
+      grabPx: edit.grabPx,
+      nowPx: edit.nowPx,
+    })
+    if (!span) return
+    const moved = edit.moved || Math.abs(pointerPx - edit.grabPx) >= DRAG_PX_THRESHOLD
+    if (span.leftPx === edit.span.leftPx && moved === edit.moved) return
+    setEdit({ ...edit, span, moved })
   }
 
   const onMoveUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
-    if (move?.moved) {
-      const startMin = pxToMinute(axis.segments, move.leftPx)
-      const endMin = pxToMinute(axis.segments, move.leftPx + move.widthPx)
-      if (startMin != null && endMin != null) {
-        setPending({ planId: move.planId, leftPx: move.leftPx, widthPx: move.widthPx })
+    if (edit?.kind === 'move') {
+      if (edit.moved) {
+        setPending({ planId: edit.planId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx })
         onPlanUpdate?.({
-          planId: move.planId,
-          startMin: Math.round(startMin),
-          endMin: Math.round(endMin),
+          planId: edit.planId,
+          startMin: edit.span.startMin,
+          endMin: edit.span.endMin,
         })
-      }
-    } else if (move) {
-      // A press-and-release under the drag threshold is a click, not a move.
-      const startMin = pxToMinute(axis.segments, move.startPx)
-      const endMin = pxToMinute(axis.segments, move.startPx + move.widthPx)
-      if (startMin != null && endMin != null) {
+      } else {
+        // A press-and-release under the drag threshold is a click, not a move.
         onPlanClick?.({
-          planId: move.planId,
-          startMin: Math.round(startMin),
-          endMin: Math.round(endMin),
+          planId: edit.planId,
+          startMin: edit.span.startMin,
+          endMin: edit.span.endMin,
           x: event.clientX,
           y: event.clientY,
         })
       }
     }
-    setMove(null)
+    setEdit(null)
   }
 
   // Start dragging one edge of an existing plan. The wall on the far side is
@@ -402,102 +343,97 @@ export function PinnedDesktopBar({
   ) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     event.stopPropagation()
-    setPending(null)
-    const stepPx = snapStepPx(axis.segments, block.startPx)
-    if (stepPx <= 0) return
-    const floorPx = planFloorPx(axis.segments, now)
-    const others = row?.planBlocks ?? []
-    const previousEnd = others
-      .filter((other) => other.id !== block.id && other.endPx <= block.startPx)
-      .reduce((nearest, other) => Math.max(nearest, other.endPx), 0)
-    const nextStart = others
-      .filter((other) => other.id !== block.id && other.startPx >= block.endPx)
-      .reduce((nearest, other) => Math.min(nearest, other.startPx), axis.widthPx)
-    const minPx = edge === 'start' ? Math.max(floorPx, previousEnd) : block.startPx + stepPx
-    const maxPx = edge === 'end' ? Math.min(axis.widthPx, nextStart) : block.endPx - stepPx
-    if (maxPx <= minPx) return
-
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setResize({
+    const blocks = row?.planBlocks ?? []
+    const span = resolvePlanEdit({
+      segments: axis.segments,
+      axisWidthPx: axis.widthPx,
+      blocks,
       planId: block.id,
       edge,
-      startPx: block.startPx,
-      endPx: block.endPx,
-      edgePx: edge === 'start' ? block.startPx : block.endPx,
-      minPx,
-      maxPx,
+      pointerPx: lanePx(event),
+      nowPx: now,
     })
+    if (!span) return
+    setPending(null)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setEdit({ kind: 'resize', planId: block.id, edge, blocks, nowPx: now, span })
   }
 
   const onResizeMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
-    if (!resize) return
-    const snapped = snapPx(axis.segments, lanePx(event), 0)
-    const edgePx = Math.max(resize.minPx, Math.min(snapped, resize.maxPx))
-    if (edgePx === resize.edgePx) return
-    setResize({ ...resize, edgePx })
+    if (edit?.kind !== 'resize') return
+    const span = resolvePlanEdit({
+      segments: axis.segments,
+      axisWidthPx: axis.widthPx,
+      blocks: edit.blocks,
+      planId: edit.planId,
+      edge: edit.edge,
+      pointerPx: lanePx(event),
+      nowPx: edit.nowPx,
+    })
+    if (!span) return
+    if (span.leftPx === edit.span.leftPx && span.widthPx === edit.span.widthPx) return
+    setEdit({ ...edit, span })
   }
 
   const onResizeUp = () => {
-    if (!resize) return
-    const startPx = resize.edge === 'start' ? resize.edgePx : resize.startPx
-    const endPx = resize.edge === 'end' ? resize.edgePx : resize.endPx
-    const originalEdge = resize.edge === 'start' ? resize.startPx : resize.endPx
-    const startMin = pxToMinute(axis.segments, startPx)
-    const endMin = pxToMinute(axis.segments, endPx)
-    if (resize.edgePx !== originalEdge && startMin != null && endMin != null && endPx > startPx) {
-      setPending({
-        planId: resize.planId,
-        leftPx: startPx,
-        widthPx: endPx - startPx,
-      })
-      onPlanUpdate?.({
-        planId: resize.planId,
-        startMin: Math.round(startMin),
-        endMin: Math.round(endMin),
-      })
+    if (edit?.kind === 'resize') {
+      const block = edit.blocks.find((candidate) => candidate.id === edit.planId)
+      const changed =
+        block != null &&
+        (edit.span.leftPx !== block.startPx || edit.span.widthPx !== block.endPx - block.startPx)
+      if (changed) {
+        setPending({ planId: edit.planId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx })
+        onPlanUpdate?.({
+          planId: edit.planId,
+          startMin: edit.span.startMin,
+          endMin: edit.span.endMin,
+        })
+      }
     }
-    setResize(null)
+    setEdit(null)
   }
 
   // The preview snaps live, so the dashed block always sits on the grid — and
   // parks against the floor rather than sliding into the past.
-  const dragLeft = drag ? snapPx(axis.segments, Math.min(drag.fromPx, drag.toPx), drag.floorPx) : 0
-  const dragWidth = drag
-    ? snapPx(axis.segments, Math.max(drag.fromPx, drag.toPx), drag.floorPx) - dragLeft
-    : 0
-  const dragLabel =
-    drag && dragWidth >= DRAG_PX_THRESHOLD ? spanLabel(axis.segments, dragLeft, dragWidth) : null
+  const draft = drag
+    ? resolvePlanDraft({
+        segments: axis.segments,
+        axisWidthPx: axis.widthPx,
+        blocks: row?.planBlocks ?? [],
+        fromPx: drag.fromPx,
+        toPx: drag.toPx,
+        nowPx: drag.nowPx,
+      })
+    : null
+  const dragLeft = draft?.leftPx ?? 0
+  const dragWidth = draft?.widthPx ?? 0
+  const dragLabel = draft && dragWidth >= DRAG_PX_THRESHOLD ? spanText(draft) : null
 
   // The live geometry that replaces the stored block during a gesture. There is
   // deliberately no "before" outline: the block itself moves.
-  const resizeStartPx = resize ? (resize.edge === 'start' ? resize.edgePx : resize.startPx) : 0
-  const resizeEndPx = resize ? (resize.edge === 'end' ? resize.edgePx : resize.endPx) : 0
-  const planOverride: PlanOverride | null = resize
-    ? { planId: resize.planId, leftPx: resizeStartPx, widthPx: resizeEndPx - resizeStartPx }
-    : move
-      ? { planId: move.planId, leftPx: move.leftPx, widthPx: move.widthPx }
-      : pending
+  const planOverride: PlanOverride | null = edit
+    ? { planId: edit.planId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx }
+    : pending
 
   // An existing plan wears the same from – until label while it is being moved
   // or resized. The start edge is the anchor: it stays put when the end changes,
   // and travels with the block when the whole plan moves.
-  const resizeChanged = resize
-    ? resize.edgePx !== (resize.edge === 'start' ? resize.startPx : resize.endPx)
-    : false
-  const updateLabel = resize
-    ? resizeChanged
-      ? spanLabel(axis.segments, resizeStartPx, resizeEndPx - resizeStartPx)
-      : null
-    : move?.moved
-      ? spanLabel(axis.segments, move.leftPx, move.widthPx)
-      : null
-  const updateLabelLeftPx = resize ? resizeStartPx : (move?.leftPx ?? 0)
+  const editBlock = edit ? edit.blocks.find((block) => block.id === edit.planId) : null
+  const editChanged =
+    edit?.kind === 'move'
+      ? edit.moved
+      : editBlock != null &&
+        edit != null &&
+        (edit.span.leftPx !== editBlock.startPx ||
+          edit.span.widthPx !== editBlock.endPx - editBlock.startPx)
+  const editLabel = edit && editChanged ? spanText(edit.span) : null
+  const editLabelLeftPx = edit?.span.leftPx ?? 0
 
   // The from – until label for the plan a resting pointer sits on. Suppressed
   // for the whole of a gesture, which already carries its own live label, and
   // follows the committed geometry while a released block waits for the read.
   const hoveredBlock =
-    !drag && !resize && !move && hoveredPlanId != null
+    !drag && !edit && hoveredPlanId != null
       ? (row?.planBlocks.find((block) => block.id === hoveredPlanId) ?? null)
       : null
   const hoveredGeometry =
@@ -507,7 +443,7 @@ export function PinnedDesktopBar({
         ? { leftPx: hoveredBlock.startPx, widthPx: hoveredBlock.endPx - hoveredBlock.startPx }
         : null
   const hoverLabel = hoveredGeometry
-    ? spanLabel(axis.segments, hoveredGeometry.leftPx, hoveredGeometry.widthPx)
+    ? blockSpanText(axis.segments, hoveredGeometry.leftPx, hoveredGeometry.widthPx)
     : null
   const hoverLabelLeftPx = hoveredGeometry?.leftPx ?? 0
 
@@ -515,15 +451,18 @@ export function PinnedDesktopBar({
   // quarter-hour snap the planning gestures use. Nothing to read in the past,
   // over a plan, or mid-gesture — each of those already means no new plan
   // starts here, and the gesture or hover label owns the readout.
-  const cursorFloorPx = planFloorPx(axis.segments, now)
-  const cursorSnappedPx =
-    cursorPx != null && cursorPx >= cursorFloorPx
-      ? snapPx(axis.segments, cursorPx, cursorFloorPx)
+  const cursorStart =
+    cursorPx != null
+      ? resolvePlanStart({
+          segments: axis.segments,
+          px: cursorPx,
+          nowPx: now,
+          blocks: row?.planBlocks ?? [],
+        })
       : null
-  const cursorMinute = cursorSnappedPx == null ? null : pxToMinute(axis.segments, cursorSnappedPx)
   const cursorLabel =
-    cursorMinute != null && !drag && !resize && !move && hoveredPlanId == null
-      ? formatClock(Math.round(cursorMinute))
+    cursorStart && !drag && !edit && hoveredPlanId == null
+      ? formatClock(cursorStart.startMin)
       : null
   const cursorLabelLeftPx =
     cursorPx == null
@@ -585,7 +524,7 @@ export function PinnedDesktopBar({
                     onPointerDown={(event) => startMove(event, block)}
                     onPointerMove={onMoveMove}
                     onPointerUp={onMoveUp}
-                    onPointerCancel={() => setMove(null)}
+                    onPointerCancel={() => setEdit(null)}
                     className="absolute top-0 bottom-0 z-[3] cursor-grab active:cursor-grabbing"
                     style={{ left: block.startPx, width: block.endPx - block.startPx }}
                   />
@@ -601,7 +540,7 @@ export function PinnedDesktopBar({
                         onPointerDown={(event) => startResize(event, block, edge)}
                         onPointerMove={onResizeMove}
                         onPointerUp={onResizeUp}
-                        onPointerCancel={() => setResize(null)}
+                        onPointerCancel={() => setEdit(null)}
                         className="absolute top-0 bottom-0 z-[4] w-2 -translate-x-1/2 cursor-ew-resize rounded-full hover:bg-primary/25"
                         style={{ left: edge === 'start' ? block.startPx : block.endPx }}
                       />
@@ -615,7 +554,7 @@ export function PinnedDesktopBar({
                 />
               )}
               {dragLabel && <PlanSpanLabel leftPx={dragLeft} label={dragLabel} />}
-              {updateLabel && <PlanSpanLabel leftPx={updateLabelLeftPx} label={updateLabel} />}
+              {editLabel && <PlanSpanLabel leftPx={editLabelLeftPx} label={editLabel} />}
               {hoverLabel && <PlanSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
               {cursorLabel && <CursorTimeLabel leftPx={cursorLabelLeftPx} label={cursorLabel} />}
             </div>

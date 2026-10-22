@@ -3,11 +3,11 @@ import type {
   TimelineRowVM,
   TimelineWindow,
 } from '@studytrack/backend/convex/timeline/types'
+import { nightBands } from '@studytrack/backend/convex/timeline/bands'
 import type { RefObject } from 'react'
 import { PinnedDesktopBar, type PlanClick, type PlanDrag, type PlanUpdate } from './desktop-bar'
 import { PinnedMobileLane } from './mobile-lane'
 import { NamesColumn } from './names-column'
-import { nightBands } from './night-bands'
 import { TrackLegend } from './track-legend'
 import type { SessionClick } from './row-track'
 import { TrackScroller } from './track-scroller'
