@@ -46,6 +46,8 @@ import type * as tasks from "../tasks.js";
 import type * as tasks_service from "../tasks/service.js";
 import type * as tasks_types from "../tasks/types.js";
 import type * as tasks_util from "../tasks/util.js";
+import type * as timeline_bands from "../timeline/bands.js";
+import type * as timeline_gesture from "../timeline/gesture.js";
 import type * as timeline_types from "../timeline/types.js";
 import type * as timeline_util from "../timeline/util.js";
 import type * as tracking from "../tracking.js";
@@ -101,6 +103,8 @@ declare const fullApi: ApiFromModules<{
   "tasks/service": typeof tasks_service;
   "tasks/types": typeof tasks_types;
   "tasks/util": typeof tasks_util;
+  "timeline/bands": typeof timeline_bands;
+  "timeline/gesture": typeof timeline_gesture;
   "timeline/types": typeof timeline_types;
   "timeline/util": typeof timeline_util;
   tracking: typeof tracking;
