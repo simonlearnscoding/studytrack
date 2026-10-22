@@ -162,6 +162,23 @@ export function minuteToPx(segments: TimelineSegment[], minute: number): number 
   return hit.px
 }
 
+// Where a pixel on the axis lands in minutes-of-day — the inverse of
+// `minuteToPx`. Null when it points into a collapsed band (time there is
+// squashed, so it has no real position) or past the axis end.
+export function pxToMinute(segments: TimelineSegment[], px: number): number | null {
+  let offset = 0
+  for (const segment of segments) {
+    if (px < offset + segment.widthPx) {
+      if (isHidden(segment)) return null
+      const span = segment.endMin - segment.startMin
+      const into = (px - offset) / segment.widthPx
+      return segment.startMin + into * span
+    }
+    offset += segment.widthPx
+  }
+  return null
+}
+
 function toRow(
   member: DashboardMember,
   { now, dayStart, me, window, metric }: TimelineInput

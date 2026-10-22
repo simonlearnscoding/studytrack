@@ -1,11 +1,4 @@
-import type { TimelineWindow } from '@studytrack/backend/convex/timeline/types'
-
-// One night band segment (a collapsed or expanded end-of-day strip).
-export type NightBandSegment = Extract<TimelineWindow['segments'][number], { kind: 'band' }>
-
-// A night band placed on the axis: the segment plus its left offset in pixels,
-// so the desktop track and the pinned mobile mirror draw identical strips.
-export type NightBandVM = { segment: NightBandSegment; offsetPx: number }
+import type { NightBandVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
 
 // What every axis surface renders from: the window model, the night band
 // placed on it, the activity the collapsed band hides, and the shared toggle.

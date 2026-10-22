@@ -6,6 +6,8 @@ import {
   centreScrollLeft,
   formatClock,
   mergeExpansion,
+  minuteToPx,
+  pxToMinute,
   resolveWindow,
   toMinute,
   toTimelineRows,
@@ -439,5 +441,22 @@ describe('clock helpers', () => {
 
   it('derives minutes from an instant and the day start', () => {
     expect(toMinute(at(90), DAY)).toBe(90)
+  })
+})
+
+describe('pxToMinute', () => {
+  it('inverts minuteToPx on the core', () => {
+    for (const minute of [6 * 60, 9 * 60 + 45, 12 * 60, 23 * 60]) {
+      const pixel = minuteToPx(window.segments, minute)!
+      expect(pxToMinute(window.segments, pixel)).toBeCloseTo(minute, 6)
+    }
+  })
+
+  it('is null inside the collapsed band', () => {
+    expect(pxToMinute(window.segments, 10)).toBeNull()
+  })
+
+  it('is null past the axis end', () => {
+    expect(pxToMinute(window.segments, window.widthPx + 1)).toBeNull()
   })
 })

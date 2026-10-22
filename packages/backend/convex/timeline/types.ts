@@ -26,6 +26,13 @@ export type TimelineSegment =
 // One hour label on the axis. Positions are axis-relative pixels.
 export type TimelineTick = { leftPx: number; label: string }
 
+// One night band segment (a collapsed or expanded end-of-day strip).
+export type NightBandSegment = Extract<TimelineSegment, { kind: 'band' }>
+
+// A night band placed on the axis: the segment plus its left offset in pixels,
+// so the desktop track and the pinned mobile mirror draw identical strips.
+export type NightBandVM = { segment: NightBandSegment; offsetPx: number }
+
 // The resolved axis: its segments, its hour ticks, its total width, and where
 // "now" lands. Pure output of `resolveWindow`, consumed by the view only.
 export type TimelineWindow = {
