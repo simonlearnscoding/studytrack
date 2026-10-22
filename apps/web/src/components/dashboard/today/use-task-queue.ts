@@ -1,6 +1,6 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
-import type { Task } from '@studytrack/backend/convex/tasks/types'
+import type { Task, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
 import { useDateStore } from '~/state/date.store'
@@ -65,8 +65,8 @@ export function useTaskQueue(initialLive: boolean) {
   // reordering the queue moves the marker by itself.
   const now = items.find((task) => !task.done)
 
-  const add = (title: string) => {
-    void create({ title, plannedAt: dayStart }).catch(logTaskError)
+  const add = (title: string, placement: TaskPlacement = 'end') => {
+    void create({ title, plannedAt: dayStart, placement }).catch(logTaskError)
   }
 
   const rename = (id: TaskId, title: string) => {

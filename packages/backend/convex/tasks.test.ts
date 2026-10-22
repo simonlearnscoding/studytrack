@@ -274,6 +274,65 @@ describe('tasks.create', () => {
     expect(tasks.map((task) => task.title)).toEqual(['Three', 'One', 'Two', 'Four'])
   })
 
+  it('puts a now placement on top so it becomes Now', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'One')
+    await create(t, ADA, 'Two')
+
+    await t.withIdentity(ADA).mutation(api.tasks.create, {
+      title: 'Right now',
+      plannedAt: DAY,
+      placement: 'now',
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Right now', 'One', 'Two'])
+  })
+
+  it('puts a next placement right after the current Now', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Done already')
+    await create(t, ADA, 'Current now')
+    await create(t, ADA, 'Later')
+    const before = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: before[0].id })
+
+    await t.withIdentity(ADA).mutation(api.tasks.create, {
+      title: 'Next up',
+      plannedAt: DAY,
+      placement: 'next',
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual([
+      'Current now',
+      'Next up',
+      'Later',
+      'Done already',
+    ])
+  })
+
+  it('positions legacy tasks when inserting above them', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    await t.run(async (ctx) => {
+      await ctx.db.insert('task', { userId, title: 'Legacy one', done: false, plannedAt: DAY })
+      await ctx.db.insert('task', { userId, title: 'Legacy two', done: false, plannedAt: DAY })
+    })
+
+    await t.withIdentity(ADA).mutation(api.tasks.create, {
+      title: 'Top',
+      plannedAt: DAY,
+      placement: 'now',
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Top', 'Legacy one', 'Legacy two'])
+    expect((await tasksOf(t)).every((task) => task.position !== undefined)).toBe(true)
+  })
+
   it('trims the title and stamps the given plannedAt', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')

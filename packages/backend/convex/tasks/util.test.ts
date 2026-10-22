@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { Task } from './types'
-import { byPosition, byQueueOrder, pickUpNext, planOrder } from './util'
+import { byPosition, byQueueOrder, insertionIndex, pickUpNext, planOrder } from './util'
 
 function task(id: string, done = false): Task {
   return {
@@ -88,6 +88,32 @@ describe('byQueueOrder', () => {
   it('keeps manual order inside each group', () => {
     const rows = [row('open-b', 1, 1), row('open-a', 2, 0), row('done-b', 3, 1, true)]
     expect(rows.sort(byQueueOrder).map((item) => item._id)).toEqual(['open-a', 'open-b', 'done-b'])
+  })
+})
+
+describe('insertionIndex', () => {
+  const rows = [row('now', 1, 0), row('second', 2, 1), row('done', 3, 2, true)]
+
+  it('appends at the bottom for end', () => {
+    expect(insertionIndex(rows, 'end')).toBe(rows.length)
+  })
+
+  it('lands on top for now', () => {
+    expect(insertionIndex(rows, 'now')).toBe(0)
+  })
+
+  it('lands right after the current Now for next', () => {
+    expect(insertionIndex(rows, 'next')).toBe(1)
+  })
+
+  it('puts next on top when the Day has no Open task', () => {
+    expect(insertionIndex([row('done', 1, 0, true)], 'next')).toBe(0)
+  })
+
+  it('accepts every placement on an empty Day', () => {
+    expect(insertionIndex([], 'end')).toBe(0)
+    expect(insertionIndex([], 'now')).toBe(0)
+    expect(insertionIndex([], 'next')).toBe(0)
   })
 })
 

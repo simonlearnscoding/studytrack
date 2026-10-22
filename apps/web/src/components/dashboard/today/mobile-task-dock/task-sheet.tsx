@@ -1,10 +1,11 @@
+import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
-import { handleComposerEscape, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
+import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
 import type { TaskId } from '../task-types'
@@ -32,7 +33,7 @@ export function TaskSheet({
   tasks: DockTask[]
   nowId: TaskId | null
   onClose: () => void
-  onAdd: (title: string) => void
+  onAdd: (title: string, placement: TaskPlacement) => void
   onTick: (id: TaskId) => void
   onRename: (id: TaskId, title: string) => void
   onRemove: (id: TaskId) => void
@@ -42,12 +43,16 @@ export function TaskSheet({
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef, open)
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
+  const add = (placement: TaskPlacement) => {
     const trimmed = title.trim()
     if (!trimmed) return
     setTitle('')
-    onAdd(trimmed)
+    onAdd(trimmed, placement)
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    add('end')
   }
 
   return (
@@ -106,7 +111,7 @@ export function TaskSheet({
                 ref={inputRef}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                onKeyDown={(event) => handleComposerEscape(event, () => setTitle(''))}
+                onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
                 placeholder=" "
                 aria-label="New task"
                 maxLength={80}

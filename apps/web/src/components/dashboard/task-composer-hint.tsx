@@ -4,8 +4,8 @@ import type { ReactNode } from 'react'
 import { NEW_TASK_HOTKEY } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 
-// One keycap shared by the modifier and Enter keys, so the shortcut reads as a
-// single hint: a raised fill and a bright edge against the composer surface.
+// One keycap shared by every shortcut hint: a raised fill and a bright edge
+// against the composer surface.
 function Keycap({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <kbd
@@ -16,6 +16,15 @@ function Keycap({ children, className }: { children: ReactNode; className?: stri
     >
       {children}
     </kbd>
+  )
+}
+
+function EnterKeycap({ className }: { className?: string }) {
+  return (
+    <Keycap className={cn('w-5 px-0', className)}>
+      <CornerDownLeft className="h-3.5 w-3.5" aria-hidden />
+      <span className="sr-only">Enter</span>
+    </Keycap>
   )
 }
 
@@ -35,10 +44,7 @@ export function TaskComposerHint({ className }: { className?: string }) {
     >
       <Keycap>{modifier}</Keycap>
       <span className="text-caption font-medium">+</span>
-      <Keycap className="w-5 px-0">
-        <CornerDownLeft className="h-3.5 w-3.5" aria-hidden />
-        <span className="sr-only">Enter</span>
-      </Keycap>
+      <EnterKeycap />
       <span className="text-caption ml-1 font-medium">Add a task</span>
     </span>
   )

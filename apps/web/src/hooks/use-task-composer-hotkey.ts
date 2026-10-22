@@ -1,4 +1,5 @@
 import { useHotkey } from '@tanstack/react-hotkeys'
+import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import type { KeyboardEvent, RefObject } from 'react'
 
 // "New task": jump straight to the composer instead of adding it from the
@@ -6,16 +7,33 @@ import type { KeyboardEvent, RefObject } from 'react'
 export const NEW_TASK_HOTKEY = 'Mod+Enter'
 
 /**
- * Escape inside the composer abandons the draft: clear the input and drop
- * focus. Kept as a plain helper so every composer entry point shares the
- * exact same behaviour.
+ * The composer's keyboard contract. Enter adds at the bottom, Shift+Enter right
+ * after the current Now, Mod+Enter (Ctrl/Cmd) at the top so the new task becomes
+ * Now; Escape abandons the draft. Kept as a plain helper so every composer entry
+ * point shares the exact same behaviour.
+ *
+ * The handler stops the event so the global NEW_TASK_HOTKEY never fires while
+ * the composer has focus — inside it, Mod+Enter inserts instead of focusing.
  */
-export function handleComposerEscape(event: KeyboardEvent<HTMLInputElement>, onClear: () => void) {
-  if (event.key !== 'Escape') return
+export function handleComposerKeyDown(
+  event: KeyboardEvent<HTMLInputElement>,
+  onAdd: (placement: TaskPlacement) => void,
+  onClear: () => void
+) {
+  if (event.nativeEvent.isComposing) return
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    onClear()
+    event.currentTarget.blur()
+    return
+  }
+
+  if (event.key !== 'Enter') return
   event.preventDefault()
   event.stopPropagation()
-  onClear()
-  event.currentTarget.blur()
+  onAdd(event.ctrlKey || event.metaKey ? 'now' : event.shiftKey ? 'next' : 'end')
 }
 
 /**
