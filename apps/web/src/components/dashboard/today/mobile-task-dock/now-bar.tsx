@@ -11,14 +11,16 @@ import type { DockTask } from './types'
 // checkbox to complete it. With nothing queued it says so. The list opens the
 // sheet.
 export function NowBar({
-  isTracking,
+  isOnline,
+  canStartManual,
   now,
   roomCount,
   onStart,
   onOpen,
   onTick,
 }: {
-  isTracking: boolean
+  isOnline: boolean
+  canStartManual: boolean
   now?: DockTask
   roomCount: number
   onStart: () => void
@@ -28,7 +30,7 @@ export function NowBar({
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(0.625rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3 lg:hidden">
       <div className="pointer-events-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-popover/90 shadow-overlay-bar backdrop-blur">
-        {isTracking ? (
+        {isOnline ? (
           <div className="flex h-15 items-center gap-1.5 pr-2 pl-4">
             <button
               type="button"
@@ -66,7 +68,8 @@ export function NowBar({
             <button
               type="button"
               onClick={onStart}
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-secondary/60"
+              disabled={!canStartManual}
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-secondary/60 disabled:cursor-default disabled:opacity-60"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-tint ring-1 ring-primary/40 ring-inset">
                 <Play className="ml-0.5 h-3 w-3 fill-primary text-primary" />

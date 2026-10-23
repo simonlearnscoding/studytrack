@@ -4,8 +4,6 @@
  * values from here.
  */
 
-export const tracking = true // you are in a session — flips hero + mobile ordering
-
 /* ------------------------------------------------------------------ */
 
 export type WeekDay = { label: string; hrs?: string; h?: number; today?: boolean }
@@ -21,9 +19,8 @@ export const week: WeekDay[] = [
   { label: 'Sun 19', hrs: '—' },
 ]
 
-// Hero stats — the session clock and room figures are mock constants; the Now
-// task comes from the live queue.
-export const heroLive = { h: '1', m: '32', others: 4, roomToday: '13h 20m', rank: '#3' }
+// Hero stats — the room figure is a mock constant; the Now task and the session
+// clock come from the live queue and tracking status.
 export const heroIdle = { together: 5, openedAt: '12:16', streak: '6d' }
 
 export const you = {

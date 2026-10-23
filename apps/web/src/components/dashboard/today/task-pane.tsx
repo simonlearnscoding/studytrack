@@ -25,16 +25,16 @@ import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-c
 import { TaskItem } from './task-item'
 import { taskPaneCollisionDetection } from './task-pane-collision'
 import { TaskOverlay } from './task-overlay'
-import type { TaskId } from './task-types'
 import { TODAY_DROP_ID, TodayDropRail } from './today-drop-rail'
-import type { TaskQueue } from './use-task-queue'
+import type { DayTaskQueue, TaskId } from './task-types'
 
 const screenReaderInstructions = {
   draggable:
     'Press space or enter to lift the task. Use the arrow keys to move it. Press space or enter to drop, or escape to cancel.',
 }
 
-export function TaskPane({ queue }: { queue: TaskQueue }) {
+export function TaskPane({ queue }: { queue: DayTaskQueue }) {
+  const { state, actions } = queue
   const [title, setTitle] = useState('')
   const [draggingId, setDraggingId] = useState<TaskId | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,11 +45,11 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const ids = queue.tasks.map((task) => task.id)
-  const dragging = queue.tasks.find((task) => task.id === draggingId)
+  const ids = state.tasks.map((task) => task.id)
+  const dragging = state.tasks.find((task) => task.id === draggingId)
 
   const titleOf = (id: string | number) =>
-    queue.tasks.find((task) => task.id === id)?.title ?? 'task'
+    state.tasks.find((task) => task.id === id)?.title ?? 'task'
   const positionOf = (id: string | number) => ids.indexOf(id as TaskId) + 1
   // NOTE: this should probably be in a hook
   const announcements: Announcements = {
@@ -73,7 +73,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
     setDraggingId(null)
     if (!over) return
     if (over.id === TODAY_DROP_ID) {
-      queue.scheduleForToday(active.id as TaskId)
+      actions.scheduleTaskForToday(active.id as TaskId)
       return
     }
     if (active.id === over.id) return
@@ -82,14 +82,14 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
     const to = ids.indexOf(over.id as TaskId)
     if (from < 0 || to < 0) return
 
-    queue.reorder(arrayMove(ids, from, to))
+    actions.reorderTasks(arrayMove(ids, from, to))
   }
 
   const add = (placement: TaskPlacement) => {
     const trimmed = title.trim()
     if (!trimmed) return
     setTitle('')
-    queue.add(trimmed, placement)
+    actions.addTask(trimmed, placement)
   }
 
   const submit = (event: FormEvent) => {
@@ -128,23 +128,23 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
         accessibility={{ announcements, screenReaderInstructions }}
       >
         <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
-          {queue.loading ? (
+          {state.status === 'loading' ? (
             <div className="skeleton h-16 rounded-lg" />
-          ) : queue.tasks.length === 0 ? (
+          ) : state.tasks.length === 0 ? (
             <p className="text-caption px-3 py-6 text-center">
               No tasks planned for this day — add one above.
             </p>
           ) : (
             <ul>
               <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                {queue.tasks.map((task) => (
+                {state.tasks.map((task) => (
                   <TaskItem
                     key={task.id}
                     task={task}
-                    isNow={task.id === queue.now?.id}
-                    onTick={() => queue.tick(task.id)}
-                    onRename={(title) => queue.rename(task.id, title)}
-                    onRemove={() => queue.remove(task.id)}
+                    isNow={task.id === state.now?.id}
+                    onTick={() => actions.toggleTaskDone(task.id)}
+                    onRename={(title) => actions.renameTask(task.id, title)}
+                    onRemove={() => actions.removeTask(task.id)}
                   />
                 ))}
               </SortableContext>
@@ -152,10 +152,10 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
           )}
         </div>
 
-        {draggingId !== null && queue.isPastDay ? <TodayDropRail /> : null}
+        {draggingId !== null && state.canScheduleForToday ? <TodayDropRail /> : null}
 
         <DragOverlay>
-          {dragging ? <TaskOverlay task={dragging} isNow={dragging.id === queue.now?.id} /> : null}
+          {dragging ? <TaskOverlay task={dragging} isNow={dragging.id === state.now?.id} /> : null}
         </DragOverlay>
       </DndContext>
     </section>

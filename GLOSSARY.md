@@ -94,6 +94,16 @@ A task the member has marked complete, carrying the instant it was completed.
 Un-marking returns it to Open. Counted in "done today".
 _Avoid_: Completed, finished, closed
 
+**Task queue**:
+A member's ordered list of Tasks for one Day. The order is stored, so it survives
+a reload; completing a Task may move Now without rewriting the list.
+_Avoid_: Todo list, backlog
+
+**Now**:
+The first Open Task in the queue — what the member is on. Derived from position,
+never stored, so completing or reordering the queue moves it by itself.
+_Avoid_: Active task, current item
+
 ## Visibility
 
 **Consistency**:

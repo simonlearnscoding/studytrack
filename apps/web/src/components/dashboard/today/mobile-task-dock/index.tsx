@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { TaskQueue } from '../use-task-queue'
+import type { DayTaskQueue } from '../task-types'
+import type { SessionTracking } from '../use-tracking-status'
 import { NowBar } from './now-bar'
 import { TaskSheet } from './task-sheet'
 
@@ -7,21 +8,18 @@ import { TaskSheet } from './task-sheet'
 // with a sheet that expands to the whole list and the composer. The queue state
 // is owned by TodayLayout so the desktop pane and this dock share one source of
 // truth; the dock owns only whether its sheet is open.
-export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCount: number }) {
+export function MobileTaskDock({
+  queue,
+  tracking,
+  roomCount,
+}: {
+  queue: DayTaskQueue
+  tracking: SessionTracking
+  roomCount: number
+}) {
   const [open, setOpen] = useState(false)
-
-  const {
-    loading,
-    tasks,
-    isTracking,
-    now,
-    add,
-    rename,
-    remove,
-    tick,
-    startTracking,
-    toggleTracking,
-  } = queue
+  const { state, actions } = queue
+  const { isOnline, isManual, canStartManual, startManual, toggleManual } = tracking
 
   // Lock the page behind the sheet and close it on Escape.
   useEffect(() => {
@@ -40,25 +38,27 @@ export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCou
   return (
     <>
       <NowBar
-        isTracking={isTracking}
-        now={now}
+        isOnline={isOnline}
+        canStartManual={canStartManual}
+        now={state.now}
         roomCount={roomCount}
-        onStart={startTracking}
+        onStart={startManual}
         onOpen={() => setOpen(true)}
-        onTick={() => now && tick(now.id)}
+        onTick={() => state.now && actions.toggleTaskDone(state.now.id)}
       />
       <TaskSheet
         open={open}
-        isTracking={isTracking}
-        loading={loading}
-        tasks={tasks}
-        nowId={now?.id ?? null}
+        isManualTracking={isManual}
+        canStartManual={canStartManual}
+        loading={state.status === 'loading'}
+        tasks={state.tasks}
+        nowId={state.now?.id ?? null}
         onClose={() => setOpen(false)}
-        onAdd={add}
-        onTick={tick}
-        onRename={rename}
-        onRemove={remove}
-        onToggleTracking={toggleTracking}
+        onAdd={actions.addTask}
+        onTick={actions.toggleTaskDone}
+        onRename={actions.renameTask}
+        onRemove={actions.removeTask}
+        onToggleTracking={toggleManual}
       />
     </>
   )
