@@ -10,8 +10,18 @@ import { TaskSheet } from './task-sheet'
 export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCount: number }) {
   const [open, setOpen] = useState(false)
 
-  const { loading, items, live, now, add, rename, remove, tick, startTracking, toggleTracking } =
-    queue
+  const {
+    loading,
+    tasks,
+    isTracking,
+    now,
+    add,
+    rename,
+    remove,
+    tick,
+    startTracking,
+    toggleTracking,
+  } = queue
 
   // Lock the page behind the sheet and close it on Escape.
   useEffect(() => {
@@ -30,7 +40,7 @@ export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCou
   return (
     <>
       <NowBar
-        live={live}
+        isTracking={isTracking}
         now={now}
         roomCount={roomCount}
         onStart={startTracking}
@@ -39,9 +49,9 @@ export function MobileTaskDock({ queue, roomCount }: { queue: TaskQueue; roomCou
       />
       <TaskSheet
         open={open}
-        live={live}
+        isTracking={isTracking}
         loading={loading}
-        tasks={items}
+        tasks={tasks}
         nowId={now?.id ?? null}
         onClose={() => setOpen(false)}
         onAdd={add}

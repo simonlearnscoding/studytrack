@@ -1,7 +1,7 @@
 import type { CalendarBucket } from '@studytrack/backend/convex/sessions/calendar'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { label } from './data'
+import { label } from './mock-data'
 import type { MonthCalendarView } from './use-month-calendar'
 
 // The fixed heat scale: a colour always means the same amount of study. Bucket 0

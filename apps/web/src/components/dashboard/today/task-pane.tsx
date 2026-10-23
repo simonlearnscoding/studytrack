@@ -3,7 +3,6 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
   type Announcements,
@@ -24,8 +23,10 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { TaskItem } from './task-item'
+import { taskPaneCollisionDetection } from './task-pane-collision'
 import { TaskOverlay } from './task-overlay'
 import type { TaskId } from './task-types'
+import { TODAY_DROP_ID, TodayDropRail } from './today-drop-rail'
 import type { TaskQueue } from './use-task-queue'
 
 const screenReaderInstructions = {
@@ -44,18 +45,20 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const ids = queue.items.map((task) => task.id)
-  const dragging = queue.items.find((task) => task.id === draggingId)
+  const ids = queue.tasks.map((task) => task.id)
+  const dragging = queue.tasks.find((task) => task.id === draggingId)
 
   const titleOf = (id: string | number) =>
-    queue.items.find((task) => task.id === id)?.title ?? 'task'
+    queue.tasks.find((task) => task.id === id)?.title ?? 'task'
   const positionOf = (id: string | number) => ids.indexOf(id as TaskId) + 1
-
+  // NOTE: this should probably be in a hook
   const announcements: Announcements = {
     onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
     onDragOver: ({ active, over }) =>
       over
-        ? `${titleOf(active.id)} moved to position ${positionOf(over.id)} of ${ids.length}.`
+        ? over.id === TODAY_DROP_ID
+          ? `Schedule ${titleOf(active.id)} for today.`
+          : `${titleOf(active.id)} moved to position ${positionOf(over.id)} of ${ids.length}.`
         : undefined,
     onDragEnd: ({ active }) => `Dropped ${titleOf(active.id)}.`,
     onDragCancel: ({ active }) =>
@@ -68,7 +71,12 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
 
   const endDrag = ({ active, over }: DragEndEvent) => {
     setDraggingId(null)
-    if (!over || active.id === over.id) return
+    if (!over) return
+    if (over.id === TODAY_DROP_ID) {
+      queue.scheduleForToday(active.id as TaskId)
+      return
+    }
+    if (active.id === over.id) return
 
     const from = ids.indexOf(active.id as TaskId)
     const to = ids.indexOf(over.id as TaskId)
@@ -113,7 +121,7 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
       {/* contract: checkbox = complete · pencil = rename · trash = delete */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={taskPaneCollisionDetection}
         onDragStart={startDrag}
         onDragEnd={endDrag}
         onDragCancel={() => setDraggingId(null)}
@@ -122,14 +130,14 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
         <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
           {queue.loading ? (
             <div className="skeleton h-16 rounded-lg" />
-          ) : queue.items.length === 0 ? (
+          ) : queue.tasks.length === 0 ? (
             <p className="text-caption px-3 py-6 text-center">
               No tasks planned for this day — add one above.
             </p>
           ) : (
             <ul>
               <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                {queue.items.map((task) => (
+                {queue.tasks.map((task) => (
                   <TaskItem
                     key={task.id}
                     task={task}
@@ -143,6 +151,8 @@ export function TaskPane({ queue }: { queue: TaskQueue }) {
             </ul>
           )}
         </div>
+
+        {draggingId !== null && queue.isPastDay ? <TodayDropRail /> : null}
 
         <DragOverlay>
           {dragging ? <TaskOverlay task={dragging} isNow={dragging.id === queue.now?.id} /> : null}

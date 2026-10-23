@@ -34,4 +34,4 @@ There is **no evening band**. `22:00–24:00` runs at full scale to midnight.
 - The pure seam: `resolveWindow`, `autoExpansionAt`, `mergeExpansion` in
   `packages/backend/convex/timeline/util.ts`.
 - Bands, expansion state and the lock: `packages/backend/convex/timeline/types.ts`
-  and `apps/web/src/components/dashboard/today/use-expansion-preference.ts`.
+  and `apps/web/src/components/dashboard/today/use-night-band-preference.ts`.

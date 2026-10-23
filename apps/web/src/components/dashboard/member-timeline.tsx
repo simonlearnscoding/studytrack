@@ -7,7 +7,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 // Two visible segments read as one continuous bar when the next starts within a
 // second of where the previous ended. The bot closes and opens partials with the
-// same `now` (bot/strategies.ts), so the real gap is zero; the tolerance only
+// same `now` (bot/voiceStrategies.ts), so the real gap is zero; the tolerance only
 // absorbs rounding.
 const TOUCH_TOLERANCE_MS = 1000
 

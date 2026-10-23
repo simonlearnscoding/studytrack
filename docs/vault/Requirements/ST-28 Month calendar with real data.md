@@ -288,5 +288,3 @@ retested here.
   today; the rollup owns closed Days.
 - **Deployment.** No schema or infrastructure change. The existing web deploy is
   enough; the live read ships with the backend deploy.
-
-

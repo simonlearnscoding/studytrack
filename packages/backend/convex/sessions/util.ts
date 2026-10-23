@@ -139,6 +139,7 @@ export function formatDurationClock(ms: number): string {
 }
 
 // Midnight (epoch ms) of the calendar day `now` falls in, for a named timezone.
+// TODO: shouldnt this be called getDayStart?
 export function startOfDay(now: number, timeZone: string): number {
   const { year, month, day } = zonedParts(now, timeZone)
   // Guess UTC midnight, then correct by the zone's offset. Two passes so a DST
@@ -151,16 +152,19 @@ export function startOfDay(now: number, timeZone: string): number {
 // The start of the Day after `dayStart`, DST-safe. Adding 36h overshoots any
 // real day (max 25h) but stays inside the next one, so correcting to local
 // midnight lands on the true boundary.
+// TODO: getNesxt... or not?
 export function nextDayStart(dayStart: number, timeZone: string): number {
   return startOfDay(dayStart + 36 * 60 * 60 * 1000, timeZone)
 }
 
 // The start of the Day before `dayStart`, DST-safe. Subtracting 12h lands in the
 // previous Day for any real day length, so correcting to local midnight is safe.
+// TODO: same here you should describe what the function does and what it doe is GET previousDayStart
 export function previousDayStart(dayStart: number, timeZone: string): number {
   return startOfDay(dayStart - 12 * 60 * 60 * 1000, timeZone)
 }
 
+// TODO: also all of these get dates could probably be their own util file make util a folder here or idk maybe we need src/utils/date.ts ???
 // Monday 00:00 of the Week containing `now`, DST-safe. Walk back whole calendar
 // days in UTC, then correct to local midnight.
 export function startOfWeek(now: number, timeZone: string): number {

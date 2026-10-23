@@ -10,10 +10,10 @@
 
 import type * as bot from "../bot.js";
 import type * as bot_service from "../bot/service.js";
-import type * as bot_strategies from "../bot/strategies.js";
 import type * as bot_types from "../bot/types.js";
 import type * as bot_util from "../bot/util.js";
-import type * as clear from "../clear.js";
+import type * as bot_voiceStrategies from "../bot/voiceStrategies.js";
+import type * as clearTables from "../clearTables.js";
 import type * as crons from "../crons.js";
 import type * as dailyTotals from "../dailyTotals.js";
 import type * as dailyTotals_service from "../dailyTotals/service.js";
@@ -67,10 +67,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   bot: typeof bot;
   "bot/service": typeof bot_service;
-  "bot/strategies": typeof bot_strategies;
   "bot/types": typeof bot_types;
   "bot/util": typeof bot_util;
-  clear: typeof clear;
+  "bot/voiceStrategies": typeof bot_voiceStrategies;
+  clearTables: typeof clearTables;
   crons: typeof crons;
   dailyTotals: typeof dailyTotals;
   "dailyTotals/service": typeof dailyTotals_service;

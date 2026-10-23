@@ -1,6 +1,6 @@
 import { useDayStart } from '~/hooks/use-day-start'
 import { AddTaskForm } from './add-task-form'
-import { useMyTasks } from './hooks'
+import { useMyTasks } from './use-my-tasks'
 import { TaskRow } from './task-row'
 
 // The member's task list for today, managed from the self rail. Task content is

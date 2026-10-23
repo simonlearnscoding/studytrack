@@ -1,13 +1,13 @@
 import { Play } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
-import { heroIdle, heroLive } from './data'
+import { heroIdle, heroLive } from './mock-data'
 
 // The session header. Its task area mirrors the queue's Now task — the first
 // open task of the Day. Read-only — the pane and the mobile dock are where you
 // complete and clear.
-export function Hero({ live, task }: { live: boolean; task: string | null }) {
-  if (live) {
+export function Hero({ isTracking, task }: { isTracking: boolean; task: string | null }) {
+  if (isTracking) {
     return (
       <section className="flex shrink-0 items-center gap-6 max-lg:flex-col max-lg:items-start max-lg:gap-4 lg:sticky lg:top-0 lg:z-10 lg:h-19 lg:bg-background/80 lg:backdrop-blur">
         <div className="shrink-0 whitespace-nowrap">

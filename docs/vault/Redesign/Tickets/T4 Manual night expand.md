@@ -23,4 +23,4 @@ persists per user across reloads. Bands are tap-sized.
 - [x] A manual expansion survives a reload (local preference), and a collapse also persists.
 - [x] The two ends are independent of each other.
 
-_Shipped: `mergeExpansion` / `resolveWindow` (band grows at fixed px/h) and `use-expansion-preference.ts` (localStorage-backed). With **ADR-0008**'s single morning band there is only one end to expand._
+_Shipped: `mergeExpansion` / `resolveWindow` (band grows at fixed px/h) and `use-night-band-preference.ts` (localStorage-backed). With **ADR-0008**'s single morning band there is only one end to expand._

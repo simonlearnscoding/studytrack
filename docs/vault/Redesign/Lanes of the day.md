@@ -22,7 +22,7 @@ exactly, and we keep switchable scenarios so every situation is reachable.
   (`components/dashboard/today/index.tsx`)
 - The timeline: `components/dashboard/today/day-timeline/` (folder: `index.tsx`,
   `track-scroller.tsx`, `night-band.tsx`, the pinned lanes)
-- Mock swap point: `components/dashboard/today/data.ts`; scenario fixtures:
+- Mock swap point: `components/dashboard/today/mock-data.ts`; scenario fixtures:
   `components/dashboard/today/scenarios.ts`
 - Real types: `packages/backend/convex/sessions/types.ts` (`DashboardMember`,
   `DashboardSession`, `DashboardPartial`, `DashboardCompletedTask`)

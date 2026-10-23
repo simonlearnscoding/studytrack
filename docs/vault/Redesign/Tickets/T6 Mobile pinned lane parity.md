@@ -24,4 +24,4 @@ persistence — with touch-sized targets.
 - [x] No hover-only affordances; targets are thumb-sized.
 - [x] The label/name mirror stays in lockstep while panning.
 
-_Shipped: `mobile-lane.tsx` + `use-mirror-scroll.ts` (axis mirror panned with the shared `scrollerRef`), sharing `use-centre-on-now` and `use-expansion-preference` with the desktop bar; the band mirror landed in `8972058`._
+_Shipped: `mobile-lane.tsx` + `use-mirror-scroll.ts` (axis mirror panned with the shared `scrollerRef`), sharing `use-centre-on-now` and `use-night-band-preference` with the desktop bar; the band mirror landed in `8972058`._

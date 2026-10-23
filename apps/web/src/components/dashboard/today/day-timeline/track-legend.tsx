@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
-import { BAR_LIVE } from '../bar-style'
-import { label } from '../data'
+import { BAR_LIVE } from '../session-bar-style'
+import { label } from '../mock-data'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
 const legend = [

@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar } from './avatar'
-import { fmtHrs } from './data'
+import { fmtHrs } from './mock-data'
 import { LeaderboardRange, type LeaderboardPeriod } from './leaderboard-range'
 import type { BoardRow } from './use-consistency-board'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'

@@ -4,7 +4,7 @@
  * values from here.
  */
 
-export const live = true // you are in a session — flips hero + mobile ordering
+export const tracking = true // you are in a session — flips hero + mobile ordering
 
 /* ------------------------------------------------------------------ */
 

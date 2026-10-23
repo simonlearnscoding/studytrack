@@ -11,14 +11,14 @@ import type { DockTask } from './types'
 // checkbox to complete it. With nothing queued it says so. The list opens the
 // sheet.
 export function NowBar({
-  live,
+  isTracking,
   now,
   roomCount,
   onStart,
   onOpen,
   onTick,
 }: {
-  live: boolean
+  isTracking: boolean
   now?: DockTask
   roomCount: number
   onStart: () => void
@@ -28,7 +28,7 @@ export function NowBar({
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(0.625rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3 lg:hidden">
       <div className="pointer-events-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-popover/90 shadow-overlay-bar backdrop-blur">
-        {live ? (
+        {isTracking ? (
           <div className="flex h-15 items-center gap-1.5 pr-2 pl-4">
             <button
               type="button"

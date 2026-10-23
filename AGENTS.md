@@ -46,6 +46,16 @@ packages/
   `cursor-default`). The shared `Button` already carries it; add it to raw
   clickable elements too.
 - Components past ~150 lines become a folder.
+- Names are concise and concrete. Say what a value _is_, not where it appears:
+  `tasksById`, not `byId`; `orderedTasks`, not `ordered`; `unlistedTasks`, not
+  `rest`; `cachedTasks`, not `remembered`; `isTracking`, not `live`. Avoid vague
+  identifiers (`current`, `item`, `items`, `data`), and prefix booleans with
+  `is` / `has` / `can`.
+- File names follow the same rule: `mock-data.ts`, not `data.ts`;
+  `use-my-tasks.ts`, not `hooks.ts`; `voiceStrategies.ts`, not `strategies.ts`
+  (Convex module names are camelCase — no hyphens). The only exceptions are the
+  domain-layout names from `.agents/skills/domain-workflow` (`<domain>.ts`,
+  `service.ts`, `types.ts`, `util.ts`, `index.tsx`) and generated files.
 - The React Compiler is on (`viteReact({ compiler: true })` in
   `apps/web/vite.config.ts`). Do **not** add `useMemo`, `useCallback`, or
   `React.memo` for performance — the compiler memoizes automatically. Derive

@@ -91,6 +91,31 @@ export async function reorderTasks(
   }
 }
 
+// Move one owned task to another Day, at the bottom of that Day's queue. A plan
+// link cannot survive the move: a planned Session belongs to the old Day, so it
+// is cleared. Both Days' live queries update by themselves.
+export async function rescheduleTask(
+  ctx: MutationCtx,
+  taskId: Id<'task'>,
+  plannedAt: number
+): Promise<void> {
+  const user = await requireUser(ctx)
+  if (startOfDay(plannedAt, DASHBOARD_TIME_ZONE) !== plannedAt) {
+    throw new Error('A task is planned for a Day, not a time.')
+  }
+
+  const task = await requireOwnedTask(ctx, user, taskId)
+  if (task.plannedAt === plannedAt) return
+
+  const target = await dayTasks(ctx, user._id, plannedAt)
+  const position = await appendPosition(ctx, target)
+  await ctx.db.patch(task._id, {
+    plannedAt,
+    plannedSessionId: undefined,
+    position,
+  })
+}
+
 // Flip a task between Open and Done. Marking done stamps `completedAt` and clears
 // the active pointer when this was the active task; reopening clears `completedAt`
 // and never restores the pointer.
@@ -181,6 +206,18 @@ function nextPosition(tasks: Doc<'task'>[]): number | null {
   if (!tasks.every((task) => task.position !== undefined)) return null
   const highest = tasks.reduce((max, task) => Math.max(max, task.position ?? -1), -1)
   return highest + 1
+}
+
+// The position that appends to an existing Day. A Day written before positions
+// existed is normalised first, so a moved task still lands at the bottom instead
+// of sorting by its old creation instant.
+async function appendPosition(ctx: MutationCtx, tasks: Doc<'task'>[]): Promise<number> {
+  const next = nextPosition(tasks)
+  if (next !== null) return next
+  for (const [index, task] of tasks.entries()) {
+    if (task.position !== index) await ctx.db.patch(task._id, { position: index })
+  }
+  return tasks.length
 }
 
 async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {

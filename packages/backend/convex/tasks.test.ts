@@ -231,6 +231,114 @@ describe('tasks.reorder', () => {
   })
 })
 
+describe('tasks.reschedule', () => {
+  async function idOf(t: Test, title: string) {
+    const task = (await tasksOf(t)).find((row) => row.title === title)
+    if (!task) throw new Error(`Missing task: ${title}`)
+    return task._id
+  }
+
+  it('rejects an unauthenticated caller', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Move me')
+    const taskId = await idOf(t, 'Move me')
+
+    await expect(t.mutation(api.tasks.reschedule, { taskId, plannedAt: TOMORROW })).rejects.toThrow(
+      /Not authenticated/
+    )
+  })
+
+  it('moves the task to the end of the target Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Old one', YESTERDAY)
+    await create(t, ADA, 'Old two', YESTERDAY)
+    await create(t, ADA, 'Today one')
+    await create(t, ADA, 'Today two')
+    const taskId = await idOf(t, 'Old one')
+
+    await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
+
+    const today = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    const yesterday = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: YESTERDAY })
+    expect(today.map((task) => task.title)).toEqual(['Today one', 'Today two', 'Old one'])
+    expect(yesterday.map((task) => task.title)).toEqual(['Old two'])
+  })
+
+  it('appends after legacy tasks that have no position', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Movable', YESTERDAY)
+    const taskId = await idOf(t, 'Movable')
+    await t.run(async (ctx) => {
+      await ctx.db.insert('task', { userId, title: 'Legacy one', done: false, plannedAt: DAY })
+      await ctx.db.insert('task', { userId, title: 'Legacy two', done: false, plannedAt: DAY })
+    })
+
+    await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Legacy one', 'Legacy two', 'Movable'])
+  })
+
+  it('clears the Session plan when the task moves to another Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Planned', YESTERDAY)
+    const taskId = await idOf(t, 'Planned')
+    await t.run(async (ctx) => {
+      const sessionId = await ctx.db.insert('session', {
+        status: 'ended',
+        startedAt: YESTERDAY,
+        endedAt: YESTERDAY + 60_000,
+      })
+      await ctx.db.patch(taskId, { plannedSessionId: sessionId })
+    })
+
+    await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
+
+    const moved = (await tasksOf(t)).find((task) => task._id === taskId)
+    expect(moved?.plannedAt).toBe(DAY)
+    expect(moved?.plannedSessionId).toBeUndefined()
+  })
+
+  it('is a no-op when the task is already on that Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Stays')
+    const taskId = await idOf(t, 'Stays')
+
+    await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Stays'])
+  })
+
+  it('rejects a plannedAt that is not a Europe/Zurich Day start', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Later')
+    const taskId = await idOf(t, 'Later')
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY + 1000 })
+    ).rejects.toThrow(/Day, not a time/)
+  })
+
+  it("rejects another member's task", async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await create(t, ADA, 'Ada task')
+    const taskId = await idOf(t, 'Ada task')
+
+    await expect(
+      t.withIdentity(BOB).mutation(api.tasks.reschedule, { taskId, plannedAt: TOMORROW })
+    ).rejects.toThrow(/Task not found/)
+  })
+})
+
 describe('tasks.create', () => {
   it('rejects an unauthenticated caller', async () => {
     const t = makeTest()
