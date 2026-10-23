@@ -5,8 +5,8 @@ type: moc
 # Lanes of the day
 
 **In short:** the frontend-first redesign of the day timeline — the "lanes of the
-day" — in the `/beta` route. Nail the whole mechanic against mock data, then wire
-it to the existing Convex backend unchanged. Seven workstreams, worked one at a
+day" — in the Focus view at `/`. Nail the whole mechanic against mock data, then
+wire it to the existing Convex backend unchanged. Seven workstreams, worked one at a
 time.
 
 ## Approach
@@ -18,7 +18,7 @@ exactly, and we keep switchable scenarios so every situation is reachable.
 
 ## Where it lives
 
-- Route: `apps/web/src/routes/beta.tsx` → `TodayLayout`
+- Route: `apps/web/src/routes/index.tsx` → `TodayLayout`
   (`components/dashboard/today/index.tsx`)
 - The timeline: `components/dashboard/today/day-timeline/` (folder: `index.tsx`,
   `track-scroller.tsx`, `night-band.tsx`, the pinned lanes)

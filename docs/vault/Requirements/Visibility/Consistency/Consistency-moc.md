@@ -10,7 +10,8 @@ that surface for now — leaving the [[Streak]] (ST-14), still todo, behind it. 
 detail follows.
 
 A member's own study over time: how regularly they show up. It is site-only and
-private. It is **never** a comparison; that is [[Standing-moc]].
+private. It is **never** a comparison with others; that is [[Standing-moc]]. A
+comparison with your own past is still Consistency.
 
 - [[Consistency heatmap]] (ST-13): wontfix · parked — the `/beta` month calendar carries it
 - [[Streak]] (ST-14): todo · parked behind the calendar
@@ -24,5 +25,9 @@ Parked in this chapter:
 - **Parked**: Personal best, and today vs your usual same weekday. Both came from
   the retired personal-rail ticket. Revisit after the heatmap has been out a
   while.
+- **Parked — Me board**: a leaderboard of yourself across Weeks — your most
+  efficient Week, and where this Week sits against your best. No other members.
+  It tests whether the familiar board shape can carry Consistency without
+  turning it into Standing.
 
 Part of the [[Visibility-moc|Visibility sprint]].

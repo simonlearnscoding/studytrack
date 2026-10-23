@@ -1,16 +1,7 @@
 import { SignInButton, SignUpButton, useAuth } from '@clerk/tanstack-react-start'
-import { api } from '@studytrack/backend/convex/_generated/api'
-import { sortMembers } from '@studytrack/backend/convex/sessions/util'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from 'convex/react'
-import { DashboardShell } from '~/components/dashboard/dashboard-shell'
-import { RoomPanel, RoomPanelSkeleton } from '~/components/dashboard/room-panel'
-import { SelfPanel } from '~/components/dashboard/self-panel'
+import { TodayLayout } from '~/components/dashboard/today'
 import { Button } from '~/components/ui/button'
-import { useDayStart } from '~/hooks/use-day-start'
-import { useMounted } from '~/hooks/use-mounted'
-import { useNow } from '~/hooks/use-now'
-import { useSyncClerkUser } from '~/hooks/use-sync-clerk-user'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -18,7 +9,7 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const { isSignedIn } = useAuth()
-  return isSignedIn ? <Dashboard /> : <Welcome />
+  return isSignedIn ? <TodayLayout /> : <Welcome />
 }
 
 function Welcome() {
@@ -35,28 +26,5 @@ function Welcome() {
         </SignUpButton>
       </div>
     </div>
-  )
-}
-
-function Dashboard() {
-  useSyncClerkUser()
-  const dayStart = useDayStart()
-  const now = useNow(1000)
-  const members = useQuery(api.sessions.getTodaysActivitiesForDashboard, { dayStart })
-
-  // The server render and the first client paint happen before Convex has data
-  // and before the client clock exists; wait for mount to avoid a hydration
-  // mismatch on the live, time-derived numbers.
-  const mounted = useMounted()
-
-  if (!mounted || members === undefined) {
-    return <DashboardShell room={<RoomPanelSkeleton />} self={<SelfPanel />} />
-  }
-
-  return (
-    <DashboardShell
-      room={<RoomPanel members={sortMembers(members, now)} dayStart={dayStart} now={now} />}
-      self={<SelfPanel />}
-    />
   )
 }

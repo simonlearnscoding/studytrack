@@ -1,6 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { TodayLayout } from '~/components/dashboard/today'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+// Temporary compatibility shim: the Focus view moved from /beta to /.
 export const Route = createFileRoute('/beta')({
-  component: TodayLayout,
+  beforeLoad: () => {
+    throw redirect({ to: '/' })
+  },
 })

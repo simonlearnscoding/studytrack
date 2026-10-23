@@ -3,11 +3,10 @@
 Issue tracker for studytrack. Managed with ZenNotes; see
 `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md`.
 
-**The dashboard is being redesigned.** The new frontend lives in the `/beta`
-route and hooks into the existing Convex backend unchanged. Notes that described
-the old dashboard UI (Focus view, live room, self rail, timeline markers) have
-been retired to `trash/`; this vault now tracks the **backend domain** and the
-requirements that still matter.
+**The Focus view is the dashboard.** `/` renders it for signed-in members, with
+the Welcome page for signed-out visitors. Notes written while it was a redesign
+say `/beta`: that route moved to `/`, and the classic dashboard was deleted.
+This vault tracks the **backend domain** and the requirements that still matter.
 
 ## Areas
 
@@ -15,12 +14,12 @@ requirements that still matter.
 - [Visibility](Requirements/Visibility/Visibility-moc.md) — effort over time, backed by [[Daily totals]]
   - [Symbiosis](Requirements/Visibility/Symbiosis/Symbiosis-moc.md) — the room as one · [[Collective focus time]] (ST-25)
 
-## Redesign (`/beta`)
+## Focus view
 
 - [[Lanes of the day]] — the day timeline
 - [[In the room]] — the presence rail · [[In the room spec]] (LD-20)
 
-## Backend domain (what `/beta` hooks into)
+## Backend domain (what the Focus view hooks into)
 
 - [[data-model]] — the Convex schema; source of truth for every table
 - [[ST-5 Tasks]] · [[Tasks spec]] — the private `task` table
