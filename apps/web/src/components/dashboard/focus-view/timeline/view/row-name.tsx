@@ -1,5 +1,5 @@
 import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
-import { LiveDot } from '../../live-dot'
+import { LiveDot } from '../../../../ui/live-dot'
 
 // The name cell's contents — shared by the pinned names column (lg) and the
 // mobile lane that pins under the site header. Your own name is the strongest

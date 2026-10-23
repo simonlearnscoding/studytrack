@@ -18,14 +18,14 @@ import {
 import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
-import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
+import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
-import { TaskItem } from './task-item'
-import { taskPaneCollisionDetection } from './task-pane-collision'
+import { TaskItem } from './item/task-item'
+import { taskPaneCollisionDetection } from './dnd/task-pane-collision'
 import { TaskOverlay } from './task-overlay'
-import { TODAY_DROP_ID, TodayDropRail } from './today-drop-rail'
+import { TODAY_DROP_ID, TodayDropRail } from './dnd/schedule-for-today-rail'
 import type { DayTaskQueue, TaskId } from './task-types'
 
 const screenReaderInstructions = {

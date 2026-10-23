@@ -4,8 +4,8 @@ import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { RowName } from './row-name'
 import { RowTrack, type SessionClick } from './row-track'
-import type { AxisSurface } from './types'
-import { useMirrorScroll } from './use-mirror-scroll'
+import type { AxisSurface } from '../types'
+import { useMirrorScroll } from '../hooks/use-mirror-scroll'
 
 // <lg the page scrolls, so your labels + track pin flush under the site header
 // as their own full-bleed bar (same surface recipe as the header: bg + blur +

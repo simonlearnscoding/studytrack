@@ -1,5 +1,5 @@
 import type { QueueTask } from './task-types'
-import { TaskRow } from './task-item/row'
+import { TaskRow } from './item/task-row'
 
 const noop = () => {}
 

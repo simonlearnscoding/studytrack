@@ -8,7 +8,7 @@ import {
 import { NowLine } from './axis-markers'
 import { BandLayer } from './night-band'
 import { RowTrack, type SessionClick } from './row-track'
-import type { AxisSurface } from './types'
+import type { AxisSurface } from '../types'
 
 // The room's track area: the night bands, hour gridlines, the now-line, and one
 // bar per member other than you (your track lives in the pinned lane above).

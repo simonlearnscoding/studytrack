@@ -3,7 +3,7 @@ import type { LeaderboardRow } from '@studytrack/backend/convex/leaderboard/type
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
-import { colorFor, initials } from './avatar-identity'
+import { colorFor, initials } from '../../../../lib/avatar'
 
 // One row of the consistency board: a member's avatar identity plus their study
 // time in the two viewed periods, in whole minutes. The site metric switch picks

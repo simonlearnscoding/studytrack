@@ -1,7 +1,7 @@
 import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
-import { TaskComposerHint } from '~/components/dashboard/task-composer-hint'
+import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'

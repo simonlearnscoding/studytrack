@@ -23,8 +23,8 @@ import {
 import { HourLabels, NowLine, NowPill } from './axis-markers'
 import { BandLayer } from './night-band'
 import { RowTrack, type PlanOverride, type SessionClick } from './row-track'
-import type { AxisSurface } from './types'
-import { useMirrorScroll } from './use-mirror-scroll'
+import type { AxisSurface } from '../types'
+import { useMirrorScroll } from '../hooks/use-mirror-scroll'
 
 // A drag shorter than this is a click, not a plan.
 const DRAG_PX_THRESHOLD = 4

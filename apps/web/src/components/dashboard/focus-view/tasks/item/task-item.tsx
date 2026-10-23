@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useState } from 'react'
 import { cn } from '~/lib/utils'
 import type { QueueTask } from '../task-types'
-import { TaskRow } from './row'
+import { TaskRow } from './task-row'
 
 export function TaskItem({
   task,

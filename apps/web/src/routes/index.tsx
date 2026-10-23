@@ -1,6 +1,6 @@
 import { SignInButton, SignUpButton, useAuth } from '@clerk/tanstack-react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { TodayLayout } from '~/components/dashboard/today'
+import { TodayLayout } from '~/components/dashboard/focus-view/focus-view'
 import { Button } from '~/components/ui/button'
 
 export const Route = createFileRoute('/')({

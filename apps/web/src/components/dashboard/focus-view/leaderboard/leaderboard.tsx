@@ -1,9 +1,9 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import { Avatar } from './avatar'
-import { fmtHrs } from './mock-data'
-import { LeaderboardRange, type LeaderboardPeriod } from './leaderboard-range'
-import type { BoardRow } from './use-consistency-board'
+import { Avatar } from '../../../ui/avatar'
+import { fmtHrs } from '../mock-data'
+import { LeaderboardRange, type LeaderboardPeriod } from './period-range'
+import type { BoardRow } from './use-leaderboard'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { useMetric } from '~/hooks/use-metric-preference'
 

@@ -1,5 +1,5 @@
 import { closestCenter, pointerWithin, type CollisionDetection } from '@dnd-kit/core'
-import { TODAY_DROP_ID } from './today-drop-rail'
+import { TODAY_DROP_ID } from './schedule-for-today-rail'
 
 // A drop on the today rail wins over the nearest sortable row, so the task
 // leaves this Day instead of reordering inside it. The rail is only a candidate

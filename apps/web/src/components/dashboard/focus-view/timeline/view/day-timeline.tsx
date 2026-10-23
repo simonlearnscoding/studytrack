@@ -11,7 +11,7 @@ import { NamesColumn } from './names-column'
 import { TrackLegend } from './track-legend'
 import type { SessionClick } from './row-track'
 import { TrackScroller } from './track-scroller'
-import { useCentreOnNow } from './use-centre-on-now'
+import { useCentreOnNow } from '../hooks/use-centre-on-now'
 
 // The day timeline: one axis, seen through three synced surfaces.
 //
