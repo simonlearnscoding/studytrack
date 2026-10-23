@@ -1,11 +1,11 @@
 import type { MutationCtx } from '../_generated/server'
-import { voiceStrategies } from './strategies'
+import { voiceStrategies } from './voiceStrategies'
 import { assertBotSecret, getVoiceTransition } from './util'
 import type { RecordVoiceEventArgs, RecordVoiceEventResult } from './types'
 
 // The bot is a trusted external service: it authenticates with a shared secret
 // (Convex's documented service-auth pattern). It only reports raw voice events —
-// the transition logic lives in ./util and the handlers in ./strategies.
+// the transition logic lives in ./util and the handlers in ./voiceStrategies.
 export async function recordVoiceEvent(
   ctx: MutationCtx,
   args: RecordVoiceEventArgs

@@ -16,7 +16,7 @@ import { MobileTaskDock } from './mobile-task-dock'
 import { MonthCalendar } from './month-calendar'
 import { PresenceRail } from './presence-rail'
 import { TaskPane } from './task-pane'
-import { live } from './data'
+import { tracking } from './mock-data'
 import { TimelineSection } from './timeline-section'
 import { useConsistencyBoard } from './use-consistency-board'
 import { useMonthCalendar } from './use-month-calendar'
@@ -25,14 +25,15 @@ import { useTaskQueue } from './use-task-queue'
 import { useNow } from '~/hooks/use-now'
 
 export function TodayLayout() {
+  // One once-a-minute clock keeps the board, the calendar's live today cell and
+  // their future/today flags current without refetching every second. The queue
+  // also reads it so a past Day knows it can offer "schedule for today".
+  const now = useNow(60_000)
   // The queue is the one source of truth for the Now task — the first open task
   // of the Day; the desktop pane, the mobile dock and the hero all read it.
-  const queue = useTaskQueue(live)
+  const taskQueue = useTaskQueue(tracking, now)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useRoom()
-  // One once-a-minute clock keeps the board, the calendar's live today cell and
-  // their future/today flags current without refetching every second.
-  const now = useNow(60_000)
   const { weekRows, monthRows } = useConsistencyBoard(now)
   const calendar = useMonthCalendar(now)
   // below xl it sits full-width in the main column; xl+ keeps it in the rail
@@ -42,7 +43,7 @@ export function TodayLayout() {
     <div className="mx-auto flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:max-w-[1560px] lg:flex-col lg:gap-4 lg:p-8 lg:px-6 lg:pb-6">
       <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(300px,336px)]">
         <div
-          className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto ${queue.live ? 'max-lg:order-2' : 'max-lg:order-1'}`}
+          className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto ${taskQueue.isTracking ? 'max-lg:order-2' : 'max-lg:order-1'}`}
         >
           <PresenceRail members={inRoom} />
           {/* medium screens: consistency tucks into the left rail, behind a divider */}
@@ -52,9 +53,9 @@ export function TodayLayout() {
         </div>
 
         <main
-          className={`flex min-h-0 flex-col gap-6 max-lg:gap-5 max-lg:overflow-visible lg:overflow-y-auto ${queue.live ? 'max-lg:order-3' : 'max-lg:order-2'}`}
+          className={`flex min-h-0 flex-col gap-6 max-lg:gap-5 max-lg:overflow-visible lg:overflow-y-auto ${taskQueue.isTracking ? 'max-lg:order-3' : 'max-lg:order-2'}`}
         >
-          <Hero live={queue.live} task={queue.now?.title ?? null} />
+          <Hero isTracking={taskQueue.isTracking} task={taskQueue.now?.title ?? null} />
           <DayHeading now={now} />
           <TimelineSection />
           <div className="flex flex-col gap-6">
@@ -67,12 +68,12 @@ export function TodayLayout() {
         </main>
 
         <aside className="flex min-h-0 flex-col gap-4 max-lg:hidden lg:overflow-y-auto">
-          <TaskPane queue={queue} />
+          <TaskPane queue={taskQueue} />
           <div className="hidden xl:block">{monthCalendar}</div>
         </aside>
       </div>
 
-      <MobileTaskDock queue={queue} roomCount={roomCount} />
+      <MobileTaskDock queue={taskQueue} roomCount={roomCount} />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import {
   removeTask,
   renameTask,
   reorderTasks,
+  rescheduleTask,
   setActive as setActiveTask,
   toggleTask,
 } from './tasks/service'
@@ -17,12 +18,14 @@ import {
   removeTaskArgs,
   renameTaskArgs,
   reorderTasksArgs,
+  rescheduleTaskArgs,
   setActiveTaskArgs,
   toggleTaskArgs,
 } from './tasks/types'
 
 // Thin entry: wire args, delegate. Auth and db work live in ./tasks/service; the
 // arg validators and the view type live in ./tasks/types.
+// TODO: list mine what?? rename?
 export const listMine = query({
   args: listMineArgs.fields,
   handler: async (ctx, args) => readMine(ctx, args.dayStart),
@@ -60,6 +63,13 @@ export const reorder = mutation({
   args: reorderTasksArgs.fields,
   handler: async (ctx, args) => {
     await reorderTasks(ctx, args.dayStart, args.orderedTaskIds)
+  },
+})
+
+export const reschedule = mutation({
+  args: rescheduleTaskArgs.fields,
+  handler: async (ctx, args) => {
+    await rescheduleTask(ctx, args.taskId, args.plannedAt)
   },
 })
 

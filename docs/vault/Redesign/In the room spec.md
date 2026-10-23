@@ -171,7 +171,7 @@ the incumbent **left rail**, a compact **who's-there strip in the hero**, or
 - **Task progress** (`done/total`) as a bar, and any bare task **count**.
 - Day totals / Standing surfaces — the consistency board ([[Streak]],
   [[Consistency heatmap]]) and period Standing ([[Weekly and monthly
-                                                leaderboard]]).
+                                                  leaderboard]]).
 - The collective "room meter" ([[Collective focus time]], ST-25) — a separate
   surface.
 - Planned-time on tasks (future planning).

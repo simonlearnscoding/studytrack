@@ -52,7 +52,7 @@ Locked 2026-10-15, after grilling:
 
 ## Built (mock only)
 
-- `today/data.ts` — dropped `shared`; `upNext()` derives the suggestion.
+- `today/mock-data.ts` — dropped `shared`; `upNext()` derives the suggestion.
 - `mobile-task-dock/` — `setActive` / `clearActive`; up-next in the `NowBar`; the
   dashed banner removed.
 - `task-item` / `task-pane` — `NEXT` chip on the desktop list; `hero` shows

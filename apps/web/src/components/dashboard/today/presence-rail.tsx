@@ -8,7 +8,7 @@ import { MetricToggle } from '../metric-toggle'
 import { MODE_ICON, MODE_LABEL, MODE_TEXT } from '../mode-colors'
 import { Avatar } from './avatar'
 import { CollectiveFocusMeter } from './collective-focus-meter'
-import { label } from './data'
+import { label } from './mock-data'
 import { toRoomPerson } from './use-room'
 
 // The present-tense room rail: who is in a study channel right now, in join order.

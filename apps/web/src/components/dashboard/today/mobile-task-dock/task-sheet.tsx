@@ -16,7 +16,7 @@ import type { DockTask } from './types'
 // put underneath, so "now" never leaves the screen.
 export function TaskSheet({
   open,
-  live,
+  isTracking,
   loading,
   tasks,
   nowId,
@@ -28,7 +28,7 @@ export function TaskSheet({
   onToggleTracking,
 }: {
   open: boolean
-  live: boolean
+  isTracking: boolean
   loading: boolean
   tasks: DockTask[]
   nowId: TaskId | null
@@ -129,12 +129,12 @@ export function TaskSheet({
             onClick={onToggleTracking}
             className={cn(
               'mt-3 w-full cursor-pointer rounded-xl border py-2.5 text-sm transition-colors',
-              live
+              isTracking
                 ? 'border-destructive/30 bg-destructive-tint text-destructive'
                 : 'border-primary/35 bg-primary-tint text-primary'
             )}
           >
-            {live ? 'Stop tracking' : 'Start tracking'}
+            {isTracking ? 'Stop tracking' : 'Start tracking'}
           </button>
         </div>
       </div>

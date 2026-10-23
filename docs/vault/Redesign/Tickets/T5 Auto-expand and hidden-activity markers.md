@@ -25,4 +25,4 @@ completed task inside a collapsed band surfaces as a marker/count on that band.
 - [x] Auto-expansion is not persisted; a manual expansion still is.
 - [x] Activity hidden in a collapsed band shows a visible marker/count without force-opening it.
 
-_Shipped: `autoExpansionAt` / `mergeExpansion` and `use-auto-expansion.ts`; `TimelineRowVM.hiddenCount` plus the band's count badge in `night-band.tsx`. The auto-open/lock hour is `09:00` (`AUTO_OPEN_UNTIL_MIN`), per **ADR-0008**, not the original `05:00`._
+_Shipped: `autoExpansionAt` / `mergeExpansion` and `use-night-band-auto-expansion.ts`; `TimelineRowVM.hiddenCount` plus the band's count badge in `night-band.tsx`. The auto-open/lock hour is `09:00` (`AUTO_OPEN_UNTIL_MIN`), per **ADR-0008**, not the original `05:00`._

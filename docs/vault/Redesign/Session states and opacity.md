@@ -67,10 +67,10 @@ Settled in the grill:
 ## Ripple
 
 - Counting `screenShare` as Deep focus has landed as [[ST-23 Deep focus counts
-                        screen share]] (in-review). `DEEP_FOCUS_MODES` (`leaderboard/util.ts`) now
-                        includes `screenShare`, so Standing rankings and the bot board moved with it —
-                        and `Deep focus` now uses the same mode set as `Focus rate`
-                        (`sessions/metrics.ts`, `FOCUS_MODES`).
+                          screen share]] (in-review). `DEEP_FOCUS_MODES` (`leaderboard/util.ts`) now
+                          includes `screenShare`, so Standing rankings and the bot board moved with it —
+                          and `Deep focus` now uses the same mode set as `Focus rate`
+                          (`sessions/metrics.ts`, `FOCUS_MODES`).
 
 ## Raw states
 

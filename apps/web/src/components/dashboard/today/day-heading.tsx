@@ -33,6 +33,7 @@ export function DayHeading({ now }: { now: number }) {
   // mount to keep the server HTML and the first client paint identical.
   const mounted = useMounted()
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
+  //TODO: replace with minor util fn
   const isToday = !mounted || dayStart === startOfDay(now, DASHBOARD_TIME_ZONE)
 
   return (

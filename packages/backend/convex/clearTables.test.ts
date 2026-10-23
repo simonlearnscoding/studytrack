@@ -6,7 +6,7 @@ import schema from './schema'
 
 const modules = import.meta.glob('./**/*.ts')
 
-describe('clear.clearAll', () => {
+describe('clearTables.clearAll', () => {
   it('deletes every row in every table', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
@@ -28,7 +28,7 @@ describe('clear.clearAll', () => {
       })
     })
 
-    const result = await t.mutation(internal.clear.clearAll, {})
+    const result = await t.mutation(internal.clearTables.clearAll, {})
     expect(result.deleted).toBeGreaterThan(0)
 
     const left = await t.run(async (ctx) => ({
