@@ -18,19 +18,19 @@ exactly, and we keep switchable scenarios so every situation is reachable.
 
 ## Where it lives
 
-- Route: `apps/web/src/routes/index.tsx` → `TodayLayout`
-  (`components/dashboard/today/index.tsx`)
-- The timeline: `components/dashboard/today/day-timeline/` (folder: `index.tsx`,
-  `track-scroller.tsx`, `night-band.tsx`, the pinned lanes)
-- Mock swap point: `components/dashboard/today/mock-data.ts`; scenario fixtures:
-  `components/dashboard/today/scenarios.ts`
+- Route: `apps/web/src/routes/index.tsx` → `FocusView`
+  (`components/dashboard/focus-view/focus-view.tsx`)
+- The timeline: `components/dashboard/focus-view/timeline/` (`view/day-timeline.tsx`,
+  `view/track-scroller.tsx`, `view/night-band.tsx`, the pinned lanes)
+- Live reads: `timeline/hooks/use-timeline.ts` and `live-room/use-live-room.ts`,
+  both on `sessions.getTodaysActivitiesForDashboard`
 - Real types: `packages/backend/convex/sessions/types.ts` (`DashboardMember`,
   `DashboardSession`, `DashboardPartial`, `DashboardCompletedTask`)
 - Vocabulary: `GLOSSARY.md` (Session, Partial, Pause, Study mode, Day). Backend:
   [[data-model]].
 - Styling goes through `apps/web/src/styles/app.css` tokens (design-tokens skill).
   Mode colours already exist: `bg-mode-cam`, `bg-mode-screen`, `bg-mode-voice`,
-  `bg-mode-manual`, `bg-mode-cam-screen` (`mode-colors.ts`).
+  `bg-mode-manual`, `bg-mode-cam-screen` (`components/ui/mode-colors.ts`).
 
 ## Cards
 

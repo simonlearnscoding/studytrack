@@ -25,5 +25,6 @@ Considered and rejected:
   migration that only needs to happen once.
 
 Consequences: older notes and tickets that say `/beta` mean today's `/`; the
-redirect is temporary and should be removed after one release; the folder
-restructure of the Focus view is a separate, move-only change.
+redirect is temporary and should be removed after one release. The Focus view now
+lives under `components/dashboard/focus-view/`, and the classic dashboard's files
+are gone.
