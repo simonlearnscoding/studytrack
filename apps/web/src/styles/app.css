@@ -59,6 +59,9 @@
   /* Scrollbar — neutral, carved from the foreground; hover brightens. */
   --scrollbar-thumb: #e9edf31f; /* foreground @ 12% */
   --scrollbar-thumb-hover: #e9edf338; /* foreground @ 22% */
+
+  /* Layout — shared max width of the header bar and dashboard content. */
+  --content-max: 1760px;
 }
 
 @custom-variant dark (&:is(.dark *));

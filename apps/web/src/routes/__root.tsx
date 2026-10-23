@@ -55,7 +55,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-          <div className="mx-auto flex h-14 w-full max-w-[1560px] shrink-0 items-center justify-between gap-3 px-3.5 text-sm lg:px-6">
+          <div className="mx-auto flex h-14 w-full max-w-(--content-max) shrink-0 items-center justify-between gap-3 px-3.5 text-sm lg:px-6">
             <div className="flex min-w-0 items-center gap-4">
               <Link
                 to="/"
