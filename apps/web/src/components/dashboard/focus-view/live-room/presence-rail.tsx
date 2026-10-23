@@ -3,13 +3,12 @@ import { useMetric } from '~/hooks/use-metric-preference'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
 import { cn } from '~/lib/utils'
-import { LiveDot } from '../../../ui/live-dot'
-import { MetricToggle } from '../../../ui/metric-toggle'
-import { MODE_ICON, MODE_LABEL, MODE_TEXT } from '../../../ui/mode-colors'
-import { Avatar } from '../../../ui/avatar'
+import { LiveDot } from '~/components/ui/live-dot'
+import { MetricToggle } from '~/components/ui/metric-toggle'
+import { MODE_ICON, MODE_LABEL, MODE_TEXT } from '~/components/ui/mode-colors'
+import { Avatar } from '~/components/ui/avatar'
 import { CollectiveFocusMeter } from './collective-focus-meter'
-import { label } from '../mock-data'
-import { toRoomPerson } from './use-live-room'
+import { toLiveRoomPerson } from './use-live-room'
 
 // The present-tense room rail: who is in a study channel right now, in join order.
 // It owns its own ticking clock so its per-second updates stay off the rest of the
@@ -28,7 +27,7 @@ export function PresenceRail({
   const dots = '.'.repeat((Math.floor(now / 1000) % 3) + 1)
   // The live "time in session" cuts follow the site-wide metric switch.
   const metric = useMetric()
-  const people = members?.map((member) => toRoomPerson(member, mounted ? now : null, metric))
+  const people = members?.map((member) => toLiveRoomPerson(member, mounted ? now : null, metric))
   const loading = people === undefined
   // The room's shared timer: shown whenever someone is here, and gone with the
   // last person (the value is derived from the active sessions alone).
@@ -37,7 +36,7 @@ export function PresenceRail({
   return (
     <aside className={cn('flex min-h-0 flex-col lg:order-none', className)}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2.5 pl-0.5">
-        <div className={`flex items-center gap-2 ${label}`}>
+        <div className="flex items-center gap-2 text-label">
           <LiveDot className="h-1.5 w-1.5 text-primary" />
           In the room
           <span className="text-muted-foreground tracking-normal">

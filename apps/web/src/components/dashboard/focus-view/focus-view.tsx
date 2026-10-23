@@ -1,7 +1,7 @@
 /**
- * TodayLayout — port of the approved "floating page" mock.
+ * FocusView — port of the approved "floating page" mock.
  * Composition only: each region is its own component. The room rail is live from
- * Convex (`useRoom`); the remaining placeholder data lives in `./mock-data`.
+ * Convex (`useLiveRoom`); the remaining placeholder data lives in the components.
  *
  * Mobile (<lg): single column — room first when out, you/room/timeline when
  * live. The personal rail (taskpane) is desktop-only and the quote lives in
@@ -13,7 +13,7 @@ import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sess
 import { useNow } from '~/hooks/use-now'
 import { useSyncClerkUser } from '~/hooks/use-sync-clerk-user'
 import { useDateStore } from '~/state/date.store'
-import { ConsistencyBoard } from './leaderboard/leaderboard'
+import { Leaderboard } from './leaderboard/leaderboard'
 import { DayHeading } from './day-heading'
 import { Hero } from './hero'
 import { MobileTaskDock } from './tasks/mobile-task-dock'
@@ -21,13 +21,13 @@ import { MonthCalendar } from './calendar/month-calendar'
 import { PresenceRail } from './live-room/presence-rail'
 import { TaskPane } from './tasks/task-pane'
 import { TimelineSection } from './timeline/timeline-section'
-import { useConsistencyBoard } from './leaderboard/use-leaderboard'
+import { useLeaderboard } from './leaderboard/use-leaderboard'
 import { useDayTaskQueue } from './tasks/use-day-task-queue'
 import { useMonthCalendar } from './calendar/use-month-calendar'
-import { useRoom } from './live-room/use-live-room'
+import { useLiveRoom } from './live-room/use-live-room'
 import { useTrackingStatus } from './use-tracking-status'
 
-export function TodayLayout() {
+export function FocusView() {
   useSyncClerkUser()
   // One once-a-minute clock keeps the board, the calendar's live today cell and
   // their future/today flags current without refetching every second. The queue
@@ -41,8 +41,8 @@ export function TodayLayout() {
   const taskQueue = useDayTaskQueue(dayStart, now)
   const sessionElapsedMs = tracking.startedAt === null ? 0 : Math.max(0, now - tracking.startedAt)
   // The room is live from Convex; its per-second clock lives in the rail itself.
-  const { inRoom, count: roomCount } = useRoom()
-  const { weekRows, monthRows } = useConsistencyBoard(now)
+  const { inRoom, count: roomCount } = useLiveRoom()
+  const { weekRows, monthRows } = useLeaderboard(now)
   const calendar = useMonthCalendar(now)
   // below xl it sits full-width in the main column; xl+ keeps it in the rail
   const monthCalendar = <MonthCalendar calendar={calendar} />
@@ -56,7 +56,7 @@ export function TodayLayout() {
           <PresenceRail members={inRoom} />
           {/* medium screens: consistency tucks into the left rail, behind a divider */}
           <div className="hidden border-t border-white/[0.06] pt-5 lg:block xl:hidden">
-            <ConsistencyBoard weekRows={weekRows} monthRows={monthRows} compact />
+            <Leaderboard weekRows={weekRows} monthRows={monthRows} compact />
           </div>
         </div>
 
@@ -79,7 +79,7 @@ export function TodayLayout() {
           <div className="flex flex-col gap-6">
             <div className="xl:hidden">{monthCalendar}</div>
             <div className="lg:hidden xl:block">
-              <ConsistencyBoard weekRows={weekRows} monthRows={monthRows} />
+              <Leaderboard weekRows={weekRows} monthRows={monthRows} />
             </div>
           </div>
           {/* the personal rail is desktop-only — on mobile the dock owns it */}

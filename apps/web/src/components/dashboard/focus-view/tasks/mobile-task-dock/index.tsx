@@ -6,7 +6,7 @@ import { TaskSheet } from './task-sheet'
 
 // The mobile task dock: a sticky bottom bar that always shows what you're on,
 // with a sheet that expands to the whole list and the composer. The queue state
-// is owned by TodayLayout so the desktop pane and this dock share one source of
+// is owned by FocusView so the desktop pane and this dock share one source of
 // truth; the dock owns only whether its sheet is open.
 export function MobileTaskDock({
   queue,

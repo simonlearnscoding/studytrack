@@ -1,7 +1,6 @@
 import type { CalendarBucket } from '@studytrack/backend/convex/sessions/calendar'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { label } from '../mock-data'
 import type { MonthCalendarView } from './use-month-calendar'
 
 // The fixed heat scale: a colour always means the same amount of study. Bucket 0
@@ -20,7 +19,7 @@ export function MonthCalendar({ calendar }: { calendar: MonthCalendarView }) {
   return (
     <section className="bg-card rounded-xl border p-4 max-lg:p-3.5">
       <div className="flex items-center justify-between gap-2 pb-2.5">
-        <span className={label}>{calendar.label}</span>
+        <span className="text-label">{calendar.label}</span>
         <div className="flex items-center gap-1">
           <Button
             type="button"

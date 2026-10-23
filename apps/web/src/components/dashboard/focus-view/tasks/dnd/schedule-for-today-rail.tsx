@@ -2,12 +2,12 @@ import { useDroppable } from '@dnd-kit/core'
 import { CalendarPlus } from 'lucide-react'
 import { cn } from '~/lib/utils'
 
-export const TODAY_DROP_ID = 'schedule-for-today'
+import { SCHEDULE_FOR_TODAY_DROP_ID } from './task-pane-collision'
 
 // The fixed rail in the gap right of the task pane. It mounts only while a drag
 // runs on a past Day, so today and future Days never show it.
-export function TodayDropRail() {
-  const { setNodeRef, isOver } = useDroppable({ id: TODAY_DROP_ID })
+export function ScheduleForTodayRail() {
+  const { setNodeRef, isOver } = useDroppable({ id: SCHEDULE_FOR_TODAY_DROP_ID })
 
   return (
     <div

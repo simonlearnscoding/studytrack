@@ -3,12 +3,12 @@ import type { LeaderboardRow } from '@studytrack/backend/convex/leaderboard/type
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
-import { colorFor, initials } from '../../../../lib/avatar'
+import { colorFor, initials } from '~/lib/avatar'
 
-// One row of the consistency board: a member's avatar identity plus their study
+// One row of the leaderboard: a member's avatar identity plus their study
 // time in the two viewed periods, in whole minutes. The site metric switch picks
 // `focus` or `total` for the numbers and the rank.
-export type BoardRow = {
+export type LeaderboardRowVM = {
   key: string
   initials: string
   color: string
@@ -22,9 +22,9 @@ export type BoardRow = {
 // date. The caller supplies a once-a-minute `now` so the current period's live
 // minutes update without refetching every second; every other argument is stable,
 // so Convex can reuse the read across identical focus days.
-export function useConsistencyBoard(now: number): {
-  weekRows: BoardRow[]
-  monthRows: BoardRow[]
+export function useLeaderboard(now: number): {
+  weekRows: LeaderboardRowVM[]
+  monthRows: LeaderboardRowVM[]
 } {
   const selectedDate = useDateStore((state) => state.selectedDate)
   // Normalise the client Date to the shared Europe/Zurich day start rather than
@@ -42,7 +42,7 @@ export function useConsistencyBoard(now: number): {
   }
 }
 
-function toRows(rows: LeaderboardRow[], meKey: string | null): BoardRow[] {
+function toRows(rows: LeaderboardRow[], meKey: string | null): LeaderboardRowVM[] {
   return rows.map((row) => {
     const name = row.name ?? row.discordId
     return {

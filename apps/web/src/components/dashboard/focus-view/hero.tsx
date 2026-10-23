@@ -1,8 +1,9 @@
 import { Play } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
-import { heroIdle } from './mock-data'
 import type { QueueTask } from './tasks/task-types'
+
+const heroIdle = { together: 5, openedAt: '12:16', streak: '6d' }
 
 // The session header. Its task area mirrors the queue's Now task — the first
 // open task of the Day. Read-only — the pane and the mobile dock are where you

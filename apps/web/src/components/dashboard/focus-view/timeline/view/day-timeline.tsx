@@ -1,8 +1,4 @@
-import type {
-  TimelineBarVM,
-  TimelineRowVM,
-  TimelineWindow,
-} from '@studytrack/backend/convex/timeline/types'
+import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
 import { nightBands } from '@studytrack/backend/convex/timeline/bands'
 import type { RefObject } from 'react'
 import { PinnedDesktopBar, type PlanClick, type PlanDrag, type PlanUpdate } from './desktop-bar'

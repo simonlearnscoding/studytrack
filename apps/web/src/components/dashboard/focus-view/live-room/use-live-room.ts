@@ -5,7 +5,7 @@ import { formatDurationHM } from '@studytrack/backend/convex/sessions/util'
 import { useQuery } from 'convex/react'
 import { useDayStart } from '~/hooks/use-day-start'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
-import { colorFor, initials } from '../../../../lib/avatar'
+import { colorFor, initials } from '~/lib/avatar'
 
 type StudyMode = DashboardMember['sessions'][number]['partials'][number]['mode']
 
@@ -14,7 +14,7 @@ type StudyMode = DashboardMember['sessions'][number]['partials'][number]['mode']
 // server's HTML. `mode` is null on a break (no icon); `task` is the member's
 // active task, or null when they have none. `idle` is the playful line shown
 // instead when there is no task to name.
-export type RoomPerson = {
+export type LiveRoomPerson = {
   key: string
   initials: string
   color: string
@@ -28,7 +28,7 @@ export type RoomPerson = {
 // Everyone currently in a study channel, earliest-joined first (the rail's "join
 // order"). The present-tense slice of the same dashboard query the full room panel
 // reads; the caller supplies the clock for any durations it derives.
-export function useRoom(): { inRoom: DashboardMember[] | undefined; count: number } {
+export function useLiveRoom(): { inRoom: DashboardMember[] | undefined; count: number } {
   const dayStart = useDayStart()
   const members = useQuery(api.sessions.getTodaysActivitiesForDashboard, { dayStart })
   const inRoom = members
@@ -41,11 +41,11 @@ export function useRoom(): { inRoom: DashboardMember[] | undefined; count: numbe
 // (their own session, in the metric the site switch fronts — Deep focus or
 // Total) and the mode they are studying in. `time` is null on the server render
 // (see the type); `mode` is null on a break.
-export function toRoomPerson(
+export function toLiveRoomPerson(
   member: DashboardMember,
   now: number | null,
   metric: Metric
-): RoomPerson {
+): LiveRoomPerson {
   const name = member.name ?? member.discordId
   const active = activeSession(member)
   const mode = active ? currentMode(active) : null

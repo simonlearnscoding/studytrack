@@ -31,7 +31,7 @@ const monthFormat = new Intl.DateTimeFormat('en-US', {
 
 const HOUR_MS = 60 * 60 * 1000
 
-export function LeaderboardRange({ period }: { period: LeaderboardPeriod }) {
+export function PeriodRange({ period }: { period: LeaderboardPeriod }) {
   const selectedDate = useDateStore((state) => state.selectedDate)
   const selectDate = useDateStore((state) => state.selectDate)
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)

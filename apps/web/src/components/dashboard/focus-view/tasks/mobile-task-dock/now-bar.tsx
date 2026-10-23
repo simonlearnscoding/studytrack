@@ -2,7 +2,7 @@ import { ListChecks, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
-import { LiveDot } from '../../../../ui/live-dot'
+import { LiveDot } from '~/components/ui/live-dot'
 import type { DockTask } from './types'
 
 // The sticky bottom bar — mobile only, centred, floating over the page.

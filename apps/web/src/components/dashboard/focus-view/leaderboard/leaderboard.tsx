@@ -1,9 +1,9 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import { Avatar } from '../../../ui/avatar'
-import { fmtHrs } from '../mock-data'
-import { LeaderboardRange, type LeaderboardPeriod } from './period-range'
-import type { BoardRow } from './use-leaderboard'
+import { Avatar } from '~/components/ui/avatar'
+import { formatMinutes } from '~/lib/format'
+import { PeriodRange, type LeaderboardPeriod } from './period-range'
+import type { LeaderboardRowVM } from './use-leaderboard'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { useMetric } from '~/hooks/use-metric-preference'
 
@@ -11,7 +11,7 @@ const periods = ['week', 'month'] as const
 type Period = LeaderboardPeriod
 const other = { focus: 'total', total: 'focus' } as Record<Metric, Metric>
 
-type MergedRow = { key: string; week?: BoardRow; month?: BoardRow; rank: number }
+type MergedRow = { key: string; week?: LeaderboardRowVM; month?: LeaderboardRowVM; rank: number }
 
 /** The row's minutes for one period · metric pair — the number the rank sorts on.
  *  A member missing from a period (no study in that Week or Month) sorts last. */
@@ -22,7 +22,7 @@ const minutesFor = (row: MergedRow, period: Period, metric: Metric) =>
 /** One row per person: join the Week and Month lists on the member key, keeping
  *  anyone who appears in either. A member in the Month but not the focus Week (or
  *  the other way round) still gets a row, with a dash in the period they miss. */
-function mergeRows(weekRows: BoardRow[], monthRows: BoardRow[]): MergedRow[] {
+function mergeRows(weekRows: LeaderboardRowVM[], monthRows: LeaderboardRowVM[]): MergedRow[] {
   const byKey = new Map<string, MergedRow>()
   for (const week of weekRows) byKey.set(week.key, { key: week.key, week, rank: 0 })
   for (const month of monthRows) {
@@ -33,14 +33,14 @@ function mergeRows(weekRows: BoardRow[], monthRows: BoardRow[]): MergedRow[] {
   return [...byKey.values()]
 }
 
-export function ConsistencyBoard({
+export function Leaderboard({
   weekRows,
   monthRows,
   compact = false,
   initial = 5,
 }: {
-  weekRows: BoardRow[]
-  monthRows: BoardRow[]
+  weekRows: LeaderboardRowVM[]
+  monthRows: LeaderboardRowVM[]
   /** compact = slim row for the left rail */
   compact?: boolean
   /** rows shown before the "show more" affordance */
@@ -72,7 +72,7 @@ export function ConsistencyBoard({
 
   return (
     <section>
-      <LeaderboardRange period={sort} />
+      <PeriodRange period={sort} />
       <div className={`grid items-center ${grid} border-b border-white/[0.06] pb-1.5`}>
         <span className="col-span-2" />
         <span aria-hidden />
@@ -133,7 +133,7 @@ export function ConsistencyBoard({
                         : 'text-hint'
                     }`}
                   >
-                    {cell ? fmtHrs(cell[metric]) : '—'}
+                    {cell ? formatMinutes(cell[metric]) : '—'}
                   </span>
                 )
               })}

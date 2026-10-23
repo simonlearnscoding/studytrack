@@ -25,7 +25,8 @@ import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-c
 import { TaskItem } from './item/task-item'
 import { taskPaneCollisionDetection } from './dnd/task-pane-collision'
 import { TaskOverlay } from './task-overlay'
-import { TODAY_DROP_ID, TodayDropRail } from './dnd/schedule-for-today-rail'
+import { ScheduleForTodayRail } from './dnd/schedule-for-today-rail'
+import { SCHEDULE_FOR_TODAY_DROP_ID } from './dnd/task-pane-collision'
 import type { DayTaskQueue, TaskId } from './task-types'
 
 const screenReaderInstructions = {
@@ -56,7 +57,7 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
     onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
     onDragOver: ({ active, over }) =>
       over
-        ? over.id === TODAY_DROP_ID
+        ? over.id === SCHEDULE_FOR_TODAY_DROP_ID
           ? `Schedule ${titleOf(active.id)} for today.`
           : `${titleOf(active.id)} moved to position ${positionOf(over.id)} of ${ids.length}.`
         : undefined,
@@ -72,7 +73,7 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
   const endDrag = ({ active, over }: DragEndEvent) => {
     setDraggingId(null)
     if (!over) return
-    if (over.id === TODAY_DROP_ID) {
+    if (over.id === SCHEDULE_FOR_TODAY_DROP_ID) {
       actions.scheduleTaskForToday(active.id as TaskId)
       return
     }
@@ -152,7 +153,7 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
           )}
         </div>
 
-        {draggingId !== null && state.canScheduleForToday ? <TodayDropRail /> : null}
+        {draggingId !== null && state.canScheduleForToday ? <ScheduleForTodayRail /> : null}
 
         <DragOverlay>
           {dragging ? <TaskOverlay task={dragging} isNow={dragging.id === state.now?.id} /> : null}

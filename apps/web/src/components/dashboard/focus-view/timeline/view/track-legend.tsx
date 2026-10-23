@@ -1,6 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import { BAR_LIVE } from '../session-bar-style'
-import { label } from '../../mock-data'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
 const legend = [
@@ -18,7 +17,7 @@ const legend = [
 // The section label with a "?" that opens the track-colour legend.
 export function TrackLegend() {
   return (
-    <div className={`flex items-center gap-2.5 pl-0.5 ${label}`}>
+    <div className="flex items-center gap-2.5 pl-0.5 text-label">
       <Popover>
         <PopoverTrigger asChild>
           <button
