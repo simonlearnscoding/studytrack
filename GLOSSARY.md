@@ -11,6 +11,12 @@ voice. It stitches together every partial in between, including short pauses —
 re-entering within 30 minutes continues the same session.
 _Avoid_: Sitting, study session
 
+**Plan**:
+A future window a member places on their own lane — a Day, a start, an end. It
+is an intention, not evidence: it has no voice partials and never becomes a
+Session. Several may sit on one Day as long as they touch at most at an edge.
+_Avoid_: Planned session, plan block, calendar entry
+
 **Partial**:
 A stretch of time during which one member's voice state in a study channel is
 constant. It opens when the member is in a channel and ends the moment that

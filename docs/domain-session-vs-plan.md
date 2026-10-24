@@ -104,7 +104,7 @@ join table) — `plannedSessionId` cannot be reused for it.
 
 **2. "Planned session" is a table name, not a domain term.** In conversation the
 block on the timeline should be called a **Plan**. Keep "Session" for the real
-sitting. Proposed glossary entry:
+sitting. Glossary entry:
 
 > **Plan**: A future block of study time a member places on their own lane — a
 > Day, a start, an end. Has no voice evidence. Turning into a Session is not a
