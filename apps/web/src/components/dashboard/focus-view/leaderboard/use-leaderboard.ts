@@ -1,6 +1,6 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import type { LeaderboardRow } from '@studytrack/backend/convex/leaderboard/types'
-import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
 import { colorFor, initials } from '~/lib/avatar'

@@ -1,4 +1,4 @@
-import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { useEffect, useState } from 'react'
 
 const DAY_MS = 24 * 60 * 60 * 1000

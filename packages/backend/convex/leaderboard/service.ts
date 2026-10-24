@@ -2,7 +2,7 @@ import type { QueryCtx } from '../_generated/server'
 import { assertBotSecret } from '../bot/util'
 import { sumDailyTotals } from '../dailyTotals/service'
 import type { DailyTotalSum } from '../dailyTotals/types'
-import { groupTodaysMembers } from '../sessions/service'
+import { groupTodaysMembers } from '../workSessions/service'
 import {
   DASHBOARD_TIME_ZONE,
   nextMonthStart,
@@ -10,7 +10,7 @@ import {
   startOfDay,
   startOfMonth,
   startOfWeek,
-} from '../sessions/util'
+} from '../workSessions/util'
 import type {
   GetBoardsArgs,
   GetBoardsForViewerArgs,
@@ -38,7 +38,7 @@ export async function getBoardsForViewer(
   ctx: QueryCtx,
   args: GetBoardsForViewerArgs
 ): Promise<LeaderboardBoards> {
-  // DEV: matches sessions.getTodaysActivitiesForDashboard — the dev deployment
+  // DEV: matches workSessions.getTodaysActivitiesForDashboard — the dev deployment
   // sets DEV_AUTH_BYPASS (packages/backend/.env.local) so /beta can be worked on
   // signed-out. Prod never has it and keeps the identity gate.
   if (process.env.DEV_AUTH_BYPASS !== '1') {

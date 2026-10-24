@@ -6,7 +6,7 @@ import {
 } from 'react'
 
 // A press only becomes a pan once the pointer has moved this far; below it the
-// click keeps its real target (a session bar can open its popover).
+// click keeps its real target (a workSession bar can open its popover).
 const PAN_START_PX = 4
 
 type PanDrag = {

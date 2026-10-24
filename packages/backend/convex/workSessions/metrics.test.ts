@@ -1,5 +1,5 @@
 import type { Id } from '../_generated/dataModel'
-import type { DashboardMember, DashboardPartial, DashboardSession } from './types'
+import type { DashboardMember, DashboardPartial, DashboardWorkSession } from './types'
 import { describe, expect, it } from 'vitest'
 import {
   collectiveFocusMs,
@@ -7,7 +7,7 @@ import {
   formatCompactMs,
   memberFocusMs,
   memberSpanTotalMs,
-  sessionSpanMs,
+  workSessionSpanMs,
 } from './metrics'
 
 const M = 60_000
@@ -16,7 +16,7 @@ const NOW = Date.UTC(2026, 5, 15, 12, 0, 0)
 
 function partial(overrides: Partial<DashboardPartial> = {}): DashboardPartial {
   return {
-    id: 'partial-1' as Id<'sessionPartial'>,
+    id: 'partial-1' as Id<'workSessionPartial'>,
     channelId: 'channel-1',
     mode: 'voice',
     startedAt: NOW - 10 * M,
@@ -25,12 +25,12 @@ function partial(overrides: Partial<DashboardPartial> = {}): DashboardPartial {
   }
 }
 
-function session(
+function workSession(
   partials: DashboardPartial[] = [],
-  overrides: Partial<DashboardSession> = {}
-): DashboardSession {
+  overrides: Partial<DashboardWorkSession> = {}
+): DashboardWorkSession {
   return {
-    id: 'session-1' as Id<'session'>,
+    id: 'workSession-1' as Id<'workSession'>,
     status: 'ended',
     startedAt: NOW - H,
     endedAt: NOW,
@@ -47,41 +47,46 @@ function member(overrides: Partial<DashboardMember> = {}): DashboardMember {
     name: 'Ada',
     image: null,
     online: false,
-    sessions: [],
-    plans: [],
+    workSessions: [],
+    planBlocks: [],
     activeTask: null,
     ...overrides,
   }
 }
 
-describe('sessionSpanMs', () => {
-  it('is the whole span of an ended session', () => {
-    expect(sessionSpanMs(session([], { startedAt: NOW - 2 * H, endedAt: NOW - H }), NOW)).toBe(H)
+describe('workSessionSpanMs', () => {
+  it('is the whole span of an ended workSession', () => {
+    expect(
+      workSessionSpanMs(workSession([], { startedAt: NOW - 2 * H, endedAt: NOW - H }), NOW)
+    ).toBe(H)
   })
 
-  it('stays live while the session is active', () => {
+  it('stays live while the workSession is active', () => {
     expect(
-      sessionSpanMs(session([], { status: 'active', startedAt: NOW - 30 * M, endedAt: null }), NOW)
+      workSessionSpanMs(
+        workSession([], { status: 'active', startedAt: NOW - 30 * M, endedAt: null }),
+        NOW
+      )
     ).toBe(30 * M)
   })
 
   it('never goes negative', () => {
-    expect(sessionSpanMs(session([], { startedAt: NOW + M, endedAt: null }), NOW)).toBe(0)
+    expect(workSessionSpanMs(workSession([], { startedAt: NOW + M, endedAt: null }), NOW)).toBe(0)
   })
 })
 
 describe('memberSpanTotalMs', () => {
-  it('sums spans across sessions, pauses included by construction', () => {
+  it('sums spans across workSessions, pauses included by construction', () => {
     const mine = member({
-      sessions: [
-        session([], { startedAt: NOW - 3 * H, endedAt: NOW - 2 * H }),
-        session([], { startedAt: NOW - H, endedAt: NOW - 30 * M }),
+      workSessions: [
+        workSession([], { startedAt: NOW - 3 * H, endedAt: NOW - 2 * H }),
+        workSession([], { startedAt: NOW - H, endedAt: NOW - 30 * M }),
       ],
     })
     expect(memberSpanTotalMs(mine, NOW)).toBe(H + 30 * M)
   })
 
-  it('is zero for a member with no sessions', () => {
+  it('is zero for a member with no workSessions', () => {
     expect(memberSpanTotalMs(member(), NOW)).toBe(0)
   })
 })
@@ -89,8 +94,8 @@ describe('memberSpanTotalMs', () => {
 describe('memberFocusMs', () => {
   it('counts camera and screen share modes only', () => {
     const mine = member({
-      sessions: [
-        session([
+      workSessions: [
+        workSession([
           partial({ mode: 'camera' }),
           partial({ mode: 'screenShare' }),
           partial({ mode: 'cameraAndScreenShare' }),
@@ -105,8 +110,8 @@ describe('memberFocusMs', () => {
 
   it('counts a live focus partial up to now', () => {
     const mine = member({
-      sessions: [
-        session([partial({ mode: 'screenShare', startedAt: NOW - 12 * M, endedAt: null })], {
+      workSessions: [
+        workSession([partial({ mode: 'screenShare', startedAt: NOW - 12 * M, endedAt: null })], {
           status: 'active',
           endedAt: null,
         }),
@@ -121,7 +126,7 @@ describe('collectiveFocusMs', () => {
     return member({
       discordId: id,
       online: true,
-      sessions: [session(partials, { status: 'active', endedAt: null })],
+      workSessions: [workSession(partials, { status: 'active', endedAt: null })],
     })
   }
 
@@ -144,9 +149,9 @@ describe('collectiveFocusMs', () => {
     expect(collectiveFocusMs(room, NOW, 'total')).toBe(H)
   })
 
-  it('ignores members with no active session', () => {
+  it('ignores members with no active workSession', () => {
     const gone = member({
-      sessions: [session([partial({ mode: 'camera' })], { status: 'ended' })],
+      workSessions: [workSession([partial({ mode: 'camera' })], { status: 'ended' })],
     })
     expect(collectiveFocusMs([gone], NOW, 'focus')).toBe(0)
   })
@@ -169,7 +174,7 @@ describe('focusRate', () => {
     expect(focusRate(30 * M, 2 * H)).toBe(0.25)
   })
 
-  it('is null when there is no session time', () => {
+  it('is null when there is no workSession time', () => {
     expect(focusRate(0, 0)).toBeNull()
   })
 })

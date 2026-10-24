@@ -59,7 +59,7 @@ async function addUser(t: Test, discordId: string, name: string) {
   })
 }
 
-async function addSession(
+async function addWorkSession(
   t: Test,
   opts: {
     discordId: string
@@ -75,7 +75,7 @@ async function addSession(
       name: opts.name ?? opts.discordId,
       createdAt: NOW,
     })
-    const sessionId = await ctx.db.insert('session', {
+    const workSessionId = await ctx.db.insert('workSession', {
       discordId: opts.discordId,
       userId,
       guildId: GUILD,
@@ -83,8 +83,8 @@ async function addSession(
       startedAt: opts.startedAt,
       endedAt: opts.endedAt,
     })
-    await ctx.db.insert('sessionPartial', {
-      sessionId,
+    await ctx.db.insert('workSessionPartial', {
+      workSessionId,
       discordId: opts.discordId,
       userId,
       guildId: GUILD,
@@ -150,7 +150,7 @@ describe('leaderboard.getBoards', () => {
       totalMs: 1 * H,
     })
     // 30m camera today.
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -178,7 +178,7 @@ describe('leaderboard.getBoards', () => {
       totalMs: 1 * H,
     })
     // 30m camera today (Wed 15 June, a later week in the same Month).
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -214,7 +214,7 @@ describe('leaderboard.getBoards', () => {
       deepFocusMs: 40 * M,
       totalMs: 1 * H,
     })
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -239,7 +239,7 @@ describe('leaderboard.getBoards', () => {
       deepFocusMs: 40 * M,
       totalMs: 1 * H,
     })
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -266,7 +266,7 @@ describe('leaderboard.getBoards', () => {
       deepFocusMs: 5 * H,
       totalMs: 5 * H,
     })
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -301,10 +301,10 @@ describe('leaderboard.getBoards', () => {
     expect(boards.month[0]).toMatchObject({ discordId: 'bob', deepFocusMs: 45 * M })
   })
 
-  it('clips a live session that straddled midnight to today', async () => {
+  it('clips a live workSession that straddled midnight to today', async () => {
     const t = makeTest()
     const start = DAY_START - 30 * M
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -317,9 +317,9 @@ describe('leaderboard.getBoards', () => {
     expect(boards.today[0]).toMatchObject({ deepFocusMs: 30 * M, totalMs: 30 * M, online: true })
   })
 
-  it('counts a screen-share-only session as Deep focus', async () => {
+  it('counts a screen-share-only workSession as Deep focus', async () => {
     const t = makeTest()
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'screenShare',
@@ -335,7 +335,7 @@ describe('leaderboard.getBoards', () => {
   it('caps every board at ten and orders by Deep focus', async () => {
     const t = makeTest()
     for (let i = 0; i < 12; i++) {
-      await addSession(t, {
+      await addWorkSession(t, {
         discordId: `member-${i}`,
         name: `Member ${i}`,
         mode: 'camera',
@@ -356,7 +356,7 @@ describe('leaderboard.getBoards', () => {
 describe('leaderboard.getBoardsForViewer', () => {
   it('returns empty boards when unauthenticated', async () => {
     const t = makeTest()
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',
@@ -377,7 +377,7 @@ describe('leaderboard.getBoardsForViewer', () => {
       deepFocusMs: 40 * M,
       totalMs: 1 * H,
     })
-    await addSession(t, {
+    await addWorkSession(t, {
       discordId: 'ada',
       name: 'Ada',
       mode: 'camera',

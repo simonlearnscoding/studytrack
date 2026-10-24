@@ -7,7 +7,7 @@ import {
   startOfDay,
   startOfMonth,
   startOfWeek,
-} from '@studytrack/backend/convex/sessions/util'
+} from '@studytrack/backend/convex/workSessions/util'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { useDateStore } from '~/state/date.store'

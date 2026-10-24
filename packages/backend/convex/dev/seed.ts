@@ -7,7 +7,7 @@ const DAY = 24 * 60 * 60 * 1000
 
 // Dev-only fixtures for the local deployment: a handful of members with past
 // Daily totals (so the Week/Month boards and the heatmap have history) and live
-// sessions today (so the Today board and the online dot light up). Every entry
+// workSessions today (so the Today board and the online dot light up). Every entry
 // point is guarded by DEV_AUTH_BYPASS, which prod never sets.
 const MEMBERS = [
   { discordId: '900000000000000001', name: 'Ada Lovelace', weight: 1 },
@@ -65,39 +65,39 @@ export const seed = internalMutation({
       }
     }
 
-    // Today: the top few members are mid-session, so the Today board is live and
+    // Today: the top few members are mid-workSession, so the Today board is live and
     // some rows carry the online dot.
     for (let i = 0; i < Math.min(4, MEMBERS.length); i++) {
       const member = MEMBERS[i]
-      const sessionStart = args.now - (i + 1) * 40 * MIN
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionStart = args.now - (i + 1) * 40 * MIN
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: member.discordId,
         userId: userIds[i],
         guildId: 'dev-guild',
         status: 'active',
-        startedAt: sessionStart,
+        startedAt: workSessionStart,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: member.discordId,
         userId: userIds[i],
         guildId: 'dev-guild',
         channelId: 'dev-channel',
         mode: i === 1 ? 'voice' : 'camera',
         status: 'ended',
-        startedAt: sessionStart,
-        endedAt: sessionStart + 15 * MIN,
+        startedAt: workSessionStart,
+        endedAt: workSessionStart + 15 * MIN,
         durationMs: 15 * MIN,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: member.discordId,
         userId: userIds[i],
         guildId: 'dev-guild',
         channelId: 'dev-channel',
         mode: i === 2 ? 'screenShare' : 'cameraAndScreenShare',
         status: 'active',
-        startedAt: sessionStart + 15 * MIN,
+        startedAt: workSessionStart + 15 * MIN,
       })
     }
 
@@ -123,7 +123,7 @@ function assertDev() {
 async function wipe(ctx: MutationCtx) {
   for (const row of await ctx.db.query('task').collect()) await ctx.db.delete(row._id)
   for (const row of await ctx.db.query('dailyTotal').collect()) await ctx.db.delete(row._id)
-  for (const row of await ctx.db.query('sessionPartial').collect()) await ctx.db.delete(row._id)
-  for (const row of await ctx.db.query('session').collect()) await ctx.db.delete(row._id)
+  for (const row of await ctx.db.query('workSessionPartial').collect()) await ctx.db.delete(row._id)
+  for (const row of await ctx.db.query('workSession').collect()) await ctx.db.delete(row._id)
   for (const row of await ctx.db.query('users').collect()) await ctx.db.delete(row._id)
 }

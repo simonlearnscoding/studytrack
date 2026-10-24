@@ -44,15 +44,15 @@ export type TimelineWindow = {
 }
 
 // One stretch of a member's day on the track. `live` marks a running partial.
-// `sessionId` is the sitting the stretch belongs to, so a click can open that
-// session's details.
+// `workSessionId` is the sitting the stretch belongs to, so a click can open that
+// workSession's details.
 //
-// The caps belong to the *session*, not to the stretch: its first visible piece
-// always carries `roundStart`, and its last carries `roundEnd` once the session
+// The caps belong to the *workSession*, not to the stretch: its first visible piece
+// always carries `roundStart`, and its last carries `roundEnd` once the workSession
 // has ended on screen. Partial boundaries stay square, so a mode change or a
 // pause-and-return reads as one continuous line instead of a row of pills.
 export type TimelineBarVM = {
-  sessionId: Id<'session'>
+  workSessionId: Id<'workSession'>
   leftPx: number
   widthPx: number
   mode: StudyMode
@@ -65,20 +65,20 @@ export type TimelineBarVM = {
 // lane can name the task at the moment it was done.
 export type TimelineDotVM = { leftPx: number; title: string }
 
-// A planned session block on the lane. `missed` marks a window that has passed
-// without any voice evidence. A plan can be cut by a collapsed night band, so it
-// is emitted as one piece per visible segment.
-export type TimelinePlanVM = {
-  id: Id<'plannedSession'>
+// A planBlock drawn on the lane. `missed` marks a window that has passed without
+// any voice evidence. A planBlock can be cut by a collapsed night band, so it is
+// emitted as one piece per visible segment.
+export type TimelinePlanBlockVM = {
+  id: Id<'planBlock'>
   leftPx: number
   widthPx: number
   missed: boolean
 }
 
-// A plan's visible window on the axis, used by the drag gesture as a wall: a
-// new plan may not start inside it or be dragged across it.
-export type TimelinePlanBlockVM = {
-  id: Id<'plannedSession'>
+// A planBlock's visible window on the axis, used by the drag gesture as a wall:
+// a new planBlock may not start inside it or be dragged across it.
+export type TimelinePlanBlockWallVM = {
+  id: Id<'planBlock'>
   startPx: number
   endPx: number
 }
@@ -93,10 +93,10 @@ export type TimelineRowVM = {
   live: boolean
   tail: string
   bars: TimelineBarVM[]
-  plans: TimelinePlanVM[]
   planBlocks: TimelinePlanBlockVM[]
+  planBlockWalls: TimelinePlanBlockWallVM[]
   dots: TimelineDotVM[]
-  // How many of this member's sessions are hidden inside the collapsed night
+  // How many of this member's workSessions are hidden inside the collapsed night
   // band (LD-13). Zero until it collapses.
   hiddenCount: number
 }

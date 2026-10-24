@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
-import type { DashboardMember, DashboardPartial, DashboardSession } from '../sessions/types'
+import type { DashboardMember, DashboardPartial, DashboardWorkSession } from '../workSessions/types'
 import {
   autoExpansionAt,
   centreScrollLeft,
@@ -27,18 +27,18 @@ const partial = (
   fromMin: number,
   toMin: number | null
 ): DashboardPartial => ({
-  id: `p-${fromMin}` as Id<'sessionPartial'>,
+  id: `p-${fromMin}` as Id<'workSessionPartial'>,
   channelId: mode === 'break' ? null : 'study-1',
   mode,
   startedAt: at(fromMin),
   endedAt: toMin === null ? null : at(toMin),
 })
 
-const session = (
+const workSession = (
   partials: DashboardPartial[],
   tasks: { title: string; atMin: number }[] = []
-): DashboardSession => ({
-  id: 's' as Id<'session'>,
+): DashboardWorkSession => ({
+  id: 's' as Id<'workSession'>,
   status: partials.some((p) => p.endedAt === null) ? 'active' : 'ended',
   startedAt: partials[0]?.startedAt ?? DAY,
   endedAt: partials[partials.length - 1]?.endedAt ?? null,
@@ -54,16 +54,16 @@ const session = (
 const member = (
   i: number,
   name: string | null,
-  sessions: DashboardSession[],
+  workSessions: DashboardWorkSession[],
   { image = null, userId = `user-${i}` }: { image?: string | null; userId?: string | null } = {}
 ): DashboardMember => ({
   userId: (userId === null ? null : userId) as Id<'users'>,
   discordId: String(1000 + i),
   name,
   image,
-  online: sessions.some((s) => s.status === 'active'),
-  sessions,
-  plans: [],
+  online: workSessions.some((s) => s.status === 'active'),
+  workSessions,
+  planBlocks: [],
   activeTask: null,
 })
 
@@ -143,9 +143,9 @@ describe('toTimelineRows', () => {
 
   it('maps one member per row, you first', () => {
     const members = Array.from({ length: 13 }, (_, i) =>
-      member(i + 1, `M${i}`, [session([partial('camera', 600 + i, null)])])
+      member(i + 1, `M${i}`, [workSession([partial('camera', 600 + i, null)])])
     )
-    members.push(member(0, 'Me', [session([partial('camera', 60, null)])]))
+    members.push(member(0, 'Me', [workSession([partial('camera', 60, null)])]))
     const rows = toTimelineRows(members, input())
     expect(rows).toHaveLength(13 + 1)
     expect(rows[0].you).toBe(true)
@@ -154,7 +154,7 @@ describe('toTimelineRows', () => {
 
   it('falls back to discordId when a member is unlinked', () => {
     const rows = toTimelineRows(
-      [member(99, null, [session([partial('voice', 300, null)])], { userId: null })],
+      [member(99, null, [workSession([partial('voice', 300, null)])], { userId: null })],
       input({ me: null })
     )
     expect(rows[0].name).toBe('1099')
@@ -164,12 +164,16 @@ describe('toTimelineRows', () => {
 
   it('positions bars and dots as axis pixels, not timestamps', () => {
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('camera', 360, 420)], [{ title: 'Read', atMin: 390 }])])],
+      [
+        member(0, 'Me', [
+          workSession([partial('camera', 360, 420)], [{ title: 'Read', atMin: 390 }]),
+        ]),
+      ],
       input()
     )
     expect(rows[0].bars).toEqual([
       {
-        sessionId: 's',
+        workSessionId: 's',
         leftPx: CORE_LEFT,
         widthPx: PX_PER_HOUR,
         mode: 'camera',
@@ -182,7 +186,7 @@ describe('toTimelineRows', () => {
   })
 
   it('does not draw a dot for a planned-only task', () => {
-    const planned = session([partial('voice', 360, 420)])
+    const planned = workSession([partial('voice', 360, 420)])
     planned.tasks = [{ id: 't1' as Id<'task'>, title: 'Planned', planned: true, completedAt: null }]
 
     const rows = toTimelineRows([member(0, 'Me', [planned])], input())
@@ -191,11 +195,11 @@ describe('toTimelineRows', () => {
 
   it('marks a running partial live and extends it to now', () => {
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('screenShare', 840, null)])])],
+      [member(0, 'Me', [workSession([partial('screenShare', 840, null)])])],
       input({ now: at(15 * 60) })
     )
     expect(rows[0].bars[0]).toEqual({
-      sessionId: 's',
+      workSessionId: 's',
       leftPx: CORE_LEFT + 8 * PX_PER_HOUR,
       widthPx: PX_PER_HOUR,
       mode: 'screenShare',
@@ -208,12 +212,12 @@ describe('toTimelineRows', () => {
 
   it('draws the evening hours at full scale instead of clipping them', () => {
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('voice', 22 * 60, 23 * 60)])])],
+      [member(0, 'Me', [workSession([partial('voice', 22 * 60, 23 * 60)])])],
       input({ now: at(23 * 60) })
     )
     expect(rows[0].bars).toEqual([
       {
-        sessionId: 's',
+        workSessionId: 's',
         leftPx: CORE_LEFT + 16 * PX_PER_HOUR,
         widthPx: PX_PER_HOUR,
         mode: 'voice',
@@ -225,8 +229,8 @@ describe('toTimelineRows', () => {
     expect(rows[0].hiddenCount).toBe(0)
   })
 
-  it('caps the session, not its partials, and keeps the middle joins square', () => {
-    const sitting = session([
+  it('caps the workSession, not its partials, and keeps the middle joins square', () => {
+    const sitting = workSession([
       partial('camera', 6 * 60, 7 * 60),
       partial('break', 7 * 60, 7 * 60 + 30),
       partial('screenShare', 7 * 60 + 30, 8 * 60),
@@ -238,7 +242,7 @@ describe('toTimelineRows', () => {
     const rows = toTimelineRows([member(0, 'Me', [sitting])], input({ now: at(9 * 60) }))
     expect(rows[0].bars).toEqual([
       {
-        sessionId: 's',
+        workSessionId: 's',
         leftPx: CORE_LEFT,
         widthPx: PX_PER_HOUR,
         mode: 'camera',
@@ -247,7 +251,7 @@ describe('toTimelineRows', () => {
         roundEnd: false,
       },
       {
-        sessionId: 's',
+        workSessionId: 's',
         leftPx: CORE_LEFT + PX_PER_HOUR,
         widthPx: PX_PER_HOUR / 2,
         mode: 'break',
@@ -256,7 +260,7 @@ describe('toTimelineRows', () => {
         roundEnd: false,
       },
       {
-        sessionId: 's',
+        workSessionId: 's',
         leftPx: CORE_LEFT + 1.5 * PX_PER_HOUR,
         widthPx: PX_PER_HOUR / 2,
         mode: 'screenShare',
@@ -269,30 +273,30 @@ describe('toTimelineRows', () => {
 
   it('rounds the start even when study began off screen', () => {
     // 04:00 is inside the collapsed night band, so the first drawn piece starts
-    // at 06:00 — but that edge is where the session enters the lane, and the
+    // at 06:00 — but that edge is where the workSession enters the lane, and the
     // start cap is unconditional: it always reads as a beginning.
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('voice', 4 * 60, 7 * 60)])])],
+      [member(0, 'Me', [workSession([partial('voice', 4 * 60, 7 * 60)])])],
       input({ now: at(7 * 60) })
     )
     expect(rows[0].bars[0]).toMatchObject({ roundStart: true, roundEnd: true })
   })
 
-  it('rounds the start of a session that began before today', () => {
+  it('rounds the start of a workSession that began before today', () => {
     // 22:30 yesterday → 07:00 today: the visible piece starts at 00:00 of the
-    // collapsed band, still the session's entrance into the lane.
+    // collapsed band, still the workSession's entrance into the lane.
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('voice', -90, 7 * 60)])])],
+      [member(0, 'Me', [workSession([partial('voice', -90, 7 * 60)])])],
       input({ now: at(7 * 60) })
     )
     expect(rows[0].bars[0]).toMatchObject({ roundStart: true, roundEnd: true })
   })
 
-  it('keeps the end square when the day cut it, not the session', () => {
+  it('keeps the end square when the day cut it, not the workSession', () => {
     // Ended at 26:00 — past midnight, off the day. The visible right edge is
     // midnight, and study did not stop there, so no end cap.
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('voice', 23 * 60, 26 * 60)])])],
+      [member(0, 'Me', [workSession([partial('voice', 23 * 60, 26 * 60)])])],
       input({ now: at(23 * 60 + 30) })
     )
     expect(rows[0].bars[0]).toMatchObject({
@@ -304,15 +308,15 @@ describe('toTimelineRows', () => {
 
   it('clips a bar at the night boundary and counts the hidden part', () => {
     const rows = toTimelineRows(
-      [member(0, 'Me', [session([partial('voice', 4 * 60, 7 * 60)])])],
+      [member(0, 'Me', [workSession([partial('voice', 4 * 60, 7 * 60)])])],
       input({ now: at(7 * 60) })
     )
     // 06:00–07:00 visible in the core; 04:00–06:00 hidden in the night band.
-    // The visible piece is the session's entrance into the lane, so it wears
+    // The visible piece is the workSession's entrance into the lane, so it wears
     // the start cap even though study really began at 04:00.
     expect(rows[0].bars).toEqual([
       {
-        sessionId: 's',
+        workSessionId: 's',
         leftPx: CORE_LEFT,
         widthPx: PX_PER_HOUR,
         mode: 'voice',
@@ -324,16 +328,16 @@ describe('toTimelineRows', () => {
     expect(rows[0].hiddenCount).toBe(1)
   })
 
-  it('places a planned session on the lane as pixels', () => {
+  it('places a planned workSession on the lane as pixels', () => {
     const planned = {
       ...member(0, 'Me', []),
-      plans: [{ id: 'p1' as Id<'plannedSession'>, startAt: at(16 * 60), endAt: at(17 * 60) }],
+      planBlocks: [{ id: 'p1' as Id<'planBlock'>, startAt: at(16 * 60), endAt: at(17 * 60) }],
     }
     const rows = toTimelineRows([planned], input())
-    expect(rows[0].plans).toEqual([
+    expect(rows[0].planBlocks).toEqual([
       { id: 'p1', leftPx: CORE_LEFT + 10 * PX_PER_HOUR, widthPx: PX_PER_HOUR, missed: false },
     ])
-    expect(rows[0].planBlocks).toEqual([
+    expect(rows[0].planBlockWalls).toEqual([
       {
         id: 'p1',
         startPx: CORE_LEFT + 10 * PX_PER_HOUR,
@@ -345,13 +349,13 @@ describe('toTimelineRows', () => {
   it('exposes every plan as a drag wall', () => {
     const planned = {
       ...member(0, 'Me', []),
-      plans: [
-        { id: 'p1' as Id<'plannedSession'>, startAt: at(13 * 60), endAt: at(14 * 60) },
-        { id: 'p2' as Id<'plannedSession'>, startAt: at(16 * 60), endAt: at(17 * 60) },
+      planBlocks: [
+        { id: 'p1' as Id<'planBlock'>, startAt: at(13 * 60), endAt: at(14 * 60) },
+        { id: 'p2' as Id<'planBlock'>, startAt: at(16 * 60), endAt: at(17 * 60) },
       ],
     }
     const rows = toTimelineRows([planned], input())
-    expect(rows[0].planBlocks).toEqual([
+    expect(rows[0].planBlockWalls).toEqual([
       { id: 'p1', startPx: CORE_LEFT + 7 * PX_PER_HOUR, endPx: CORE_LEFT + 8 * PX_PER_HOUR },
       { id: 'p2', startPx: CORE_LEFT + 10 * PX_PER_HOUR, endPx: CORE_LEFT + 11 * PX_PER_HOUR },
     ])
@@ -360,26 +364,26 @@ describe('toTimelineRows', () => {
   it('marks a plan that ended without voice evidence as missed', () => {
     const planned = {
       ...member(0, 'Me', []),
-      plans: [{ id: 'p1' as Id<'plannedSession'>, startAt: at(13 * 60), endAt: at(14 * 60) }],
+      planBlocks: [{ id: 'p1' as Id<'planBlock'>, startAt: at(13 * 60), endAt: at(14 * 60) }],
     }
     const rows = toTimelineRows([planned], input())
-    expect(rows[0].plans[0].missed).toBe(true)
+    expect(rows[0].planBlocks[0].missed).toBe(true)
   })
 
   it('does not mark a missed plan as such when voice overlapped it', () => {
     const planned = {
-      ...member(0, 'Me', [session([partial('camera', 13 * 60, 14 * 60)])]),
-      plans: [{ id: 'p1' as Id<'plannedSession'>, startAt: at(13 * 60), endAt: at(14 * 60) }],
+      ...member(0, 'Me', [workSession([partial('camera', 13 * 60, 14 * 60)])]),
+      planBlocks: [{ id: 'p1' as Id<'planBlock'>, startAt: at(13 * 60), endAt: at(14 * 60) }],
     }
     const rows = toTimelineRows([planned], input())
-    expect(rows[0].plans[0].missed).toBe(false)
+    expect(rows[0].planBlocks[0].missed).toBe(false)
   })
 
-  it('counts a session (not each partial) hidden in a band', () => {
+  it('counts a workSession (not each partial) hidden in a band', () => {
     const rows = toTimelineRows(
       [
         member(0, 'Me', [
-          session([
+          workSession([
             partial('voice', 0, 60),
             partial('voice', 60, 120),
             partial('voice', 120, null),

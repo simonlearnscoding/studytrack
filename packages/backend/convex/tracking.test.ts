@@ -30,12 +30,12 @@ async function seedMember(t: Test) {
   })
 }
 
-async function sessionsOf(t: Test) {
-  return await t.run(async (ctx) => await ctx.db.query('session').collect())
+async function workSessionsOf(t: Test) {
+  return await t.run(async (ctx) => await ctx.db.query('workSession').collect())
 }
 
 async function partialsOf(t: Test) {
-  return await t.run(async (ctx) => await ctx.db.query('sessionPartial').collect())
+  return await t.run(async (ctx) => await ctx.db.query('workSessionPartial').collect())
 }
 
 describe('tracking.getMine', () => {
@@ -44,7 +44,7 @@ describe('tracking.getMine', () => {
     expect(await t.query(api.tracking.getMine)).toBeNull()
   })
 
-  it('reports nothing running for a synced member with no session', async () => {
+  it('reports nothing running for a synced member with no workSession', async () => {
     const t = makeTest()
     await seedMember(t)
     expect(await t.withIdentity(IDENTITY).query(api.tracking.getMine)).toEqual({
@@ -60,15 +60,15 @@ describe('tracking.start', () => {
     await expect(t.mutation(api.tracking.start)).rejects.toThrow(/Not authenticated/)
   })
 
-  it('opens a manual session and its partial', async () => {
+  it('opens a manual workSession and its partial', async () => {
     const t = makeTest()
     await seedMember(t)
     await t.withIdentity(IDENTITY).mutation(api.tracking.start)
 
-    const sessions = await sessionsOf(t)
-    expect(sessions).toHaveLength(1)
-    expect(sessions[0]).toMatchObject({ discordId: 'discord-1', status: 'active' })
-    expect(sessions[0].guildId).toBeUndefined()
+    const workSessions = await workSessionsOf(t)
+    expect(workSessions).toHaveLength(1)
+    expect(workSessions[0]).toMatchObject({ discordId: 'discord-1', status: 'active' })
+    expect(workSessions[0].guildId).toBeUndefined()
 
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(1)
@@ -81,19 +81,19 @@ describe('tracking.start', () => {
     })
   })
 
-  it('rejects while a Discord session is already active', async () => {
+  it('rejects while a Discord workSession is already active', async () => {
     const t = makeTest()
     const userId = await seedMember(t)
     await t.run(async (ctx) => {
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
         status: 'active',
         startedAt: Date.now(),
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -107,8 +107,8 @@ describe('tracking.start', () => {
     await expect(t.withIdentity(IDENTITY).mutation(api.tracking.start)).rejects.toThrow(
       /already studying in Discord/
     )
-    // No second session was created.
-    expect(await sessionsOf(t)).toHaveLength(1)
+    // No second workSession was created.
+    expect(await workSessionsOf(t)).toHaveLength(1)
   })
 
   it('rejects a second start while already tracking', async () => {
@@ -122,15 +122,15 @@ describe('tracking.start', () => {
 })
 
 describe('tracking.stop', () => {
-  it('closes the manual partial and session', async () => {
+  it('closes the manual partial and workSession', async () => {
     const t = makeTest()
     await seedMember(t)
     await t.withIdentity(IDENTITY).mutation(api.tracking.start)
     await t.withIdentity(IDENTITY).mutation(api.tracking.stop)
 
-    const sessions = await sessionsOf(t)
-    expect(sessions[0]).toMatchObject({ status: 'ended' })
-    expect(sessions[0].endedAt).toBeTypeOf('number')
+    const workSessions = await workSessionsOf(t)
+    expect(workSessions[0]).toMatchObject({ status: 'ended' })
+    expect(workSessions[0].endedAt).toBeTypeOf('number')
 
     const partials = await partialsOf(t)
     expect(partials[0]).toMatchObject({ status: 'ended' })
@@ -142,19 +142,19 @@ describe('tracking.stop', () => {
     })
   })
 
-  it('never stops a Discord session', async () => {
+  it('never stops a Discord workSession', async () => {
     const t = makeTest()
     const userId = await seedMember(t)
     await t.run(async (ctx) => {
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
         status: 'active',
         startedAt: Date.now(),
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -166,17 +166,17 @@ describe('tracking.stop', () => {
     })
 
     await t.withIdentity(IDENTITY).mutation(api.tracking.stop)
-    expect((await sessionsOf(t))[0].status).toBe('active')
+    expect((await workSessionsOf(t))[0].status).toBe('active')
   })
 })
 
 describe('manual precedence (overtake)', () => {
-  it('continues the same session in the Discord mode when voice is joined', async () => {
+  it('continues the same workSession in the Discord mode when voice is joined', async () => {
     const t = makeTest()
     await seedMember(t)
     await t.withIdentity(IDENTITY).mutation(api.tracking.start)
 
-    const before = (await sessionsOf(t))[0]
+    const before = (await workSessionsOf(t))[0]
 
     await t.mutation(api.bot.recordVoiceEvent, {
       secret: SECRET,
@@ -187,18 +187,18 @@ describe('manual precedence (overtake)', () => {
       to: { channelId: 'chan-a', camera: true, screenShare: false },
     })
 
-    // Same session, now carrying the Discord identity.
-    const sessions = await sessionsOf(t)
-    expect(sessions).toHaveLength(1)
-    expect(sessions[0]._id).toBe(before._id)
-    expect(sessions[0].startedAt).toBe(before.startedAt)
-    expect(sessions[0]).toMatchObject({
+    // Same workSession, now carrying the Discord identity.
+    const workSessions = await workSessionsOf(t)
+    expect(workSessions).toHaveLength(1)
+    expect(workSessions[0]._id).toBe(before._id)
+    expect(workSessions[0].startedAt).toBe(before.startedAt)
+    expect(workSessions[0]).toMatchObject({
       status: 'active',
       discordId: 'discord-1',
       guildId: 'guild-1',
     })
 
-    // The manual partial is closed; a camera partial runs on the same session.
+    // The manual partial is closed; a camera partial runs on the same workSession.
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(2)
     expect(partials.find((p) => p.mode === 'manual')).toMatchObject({ status: 'ended' })
@@ -206,6 +206,6 @@ describe('manual precedence (overtake)', () => {
       mode: 'camera',
       channelId: 'chan-a',
     })
-    expect(partials.every((p) => p.sessionId === before._id)).toBe(true)
+    expect(partials.every((p) => p.workSessionId === before._id)).toBe(true)
   })
 })

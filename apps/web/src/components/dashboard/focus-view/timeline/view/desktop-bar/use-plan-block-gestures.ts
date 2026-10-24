@@ -1,12 +1,12 @@
 import {
-  planAt,
-  resolvePlanDraft,
-  resolvePlanEdit,
-  resolvePlanStart,
-  type PlanSpan,
+  planBlockAt,
+  resolvePlanBlockDraft,
+  resolvePlanBlockEdit,
+  resolvePlanBlockStart,
+  type PlanBlockSpan,
 } from '@studytrack/backend/convex/timeline/gesture'
 import type {
-  TimelinePlanBlockVM,
+  TimelinePlanBlockWallVM,
   TimelineRowVM,
   TimelineWindow,
 } from '@studytrack/backend/convex/timeline/types'
@@ -19,12 +19,12 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
-import type { PlanOverride } from '../lanes/row-track'
-import type { PlanClick, PlanDrag, PlanGesture, PlanUpdate } from './types'
+import type { PlanBlockOverride } from '../lanes/row-track'
+import type { PlanBlockClick, PlanBlockDrag, PlanBlockGesture, PlanBlockUpdate } from './types'
 
 // A drag shorter than this is a click, not a plan.
 const DRAG_PX_THRESHOLD = 4
-// A double-click on the lane plans a two-hour session at the clicked mark.
+// A double-click on the lane plans a two-hour workSession at the clicked mark.
 const DOUBLE_CLICK_PLAN_MIN = 2 * 60
 // How long a released block keeps its committed geometry on screen while the
 // live read catches up.
@@ -33,22 +33,22 @@ const PENDING_MS = 1200
 // The pointer state behind the pinned lane: the draft a drag is drawing, the
 // move/resize of a stored plan, and the hover/cursor readouts. The components
 // own the pixels; this hook owns the gestures.
-export function usePlanGestures({
+export function usePlanBlockGestures({
   axis,
   row,
   scrollerRef,
-  onPlanDrag,
-  onPlanDoubleClick,
-  onPlanUpdate,
-  onPlanClick,
+  onPlanBlockDrag,
+  onPlanBlockDoubleClick,
+  onPlanBlockUpdate,
+  onPlanBlockClick,
 }: {
   axis: TimelineWindow
   row?: TimelineRowVM
   scrollerRef: RefObject<HTMLDivElement | null>
-  onPlanDrag?: (span: PlanDrag) => void
-  onPlanDoubleClick?: (span: PlanDrag) => void
-  onPlanUpdate?: (update: PlanUpdate) => void
-  onPlanClick?: (click: PlanClick) => void
+  onPlanBlockDrag?: (span: PlanBlockDrag) => void
+  onPlanBlockDoubleClick?: (span: PlanBlockDrag) => void
+  onPlanBlockUpdate?: (update: PlanBlockUpdate) => void
+  onPlanBlockClick?: (click: PlanBlockClick) => void
 }) {
   const now = axis.nowPx
   const mirrorRef = useRef<HTMLDivElement>(null)
@@ -81,17 +81,19 @@ export function usePlanGestures({
   // The plan gesture in flight: which plan, which part, and the geometry the
   // pure seam last resolved. `blocks` and `nowPx` are the snapshot the walls
   // are computed from.
-  const [edit, setEdit] = useState<PlanGesture | null>(null)
+  const [edit, setEdit] = useState<PlanBlockGesture | null>(null)
 
   // Committed geometry held on screen until the live read catches up, so a
   // released block never snaps back to its old position for a frame.
-  const [pending, setPending] = useState<PlanOverride | null>(null)
+  const [pending, setPending] = useState<PlanBlockOverride | null>(null)
 
   // The plan under a resting pointer, shown with the same from – until label
   // the gestures wear. Tracked by lane position rather than child enter/leave so
   // the resize handles can never make the label flicker as the pointer crosses
   // them. A gesture in flight owns the label instead, so it is suppressed then.
-  const [hoveredPlanId, setHoveredPlanId] = useState<TimelinePlanBlockVM['id'] | null>(null)
+  const [hoveredPlanBlockId, setHoveredPlanBlockId] = useState<
+    TimelinePlanBlockWallVM['id'] | null
+  >(null)
 
   // Where the pointer rests on your lane, in axis pixels — the anchor for the
   // cursor time readout. Null whenever the pointer is off the lane.
@@ -113,11 +115,11 @@ export function usePlanGestures({
   const onLanePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     const fromPx = lanePx(event)
-    const start = resolvePlanStart({
+    const start = resolvePlanBlockStart({
       segments: axis.segments,
       px: fromPx,
       nowPx: now,
-      blocks: row?.planBlocks ?? [],
+      blocks: row?.planBlockWalls ?? [],
     })
     // A gesture that begins in the past, or on top of an existing plan, plans
     // nothing at all: both walls are hard at the start.
@@ -129,7 +131,7 @@ export function usePlanGestures({
   const onLanePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const pointerPx = lanePx(event)
     setCursorPx(pointerPx)
-    setHoveredPlanId(planAt(row?.planBlocks ?? [], pointerPx)?.id ?? null)
+    setHoveredPlanBlockId(planBlockAt(row?.planBlockWalls ?? [], pointerPx)?.id ?? null)
     if (!dragDraft) return
     if (dragDraft.toPx === pointerPx) return
     setDragDraft({ ...dragDraft, toPx: pointerPx })
@@ -137,17 +139,17 @@ export function usePlanGestures({
 
   const onLanePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!dragDraft) return
-    const span = resolvePlanDraft({
+    const span = resolvePlanBlockDraft({
       segments: axis.segments,
       axisWidthPx: axis.widthPx,
-      blocks: row?.planBlocks ?? [],
+      blocks: row?.planBlockWalls ?? [],
       fromPx: dragDraft.fromPx,
       toPx: dragDraft.toPx,
       nowPx: dragDraft.nowPx,
     })
     setDragDraft(null)
     if (!isPlannableSpan(span)) return
-    onPlanDrag?.({
+    onPlanBlockDrag?.({
       startMin: span.startMin,
       endMin: span.endMin,
       x: event.clientX,
@@ -159,11 +161,11 @@ export function usePlanGestures({
   // quarter-hour grid as a drag. Start on a plan or in the past plans nothing.
   const onLaneDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
-    const start = resolvePlanStart({
+    const start = resolvePlanBlockStart({
       segments: axis.segments,
       px: lanePx(event),
       nowPx: now,
-      blocks: row?.planBlocks ?? [],
+      blocks: row?.planBlockWalls ?? [],
     })
     if (!start) return
     // Resolve the whole window so the preview, the popup and the mutation all
@@ -171,16 +173,16 @@ export function usePlanGestures({
     // the end of the axis instead of asking for a plan the Day cannot hold.
     const requestedEndPx =
       minuteToPx(axis.segments, start.startMin + DOUBLE_CLICK_PLAN_MIN) ?? axis.widthPx
-    const span = resolvePlanDraft({
+    const span = resolvePlanBlockDraft({
       segments: axis.segments,
       axisWidthPx: axis.widthPx,
-      blocks: row?.planBlocks ?? [],
+      blocks: row?.planBlockWalls ?? [],
       fromPx: start.startPx,
       toPx: requestedEndPx,
       nowPx: now,
     })
     if (!isPlannableSpan(span)) return
-    onPlanDoubleClick?.({
+    onPlanBlockDoubleClick?.({
       startMin: span.startMin,
       endMin: span.endMin,
       x: event.clientX,
@@ -190,16 +192,16 @@ export function usePlanGestures({
 
   // Start moving a whole block. Duration and walls are the seam's job; the
   // snapshot of the blocks freezes them for the gesture.
-  const startMove = (event: ReactPointerEvent<HTMLSpanElement>, block: TimelinePlanBlockVM) => {
+  const startMove = (event: ReactPointerEvent<HTMLSpanElement>, block: TimelinePlanBlockWallVM) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     event.stopPropagation()
     const grabPx = lanePx(event)
-    const blocks = row?.planBlocks ?? []
-    const span = resolvePlanEdit({
+    const blocks = row?.planBlockWalls ?? []
+    const span = resolvePlanBlockEdit({
       segments: axis.segments,
       axisWidthPx: axis.widthPx,
       blocks,
-      planId: block.id,
+      planBlockId: block.id,
       edge: 'move',
       pointerPx: grabPx,
       grabPx,
@@ -208,17 +210,17 @@ export function usePlanGestures({
     if (!span) return
     setPending(null)
     event.currentTarget.setPointerCapture(event.pointerId)
-    setEdit({ kind: 'move', planId: block.id, grabPx, blocks, nowPx: now, span, moved: false })
+    setEdit({ kind: 'move', planBlockId: block.id, grabPx, blocks, nowPx: now, span, moved: false })
   }
 
   const onMoveMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (edit?.kind !== 'move') return
     const pointerPx = lanePx(event)
-    const span = resolvePlanEdit({
+    const span = resolvePlanBlockEdit({
       segments: axis.segments,
       axisWidthPx: axis.widthPx,
       blocks: edit.blocks,
-      planId: edit.planId,
+      planBlockId: edit.planBlockId,
       edge: 'move',
       pointerPx,
       grabPx: edit.grabPx,
@@ -233,16 +235,20 @@ export function usePlanGestures({
   const onMoveUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (edit?.kind !== 'move') return
     if (edit.moved) {
-      setPending({ planId: edit.planId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx })
-      onPlanUpdate?.({
-        planId: edit.planId,
+      setPending({
+        planBlockId: edit.planBlockId,
+        leftPx: edit.span.leftPx,
+        widthPx: edit.span.widthPx,
+      })
+      onPlanBlockUpdate?.({
+        planBlockId: edit.planBlockId,
         startMin: edit.span.startMin,
         endMin: edit.span.endMin,
       })
     } else {
       // A press-and-release under the drag threshold is a click, not a move.
-      onPlanClick?.({
-        planId: edit.planId,
+      onPlanBlockClick?.({
+        planBlockId: edit.planBlockId,
         startMin: edit.span.startMin,
         endMin: edit.span.endMin,
         x: event.clientX,
@@ -256,17 +262,17 @@ export function usePlanGestures({
   // the neighbouring plan (or the axis end); the near wall is the past floor.
   const startResize = (
     event: ReactPointerEvent<HTMLSpanElement>,
-    block: TimelinePlanBlockVM,
+    block: TimelinePlanBlockWallVM,
     edge: 'start' | 'end'
   ) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     event.stopPropagation()
-    const blocks = row?.planBlocks ?? []
-    const span = resolvePlanEdit({
+    const blocks = row?.planBlockWalls ?? []
+    const span = resolvePlanBlockEdit({
       segments: axis.segments,
       axisWidthPx: axis.widthPx,
       blocks,
-      planId: block.id,
+      planBlockId: block.id,
       edge,
       pointerPx: lanePx(event),
       nowPx: now,
@@ -274,16 +280,16 @@ export function usePlanGestures({
     if (!span) return
     setPending(null)
     event.currentTarget.setPointerCapture(event.pointerId)
-    setEdit({ kind: 'resize', planId: block.id, edge, blocks, nowPx: now, span })
+    setEdit({ kind: 'resize', planBlockId: block.id, edge, blocks, nowPx: now, span })
   }
 
   const onResizeMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (edit?.kind !== 'resize') return
-    const span = resolvePlanEdit({
+    const span = resolvePlanBlockEdit({
       segments: axis.segments,
       axisWidthPx: axis.widthPx,
       blocks: edit.blocks,
-      planId: edit.planId,
+      planBlockId: edit.planBlockId,
       edge: edit.edge,
       pointerPx: lanePx(event),
       nowPx: edit.nowPx,
@@ -295,14 +301,18 @@ export function usePlanGestures({
 
   const onResizeUp = () => {
     if (edit?.kind !== 'resize') return
-    const block = edit.blocks.find((candidate) => candidate.id === edit.planId)
+    const block = edit.blocks.find((candidate) => candidate.id === edit.planBlockId)
     const changed =
       block != null &&
       (edit.span.leftPx !== block.startPx || edit.span.widthPx !== block.endPx - block.startPx)
     if (changed) {
-      setPending({ planId: edit.planId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx })
-      onPlanUpdate?.({
-        planId: edit.planId,
+      setPending({
+        planBlockId: edit.planBlockId,
+        leftPx: edit.span.leftPx,
+        widthPx: edit.span.widthPx,
+      })
+      onPlanBlockUpdate?.({
+        planBlockId: edit.planBlockId,
         startMin: edit.span.startMin,
         endMin: edit.span.endMin,
       })
@@ -312,7 +322,7 @@ export function usePlanGestures({
 
   const onLanePointerCancel = () => setDragDraft(null)
   const onLanePointerLeave = () => {
-    setHoveredPlanId(null)
+    setHoveredPlanBlockId(null)
     setCursorPx(null)
   }
   const onMoveCancel = () => setEdit(null)
@@ -320,7 +330,7 @@ export function usePlanGestures({
 
   return {
     refs: { mirrorRef, barRef },
-    gesture: { dragDraft, edit, pending, hoveredPlanId, cursorPx },
+    gesture: { dragDraft, edit, pending, hoveredPlanBlockId, cursorPx },
     laneEvents: {
       onPointerDown: onLanePointerDown,
       onPointerMove: onLanePointerMove,
@@ -345,6 +355,6 @@ export function usePlanGestures({
 }
 
 // A span must exist and be wide enough to read as a drag rather than a click.
-export function isPlannableSpan(span: PlanSpan | null): span is PlanSpan {
+export function isPlannableSpan(span: PlanBlockSpan | null): span is PlanBlockSpan {
   return span != null && span.widthPx >= DRAG_PX_THRESHOLD
 }

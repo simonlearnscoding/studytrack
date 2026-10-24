@@ -25,7 +25,7 @@ export type LeaderboardBoards = {
 // The two instants every board is computed against: the focus day the caller
 // selected (its Europe/Zurich midnight, epoch ms) and the caller's clock. The
 // service derives today's Day and the focus day's Week and Month from these, so
-// queries never read the wall clock (see ../sessions/util).
+// queries never read the wall clock (see ../workSessions/util).
 const boardArgs = {
   now: v.number(),
   focusDayStart: v.number(),

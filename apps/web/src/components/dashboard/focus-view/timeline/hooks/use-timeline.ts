@@ -1,6 +1,6 @@
 import type { Doc } from '@studytrack/backend/convex/_generated/dataModel'
 import { api } from '@studytrack/backend/convex/_generated/api'
-import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
+import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
 import { useQuery } from 'convex/react'
 import { useDayStart } from '~/hooks/use-day-start'
 import { useNow } from '~/hooks/use-now'
@@ -28,7 +28,7 @@ export type TimelineData = {
 export function useTimeline(): TimelineData {
   const dayStart = useDayStart()
   const now = useNow(1000)
-  const members = useQuery(api.sessions.getTodaysActivitiesForDashboard, { dayStart })
+  const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, { dayStart })
   const me = useQuery(api.users.me)
   const ready = members !== undefined && me !== undefined
 
@@ -58,8 +58,8 @@ function withOwnLane(members: DashboardMember[], me: Doc<'users'> | null): Dashb
       name: me.name ?? null,
       image: me.image ?? null,
       online: false,
-      sessions: [],
-      plans: [],
+      workSessions: [],
+      planBlocks: [],
       activeTask: null,
     },
   ]

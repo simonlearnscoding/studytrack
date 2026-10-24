@@ -1,4 +1,4 @@
-import type { CalendarBucket } from '@studytrack/backend/convex/sessions/calendar'
+import type { CalendarBucket } from '@studytrack/backend/convex/workSessions/calendar'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '~/components/ui/button'

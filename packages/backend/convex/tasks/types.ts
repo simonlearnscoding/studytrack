@@ -6,7 +6,7 @@ import type { Id } from '../_generated/dataModel'
 export const taskPlacement = v.union(v.literal('end'), v.literal('next'), v.literal('now'))
 
 // The dashboard's "today" is a shared calendar day; the caller passes its start
-// so queries never read the wall clock (see ../sessions/util `startOfDay`).
+// so queries never read the wall clock (see ../workSessions/util `startOfDay`).
 export const listMineArgs = v.object({ dayStart: v.number() })
 export const createTaskArgs = v.object({
   title: v.string(),
@@ -39,15 +39,15 @@ export type SetActiveTaskArgs = Infer<typeof setActiveTaskArgs>
 export type ClearActiveArgs = Infer<typeof clearActiveArgs>
 
 // The owner's view of one task. `completedAt` is null while Open; `plannedAt` is
-// the Day start it is planned for; `plannedSessionId` is null unless planned into
-// a Session.
+// the Day start it is planned for; `plannedWorkSessionId` is null unless planned into
+// a WorkSession.
 export type Task = {
   id: Id<'task'>
   title: string
   done: boolean
   completedAt: number | null
   plannedAt: number
-  plannedSessionId: Id<'session'> | null
+  plannedWorkSessionId: Id<'workSession'> | null
 }
 
 // The caller's one active task, with the instant it became active.

@@ -11,14 +11,14 @@ describe('clearTables.clearAll', () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       await ctx.db.insert('users', { discordId: 'd-1', createdAt: Date.now() })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'd-1',
         guildId: 'g-1',
         status: 'active',
         startedAt: Date.now(),
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'd-1',
         guildId: 'g-1',
         channelId: 'c-1',
@@ -33,9 +33,9 @@ describe('clearTables.clearAll', () => {
 
     const left = await t.run(async (ctx) => ({
       users: await ctx.db.query('users').collect(),
-      sessionPartials: await ctx.db.query('sessionPartial').collect(),
+      workSessionPartials: await ctx.db.query('workSessionPartial').collect(),
     }))
     expect(left.users).toHaveLength(0)
-    expect(left.sessionPartials).toHaveLength(0)
+    expect(left.workSessionPartials).toHaveLength(0)
   })
 })

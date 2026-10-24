@@ -1,5 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
-import { BAR_LIVE } from '../session-bar-style'
+import { BAR_LIVE } from '../work-session-bar-style'
 
 // The track swatches, shown behind the "?" so the header stays quiet.
 const legend = [

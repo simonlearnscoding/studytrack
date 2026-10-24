@@ -1,8 +1,8 @@
 import { v, type Infer } from 'convex/values'
 
-// How a member occupies a study channel. A session stores exactly one of these.
+// How a member occupies a study channel. A workSession stores exactly one of these.
 // `break` is not derived from a voice state — it is written by the bot to fill a
-// short gap between two partials of the same session. `manual` is declared from
+// short gap between two partials of the same workSession. `manual` is declared from
 // the web (see ../tracking), with no Discord evidence behind it.
 export const studyMode = v.union(
   v.literal('voice'),

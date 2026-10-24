@@ -1,13 +1,13 @@
 import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import { DASHBOARD_TIME_ZONE, startOfDay } from '../sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import type { DailyQuote, StoreArgs } from './types'
 
 // The latest stored quote, for the signed-in header. Reads only what the cron has
 // materialized — never the clock — so the read stays deterministic. Returns null
 // when unauthenticated or before the first fetch, like the other member reads.
 export async function readToday(ctx: QueryCtx): Promise<DailyQuote | null> {
-  // DEV: matches sessions.getTodaysActivitiesForDashboard — the dev deployment
+  // DEV: matches workSessions.getTodaysActivitiesForDashboard — the dev deployment
   // sets DEV_AUTH_BYPASS (packages/backend/.env.local) so /beta can be worked on
   // signed-out. Prod never has it and keeps the identity gate.
   if (process.env.DEV_AUTH_BYPASS !== '1') {

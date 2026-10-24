@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DayTaskQueue } from '../task-types'
-import type { SessionTracking } from '../../use-tracking-status'
+import type { WorkSessionTracking } from '../../use-tracking-status'
 import { NowBar } from './now-bar'
 import { TaskSheet } from './task-sheet'
 
@@ -14,7 +14,7 @@ export function MobileTaskDock({
   roomCount,
 }: {
   queue: DayTaskQueue
-  tracking: SessionTracking
+  tracking: WorkSessionTracking
   roomCount: number
 }) {
   const [open, setOpen] = useState(false)

@@ -26,9 +26,9 @@ import type * as leaderboard_types from "../leaderboard/types.js";
 import type * as leaderboard_util from "../leaderboard/util.js";
 import type * as maintenance from "../maintenance.js";
 import type * as migrations from "../migrations.js";
-import type * as plannedSessions from "../plannedSessions.js";
-import type * as plannedSessions_service from "../plannedSessions/service.js";
-import type * as plannedSessions_types from "../plannedSessions/types.js";
+import type * as planBlocks from "../planBlocks.js";
+import type * as planBlocks_service from "../planBlocks/service.js";
+import type * as planBlocks_types from "../planBlocks/types.js";
 import type * as preferences from "../preferences.js";
 import type * as preferences_service from "../preferences/service.js";
 import type * as preferences_types from "../preferences/types.js";
@@ -36,12 +36,6 @@ import type * as quotes from "../quotes.js";
 import type * as quotes_service from "../quotes/service.js";
 import type * as quotes_types from "../quotes/types.js";
 import type * as quotes_util from "../quotes/util.js";
-import type * as sessions from "../sessions.js";
-import type * as sessions_calendar from "../sessions/calendar.js";
-import type * as sessions_metrics from "../sessions/metrics.js";
-import type * as sessions_service from "../sessions/service.js";
-import type * as sessions_types from "../sessions/types.js";
-import type * as sessions_util from "../sessions/util.js";
 import type * as tasks from "../tasks.js";
 import type * as tasks_service from "../tasks/service.js";
 import type * as tasks_types from "../tasks/types.js";
@@ -57,6 +51,12 @@ import type * as tracking_util from "../tracking/util.js";
 import type * as users from "../users.js";
 import type * as users_service from "../users/service.js";
 import type * as users_types from "../users/types.js";
+import type * as workSessions from "../workSessions.js";
+import type * as workSessions_calendar from "../workSessions/calendar.js";
+import type * as workSessions_metrics from "../workSessions/metrics.js";
+import type * as workSessions_service from "../workSessions/service.js";
+import type * as workSessions_types from "../workSessions/types.js";
+import type * as workSessions_util from "../workSessions/util.js";
 
 import type {
   ApiFromModules,
@@ -83,9 +83,9 @@ declare const fullApi: ApiFromModules<{
   "leaderboard/util": typeof leaderboard_util;
   maintenance: typeof maintenance;
   migrations: typeof migrations;
-  plannedSessions: typeof plannedSessions;
-  "plannedSessions/service": typeof plannedSessions_service;
-  "plannedSessions/types": typeof plannedSessions_types;
+  planBlocks: typeof planBlocks;
+  "planBlocks/service": typeof planBlocks_service;
+  "planBlocks/types": typeof planBlocks_types;
   preferences: typeof preferences;
   "preferences/service": typeof preferences_service;
   "preferences/types": typeof preferences_types;
@@ -93,12 +93,6 @@ declare const fullApi: ApiFromModules<{
   "quotes/service": typeof quotes_service;
   "quotes/types": typeof quotes_types;
   "quotes/util": typeof quotes_util;
-  sessions: typeof sessions;
-  "sessions/calendar": typeof sessions_calendar;
-  "sessions/metrics": typeof sessions_metrics;
-  "sessions/service": typeof sessions_service;
-  "sessions/types": typeof sessions_types;
-  "sessions/util": typeof sessions_util;
   tasks: typeof tasks;
   "tasks/service": typeof tasks_service;
   "tasks/types": typeof tasks_types;
@@ -114,6 +108,12 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   "users/service": typeof users_service;
   "users/types": typeof users_types;
+  workSessions: typeof workSessions;
+  "workSessions/calendar": typeof workSessions_calendar;
+  "workSessions/metrics": typeof workSessions_metrics;
+  "workSessions/service": typeof workSessions_service;
+  "workSessions/types": typeof workSessions_types;
+  "workSessions/util": typeof workSessions_util;
 }>;
 
 /**

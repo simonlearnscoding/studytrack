@@ -14,10 +14,12 @@ const H = 60 * 60 * 1000
 const DAY_START = Date.UTC(2026, 5, 14, 22, 0, 0)
 const NOW = Date.UTC(2026, 5, 15, 10, 0, 0)
 
-describe('sessions.getTodaysActivitiesForDashboard', () => {
+describe('workSessions.getTodaysActivitiesForDashboard', () => {
   it('returns nothing when unauthenticated', async () => {
     const t = convexTest(schema, modules)
-    const res = await t.query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+    const res = await t.query(api.workSessions.getTodaysActivitiesForDashboard, {
+      dayStart: DAY_START,
+    })
     expect(res).toEqual([])
   })
 
@@ -30,15 +32,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         image: 'https://img/ada.png',
         createdAt: NOW,
       })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
         status: 'active',
         startedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -51,7 +53,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({
@@ -60,9 +62,9 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
       image: 'https://img/ada.png',
       online: true,
     })
-    expect(res[0].sessions).toHaveLength(1)
-    expect(res[0].sessions[0]).toMatchObject({ status: 'active', endedAt: null })
-    expect(res[0].sessions[0].partials[0]).toEqual({
+    expect(res[0].workSessions).toHaveLength(1)
+    expect(res[0].workSessions[0]).toMatchObject({ status: 'active', endedAt: null })
+    expect(res[0].workSessions[0].partials[0]).toEqual({
       id: expect.anything(),
       channelId: 'chan-a',
       mode: 'camera',
@@ -74,15 +76,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
   it('keeps break partials but leaves them out of nothing (raw payload)', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         guildId: 'guild-1',
         status: 'ended',
         startedAt: NOW - 2 * H,
         endedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         guildId: 'guild-1',
         channelId: 'chan-a',
@@ -92,8 +94,8 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         endedAt: NOW - 1 * H,
         durationMs: 1 * H,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         guildId: 'guild-1',
         mode: 'break',
@@ -102,8 +104,8 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         endedAt: NOW - 50 * M,
         durationMs: 10 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         guildId: 'guild-1',
         channelId: 'chan-b',
@@ -117,28 +119,28 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     expect(res).toHaveLength(1)
     expect(res[0].online).toBe(false)
-    expect(res[0].sessions[0].partials).toHaveLength(3)
-    expect(res[0].sessions[0].partials.map((p) => p.mode)).toContain('break')
+    expect(res[0].workSessions[0].partials).toHaveLength(3)
+    expect(res[0].workSessions[0].partials.map((p) => p.mode)).toContain('break')
     // Newest partial first.
-    expect(res[0].sessions[0].partials[0].mode).toBe('cameraAndScreenShare')
+    expect(res[0].workSessions[0].partials[0].mode).toBe('cameraAndScreenShare')
   })
 
-  it('hides a session that started and ended before today', async () => {
+  it('hides a workSession that started and ended before today', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         guildId: 'guild-1',
         status: 'ended',
         startedAt: DAY_START - 3 * H,
         endedAt: DAY_START - 2 * H,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         guildId: 'guild-1',
         channelId: 'chan-a',
@@ -152,22 +154,22 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
     expect(res).toEqual([])
   })
 
-  it('keeps an active session that straddled midnight', async () => {
+  it('keeps an active workSession that straddled midnight', async () => {
     const t = convexTest(schema, modules)
     const startedAt = DAY_START - 3 * H
     await t.run(async (ctx) => {
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         guildId: 'guild-1',
         status: 'active',
         startedAt,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         guildId: 'guild-1',
         channelId: 'chan-a',
@@ -179,25 +181,25 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     expect(res).toHaveLength(1)
     expect(res[0].online).toBe(true)
-    expect(res[0].sessions[0].partials[0].startedAt).toBe(startedAt)
+    expect(res[0].workSessions[0].partials[0].startedAt).toBe(startedAt)
   })
 
-  it('groups several sessions into one member card', async () => {
+  it('groups several workSessions into one member card', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
-      const first = await ctx.db.insert('session', {
+      const first = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         guildId: 'guild-1',
         status: 'ended',
         startedAt: NOW - 4 * H,
         endedAt: NOW - 3 * H,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId: first,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId: first,
         discordId: 'discord-1',
         guildId: 'guild-1',
         channelId: 'chan-a',
@@ -207,14 +209,14 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         endedAt: NOW - 3 * H,
         durationMs: 1 * H,
       })
-      const second = await ctx.db.insert('session', {
+      const second = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         guildId: 'guild-1',
         status: 'active',
         startedAt: NOW - 20 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId: second,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId: second,
         discordId: 'discord-1',
         guildId: 'guild-1',
         channelId: 'chan-b',
@@ -226,16 +228,16 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     expect(res).toHaveLength(1)
-    expect(res[0].sessions).toHaveLength(2)
+    expect(res[0].workSessions).toHaveLength(2)
     expect(res[0].online).toBe(true)
-    // Sessions newest first.
-    expect(res[0].sessions[0].status).toBe('active')
+    // WorkSessions newest first.
+    expect(res[0].workSessions[0].status).toBe('active')
   })
 
-  it('binds each completed task to the session containing its completion instant', async () => {
+  it('binds each completed task to the workSession containing its completion instant', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', {
@@ -243,7 +245,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         name: 'Ada',
         createdAt: NOW,
       })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -251,8 +253,8 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         startedAt: NOW - 2 * H,
         endedAt: NOW - 1 * H,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -263,7 +265,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         endedAt: NOW - 1 * H,
         durationMs: 1 * H,
       })
-      // Completed inside the session — bound.
+      // Completed inside the workSession — bound.
       await ctx.db.insert('task', {
         userId,
         title: 'Read a chapter',
@@ -271,10 +273,10 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         completedAt: NOW - 90 * M,
         plannedAt: DAY_START,
       })
-      // Completed before it started — no session owns it.
+      // Completed before it started — no workSession owns it.
       await ctx.db.insert('task', {
         userId,
-        title: 'Before the session',
+        title: 'Before the workSession',
         done: true,
         completedAt: NOW - 3 * H,
         plannedAt: DAY_START,
@@ -290,26 +292,26 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    const tasks = res[0].sessions[0].tasks
+    const tasks = res[0].workSessions[0].tasks
     expect(tasks.map((task) => task.title)).toEqual(['Read a chapter'])
     expect(tasks[0].completedAt).toBe(NOW - 90 * M)
   })
 
-  it('binds tasks to a still-running session by its open end', async () => {
+  it('binds tasks to a still-running workSession by its open end', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', { discordId: 'discord-1', createdAt: NOW })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
         status: 'active',
         startedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -320,7 +322,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
       })
       await ctx.db.insert('task', {
         userId,
-        title: 'Finished mid-session',
+        title: 'Finished mid-workSession',
         done: true,
         completedAt: NOW - 5 * M,
         plannedAt: DAY_START,
@@ -329,9 +331,11 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    expect(res[0].sessions[0].tasks.map((task) => task.title)).toEqual(['Finished mid-session'])
+    expect(res[0].workSessions[0].tasks.map((task) => task.title)).toEqual([
+      'Finished mid-workSession',
+    ])
   })
 
   it('keeps each member tasks with their own card', async () => {
@@ -344,7 +348,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         { userId: ada, discordId: 'ada' },
         { userId: bob, discordId: 'bob' },
       ]) {
-        const sessionId = await ctx.db.insert('session', {
+        const workSessionId = await ctx.db.insert('workSession', {
           discordId,
           userId,
           guildId: 'guild-1',
@@ -352,8 +356,8 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
           startedAt: NOW - 2 * H,
           endedAt: NOW - 1 * H,
         })
-        await ctx.db.insert('sessionPartial', {
-          sessionId,
+        await ctx.db.insert('workSessionPartial', {
+          workSessionId,
           discordId,
           userId,
           guildId: 'guild-1',
@@ -377,26 +381,26 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     const ada = res.find((member) => member.discordId === 'ada')
     const bob = res.find((member) => member.discordId === 'bob')
-    expect(ada?.sessions[0].tasks.map((task) => task.title)).toEqual(['Ada private task'])
-    expect(bob?.sessions[0].tasks).toEqual([])
+    expect(ada?.workSessions[0].tasks.map((task) => task.title)).toEqual(['Ada private task'])
+    expect(bob?.workSessions[0].tasks).toEqual([])
   })
 
-  it('shows a task planned into the session without a completion', async () => {
+  it('shows a task planned into the workSession without a completion', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', { discordId: 'discord-1', createdAt: NOW })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         status: 'active',
         startedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         channelId: 'chan-a',
@@ -409,15 +413,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         title: 'Planned for this sitting',
         done: false,
         plannedAt: DAY_START,
-        plannedSessionId: sessionId,
+        plannedWorkSessionId: workSessionId,
       })
     })
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    expect(res[0].sessions[0].tasks).toEqual([
+    expect(res[0].workSessions[0].tasks).toEqual([
       {
         id: expect.anything(),
         title: 'Planned for this sitting',
@@ -427,26 +431,26 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
     ])
   })
 
-  it('shows a task planned in one session and finished in another in both', async () => {
+  it('shows a task planned in one workSession and finished in another in both', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', { discordId: 'discord-1', createdAt: NOW })
-      const first = await ctx.db.insert('session', {
+      const first = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         status: 'ended',
         startedAt: NOW - 3 * H,
         endedAt: NOW - 2 * H,
       })
-      const second = await ctx.db.insert('session', {
+      const second = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         status: 'ended',
         startedAt: NOW - 1 * H,
         endedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId: first,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId: first,
         discordId: 'discord-1',
         userId,
         channelId: 'chan-a',
@@ -456,8 +460,8 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         endedAt: NOW - 2 * H,
         durationMs: 1 * H,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId: second,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId: second,
         discordId: 'discord-1',
         userId,
         channelId: 'chan-a',
@@ -469,45 +473,45 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
       })
       await ctx.db.insert('task', {
         userId,
-        title: 'Cross-session task',
+        title: 'Cross-workSession task',
         done: true,
         completedAt: NOW - 45 * M,
         plannedAt: DAY_START,
-        plannedSessionId: first,
+        plannedWorkSessionId: first,
       })
     })
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    const [later, earlier] = res[0].sessions
+    const [later, earlier] = res[0].workSessions
     expect(earlier.tasks).toEqual([
-      { id: expect.anything(), title: 'Cross-session task', planned: true, completedAt: null },
+      { id: expect.anything(), title: 'Cross-workSession task', planned: true, completedAt: null },
     ])
     expect(later.tasks).toEqual([
       {
         id: expect.anything(),
-        title: 'Cross-session task',
+        title: 'Cross-workSession task',
         planned: false,
         completedAt: NOW - 45 * M,
       },
     ])
   })
 
-  it('shows a task planned and finished in the same session once', async () => {
+  it('shows a task planned and finished in the same workSession once', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', { discordId: 'discord-1', createdAt: NOW })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         status: 'ended',
         startedAt: NOW - 1 * H,
         endedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         channelId: 'chan-a',
@@ -523,15 +527,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         done: true,
         completedAt: NOW - 45 * M,
         plannedAt: DAY_START,
-        plannedSessionId: sessionId,
+        plannedWorkSessionId: workSessionId,
       })
     })
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    expect(res[0].sessions[0].tasks).toEqual([
+    expect(res[0].workSessions[0].tasks).toEqual([
       {
         id: expect.anything(),
         title: 'Planned and done',
@@ -545,15 +549,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', { discordId: 'discord-1', createdAt: NOW })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         status: 'ended',
         startedAt: NOW - 1 * H,
         endedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         channelId: 'chan-a',
@@ -574,9 +578,9 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    expect(res[0].sessions[0].tasks).toEqual([
+    expect(res[0].workSessions[0].tasks).toEqual([
       {
         id: expect.anything(),
         title: 'Planned yesterday',
@@ -601,15 +605,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
         plannedAt: DAY_START,
       })
       await ctx.db.patch(userId, { activeTaskId: taskId, activeSince: NOW - 5 * M })
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
         status: 'active',
         startedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -622,7 +626,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'Read a chapter' })
   })
@@ -643,15 +647,15 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
       })
       await ctx.db.patch(userId, { activeTaskId: taskId, activeSince: NOW - 5 * M })
       await ctx.db.delete(taskId)
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
         status: 'active',
         startedAt: NOW - 30 * M,
       })
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: 'discord-1',
         userId,
         guildId: 'guild-1',
@@ -664,7 +668,7 @@ describe('sessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
     expect(res[0].activeTask).toBeNull()
   })

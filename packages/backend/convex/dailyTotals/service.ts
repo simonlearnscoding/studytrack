@@ -2,8 +2,13 @@ import type { Doc, Id } from '../_generated/dataModel'
 import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { isDeepFocus, todaysTotals } from '../leaderboard/util'
-import { groupTodaysMembers } from '../sessions/service'
-import { DASHBOARD_TIME_ZONE, nextDayStart, previousDayStart, startOfDay } from '../sessions/util'
+import { groupTodaysMembers } from '../workSessions/service'
+import {
+  DASHBOARD_TIME_ZONE,
+  nextDayStart,
+  previousDayStart,
+  startOfDay,
+} from '../workSessions/util'
 import { getMe } from '../users/service'
 import type { DailyTotalCalendarDay, DailyTotalDay, DailyTotalSum } from './types'
 import { overlapMs } from './util'
@@ -26,13 +31,13 @@ const MAX_CALENDAR_ROWS = 62
 
 // Recompute one closed Day's totals for every member that studied in it.
 // Idempotent: it clears the Day's rows and inserts fresh ones, so re-running
-// after a late stale-session close corrects the numbers.
+// after a late stale-workSession close corrects the numbers.
 export async function rollupDay(ctx: MutationCtx, dayStart: number): Promise<void> {
   const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
   if (Date.now() < dayEnd) throw new Error('dailyTotals: day is not closed')
 
   const partials = await ctx.db
-    .query('sessionPartial')
+    .query('workSessionPartial')
     .withIndex('by_startedAt', (q) =>
       q.gte('startedAt', dayStart - TWELVE_HOURS_MS).lt('startedAt', dayEnd)
     )
@@ -64,7 +69,7 @@ export async function rollupDay(ctx: MutationCtx, dayStart: number): Promise<voi
 }
 
 // Re-roll yesterday and the Day before: the hourly stale sweep can close a
-// session late, so the two most recent closed Days are never final.
+// workSession late, so the two most recent closed Days are never final.
 export async function rollupRecent(ctx: MutationCtx): Promise<void> {
   const today = startOfDay(Date.now(), DASHBOARD_TIME_ZONE)
   const yesterday = previousDayStart(today, DASHBOARD_TIME_ZONE)
@@ -83,7 +88,7 @@ export async function backfill(ctx: MutationCtx, dayStart?: number): Promise<voi
   let start = dayStart
   if (start === undefined) {
     const earliest = await ctx.db
-      .query('sessionPartial')
+      .query('workSessionPartial')
       .withIndex('by_startedAt')
       .order('asc')
       .first()
@@ -152,7 +157,7 @@ export async function listMine(ctx: QueryCtx, fromDayStart: number): Promise<Dai
 }
 
 // The caller's own Daily totals for one Month window, as the web calendar reads
-// them. Today's row is a read-time merge from today's Sessions and partials, using
+// them. Today's row is a read-time merge from today's WorkSessions and partials, using
 // the same Deep focus / Total rules as the leaderboard, clipped to [today, now).
 // It is never written to `dailyTotal`; the rollup owns closed Days.
 export async function getCalendar(
@@ -207,27 +212,27 @@ type MemberTotal = {
 
 // The Day's totals, keyed by the shared member key. Study time is every
 // non-`break` partial; Deep focus is the camera or screen-share modes; Total time
-// is a session's whole span, counted only for sessions that have study time in
+// is a workSession's whole span, counted only for workSessions that have study time in
 // the Day, so a member with only Pauses produces no row.
 async function sumMembers(
   ctx: MutationCtx,
-  partials: Doc<'sessionPartial'>[],
+  partials: Doc<'workSessionPartial'>[],
   dayStart: number,
   dayEnd: number
 ): Promise<Map<string, MemberTotal>> {
-  const partialsBySession = new Map<Id<'session'>, Doc<'sessionPartial'>[]>()
+  const partialsByWorkSession = new Map<Id<'workSession'>, Doc<'workSessionPartial'>[]>()
   for (const partial of partials) {
-    const list = partialsBySession.get(partial.sessionId) ?? []
+    const list = partialsByWorkSession.get(partial.workSessionId) ?? []
     list.push(partial)
-    partialsBySession.set(partial.sessionId, list)
+    partialsByWorkSession.set(partial.workSessionId, list)
   }
 
   const byMember = new Map<string, MemberTotal>()
-  for (const [sessionId, sessionPartials] of partialsBySession) {
-    const session = await ctx.db.get(sessionId)
-    if (!session) continue
+  for (const [workSessionId, workSessionPartials] of partialsByWorkSession) {
+    const workSession = await ctx.db.get(workSessionId)
+    if (!workSession) continue
 
-    const memberKey = session.discordId ?? String(session.userId)
+    const memberKey = workSession.discordId ?? String(workSession.userId)
     const total = byMember.get(memberKey) ?? {
       discordId: null,
       userId: null,
@@ -235,11 +240,11 @@ async function sumMembers(
       deepFocusMs: 0,
       totalMs: 0,
     }
-    total.discordId ??= session.discordId ?? null
-    total.userId ??= session.userId ?? sessionPartials.find((p) => p.userId)?.userId ?? null
+    total.discordId ??= workSession.discordId ?? null
+    total.userId ??= workSession.userId ?? workSessionPartials.find((p) => p.userId)?.userId ?? null
 
     let studyMs = 0
-    for (const partial of sessionPartials) {
+    for (const partial of workSessionPartials) {
       const clipped = overlapMs(partial.startedAt, partial.endedAt ?? dayEnd, dayStart, dayEnd)
       if (partial.mode !== 'break') studyMs += clipped
       if (isDeepFocus(partial)) total.deepFocusMs += clipped
@@ -247,7 +252,12 @@ async function sumMembers(
 
     total.studyMs += studyMs
     if (studyMs > 0) {
-      total.totalMs += overlapMs(session.startedAt, session.endedAt ?? dayEnd, dayStart, dayEnd)
+      total.totalMs += overlapMs(
+        workSession.startedAt,
+        workSession.endedAt ?? dayEnd,
+        dayStart,
+        dayEnd
+      )
     }
     byMember.set(memberKey, total)
   }

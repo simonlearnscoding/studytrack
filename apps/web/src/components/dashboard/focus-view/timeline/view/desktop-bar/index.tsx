@@ -1,25 +1,28 @@
-import { resolvePlanDraft, resolvePlanStart } from '@studytrack/backend/convex/timeline/gesture'
+import {
+  resolvePlanBlockDraft,
+  resolvePlanBlockStart,
+} from '@studytrack/backend/convex/timeline/gesture'
 import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
 import { formatClock, minuteToPx } from '@studytrack/backend/convex/timeline/util'
 import { Fragment, type RefObject } from 'react'
 import { HourLabels, NowLine, NowPill } from '../axis/markers'
 import { BandLayer } from '../axis/night-band'
-import { RowTrack, type PlanOverride, type SessionClick } from '../lanes/row-track'
+import { RowTrack, type PlanBlockOverride, type WorkSessionClick } from '../lanes/row-track'
 import type { AxisSurface } from '../../types'
 import { useMirrorScroll } from '../../hooks/use-mirror-scroll'
-import { blockSpanText, planSpanText } from './plan-label-text'
-import { CursorTimeLabel, PlanSpanLabel } from './plan-labels'
-import { isPlannableSpan, usePlanGestures } from './use-plan-gestures'
-import type { PlanClick, PlanDraft, PlanDrag, PlanUpdate } from './types'
+import { blockSpanText, planBlockSpanText } from './plan-block-label-text'
+import { CursorTimeLabel, PlanBlockSpanLabel } from './plan-block-labels'
+import { isPlannableSpan, usePlanBlockGestures } from './use-plan-block-gestures'
+import type { PlanBlockClick, PlanBlockDraft, PlanBlockDrag, PlanBlockUpdate } from './types'
 
 // Keeps the cursor readout fully on the axis when the pointer nears an edge.
 const CURSOR_LABEL_EDGE_PX = 28
 
 // All the drawing helpers live in the sibling modules:
 //   types.ts            — the gesture and callback shapes
-//   use-plan-gestures.ts — pointer state, drag/move/resize, hover and cursor
-//   plan-labels.tsx     — the from – until and cursor chips
-export type { PlanClick, PlanDraft, PlanDrag, PlanUpdate } from './types'
+//   use-plan-block-gestures.ts — pointer state, drag/move/resize, hover and cursor
+//   plan-block-labels.tsx     — the from – until and cursor chips
+export type { PlanBlockClick, PlanBlockDraft, PlanBlockDrag, PlanBlockUpdate } from './types'
 
 // lg+ your labels + track pin as one bar directly under the hero (0..7rem),
 // with the same bg + blur so the stack reads as a single element.
@@ -41,19 +44,19 @@ export type { PlanClick, PlanDraft, PlanDrag, PlanUpdate } from './types'
 //
 // The gesture geometry itself — the quarter-hour grid, the past wall, the plan
 // neighbours, the start/end caps — lives in the timeline pure seam
-// (`resolvePlanStart`, `resolvePlanDraft`, `resolvePlanEdit`). The hook owns the
+// (`resolvePlanBlockStart`, `resolvePlanBlockDraft`, `resolvePlanBlockEdit`). The hook owns the
 // pointer state; this component owns the pixels.
 export function PinnedDesktopBar({
   surface: { axis, bands, hidden, isNightBandHeldOpen, onToggleBand },
   row,
   nowLabel,
   scrollerRef,
-  draftPlan,
-  onPlanDrag,
-  onPlanDoubleClick,
-  onPlanUpdate,
-  onPlanClick,
-  onSessionClick,
+  draftPlanBlock,
+  onPlanBlockDrag,
+  onPlanBlockDoubleClick,
+  onPlanBlockUpdate,
+  onPlanBlockClick,
+  onWorkSessionClick,
 }: {
   surface: AxisSurface
   row?: TimelineRowVM
@@ -61,50 +64,50 @@ export function PinnedDesktopBar({
   scrollerRef: RefObject<HTMLDivElement | null>
   // The window of the draft popover, kept drawn on the lane until the member
   // decides; null when no draft is open.
-  draftPlan?: PlanDraft | null
-  onPlanDrag?: (span: PlanDrag) => void
-  onPlanDoubleClick?: (span: PlanDrag) => void
-  onPlanUpdate?: (update: PlanUpdate) => void
-  onPlanClick?: (click: PlanClick) => void
-  onSessionClick?: (click: SessionClick) => void
+  draftPlanBlock?: PlanBlockDraft | null
+  onPlanBlockDrag?: (span: PlanBlockDrag) => void
+  onPlanBlockDoubleClick?: (span: PlanBlockDrag) => void
+  onPlanBlockUpdate?: (update: PlanBlockUpdate) => void
+  onPlanBlockClick?: (click: PlanBlockClick) => void
+  onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
   const now = axis.nowPx
   const {
     refs: { mirrorRef, barRef },
-    gesture: { dragDraft, edit, pending, hoveredPlanId, cursorPx },
+    gesture: { dragDraft, edit, pending, hoveredPlanBlockId, cursorPx },
     laneEvents,
     moveEvents,
     resizeEvents,
-  } = usePlanGestures({
+  } = usePlanBlockGestures({
     axis,
     row,
     scrollerRef,
-    onPlanDrag,
-    onPlanDoubleClick,
-    onPlanUpdate,
-    onPlanClick,
+    onPlanBlockDrag,
+    onPlanBlockDoubleClick,
+    onPlanBlockUpdate,
+    onPlanBlockClick,
   })
   useMirrorScroll(scrollerRef, mirrorRef)
 
   // The preview snaps live, so the dashed block always sits on the grid — and
   // parks against the floor rather than sliding into the past.
   const dragPreview = dragDraft
-    ? resolvePlanDraft({
+    ? resolvePlanBlockDraft({
         segments: axis.segments,
         axisWidthPx: axis.widthPx,
-        blocks: row?.planBlocks ?? [],
+        blocks: row?.planBlockWalls ?? [],
         fromPx: dragDraft.fromPx,
         toPx: dragDraft.toPx,
         nowPx: dragDraft.nowPx,
       })
     : null
-  const dragLabel = isPlannableSpan(dragPreview) ? planSpanText(dragPreview) : null
+  const dragLabel = isPlannableSpan(dragPreview) ? planBlockSpanText(dragPreview) : null
 
   // The dashed span stays on the lane while its draft popover is open, so the
   // member confirms a block they can still see. `minuteToPx` is null inside a
   // collapsed band, where no plan can start anyway.
-  const openDraftLeftPx = draftPlan ? minuteToPx(axis.segments, draftPlan.startMin) : null
-  const openDraftEndPx = draftPlan ? minuteToPx(axis.segments, draftPlan.endMin) : null
+  const openDraftLeftPx = draftPlanBlock ? minuteToPx(axis.segments, draftPlanBlock.startMin) : null
+  const openDraftEndPx = draftPlanBlock ? minuteToPx(axis.segments, draftPlanBlock.endMin) : null
   const openDraft =
     openDraftLeftPx != null && openDraftEndPx != null
       ? { leftPx: openDraftLeftPx, widthPx: openDraftEndPx - openDraftLeftPx }
@@ -112,14 +115,14 @@ export function PinnedDesktopBar({
 
   // The live geometry that replaces the stored block during a gesture. There is
   // deliberately no "before" outline: the block itself moves.
-  const planOverride: PlanOverride | null = edit
-    ? { planId: edit.planId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx }
+  const planBlockOverride: PlanBlockOverride | null = edit
+    ? { planBlockId: edit.planBlockId, leftPx: edit.span.leftPx, widthPx: edit.span.widthPx }
     : pending
 
   // An existing plan wears the same from – until label while it is being moved
   // or resized. The start edge is the anchor: it stays put when the end changes,
   // and travels with the block when the whole plan moves.
-  const editBlock = edit ? edit.blocks.find((block) => block.id === edit.planId) : null
+  const editBlock = edit ? edit.blocks.find((block) => block.id === edit.planBlockId) : null
   const editChanged =
     edit?.kind === 'move'
       ? edit.moved
@@ -127,18 +130,18 @@ export function PinnedDesktopBar({
         edit != null &&
         (edit.span.leftPx !== editBlock.startPx ||
           edit.span.widthPx !== editBlock.endPx - editBlock.startPx)
-  const editLabel = edit && editChanged ? planSpanText(edit.span) : null
+  const editLabel = edit && editChanged ? planBlockSpanText(edit.span) : null
   const editLabelLeftPx = edit?.span.leftPx ?? 0
 
   // The from – until label for the plan a resting pointer sits on. Suppressed
   // for the whole of a gesture, which already carries its own live label, and
   // follows the committed geometry while a released block waits for the read.
   const hoveredBlock =
-    !dragDraft && !edit && hoveredPlanId != null
-      ? (row?.planBlocks.find((block) => block.id === hoveredPlanId) ?? null)
+    !dragDraft && !edit && hoveredPlanBlockId != null
+      ? (row?.planBlockWalls.find((block) => block.id === hoveredPlanBlockId) ?? null)
       : null
   const hoveredGeometry =
-    hoveredBlock && pending?.planId === hoveredBlock.id
+    hoveredBlock && pending?.planBlockId === hoveredBlock.id
       ? { leftPx: pending.leftPx, widthPx: pending.widthPx }
       : hoveredBlock
         ? { leftPx: hoveredBlock.startPx, widthPx: hoveredBlock.endPx - hoveredBlock.startPx }
@@ -154,15 +157,15 @@ export function PinnedDesktopBar({
   // starts here, and the gesture or hover label owns the readout.
   const cursorStart =
     cursorPx != null
-      ? resolvePlanStart({
+      ? resolvePlanBlockStart({
           segments: axis.segments,
           px: cursorPx,
           nowPx: now,
-          blocks: row?.planBlocks ?? [],
+          blocks: row?.planBlockWalls ?? [],
         })
       : null
   const cursorLabel =
-    cursorStart && !dragDraft && !edit && hoveredPlanId == null
+    cursorStart && !dragDraft && !edit && hoveredPlanBlockId == null
       ? formatClock(cursorStart.startMin)
       : null
   const cursorLabelLeftPx =
@@ -206,14 +209,18 @@ export function PinnedDesktopBar({
         </div>
         {/* your lane — the taller hero track, and the drag-to-plan surface.
             Your name, live dot and tail live in the pinned name cell, not here;
-            the empty band above the track is reserved for done-task and session
+            the empty band above the track is reserved for done-task and workSession
             titles. Without a signed-in row the bar degrades to the hour strip. */}
         {row && (
           <div className="h-[5.5rem] pt-8">
             <div className="cursor-crosshair relative select-none" {...laneEvents}>
-              <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
-              {onPlanUpdate &&
-                row.planBlocks.map((block) => (
+              <RowTrack
+                row={row}
+                planBlockOverride={planBlockOverride}
+                onWorkSessionClick={onWorkSessionClick}
+              />
+              {onPlanBlockUpdate &&
+                row.planBlockWalls.map((block) => (
                   <span
                     key={`${block.id}-body`}
                     onPointerDown={(event) => moveEvents.start(event, block)}
@@ -224,8 +231,8 @@ export function PinnedDesktopBar({
                     style={{ left: block.startPx, width: block.endPx - block.startPx }}
                   />
                 ))}
-              {onPlanUpdate &&
-                row.planBlocks.map((block) => (
+              {onPlanBlockUpdate &&
+                row.planBlockWalls.map((block) => (
                   <Fragment key={block.id}>
                     {(['start', 'end'] as const).map((edge) => (
                       <span
@@ -248,20 +255,23 @@ export function PinnedDesktopBar({
                     className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 border border-dashed"
                     style={{ left: dragPreview.leftPx, width: dragPreview.widthPx }}
                   />
-                  <PlanSpanLabel leftPx={dragPreview.leftPx} label={dragLabel} />
+                  <PlanBlockSpanLabel leftPx={dragPreview.leftPx} label={dragLabel} />
                 </>
               )}
-              {draftPlan && openDraft && (
+              {draftPlanBlock && openDraft && (
                 <>
                   <div
                     className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 border border-dashed"
                     style={{ left: openDraft.leftPx, width: openDraft.widthPx }}
                   />
-                  <PlanSpanLabel leftPx={openDraft.leftPx} label={planSpanText(draftPlan)} />
+                  <PlanBlockSpanLabel
+                    leftPx={openDraft.leftPx}
+                    label={planBlockSpanText(draftPlanBlock)}
+                  />
                 </>
               )}
-              {editLabel && <PlanSpanLabel leftPx={editLabelLeftPx} label={editLabel} />}
-              {hoverLabel && <PlanSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
+              {editLabel && <PlanBlockSpanLabel leftPx={editLabelLeftPx} label={editLabel} />}
+              {hoverLabel && <PlanBlockSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
               {cursorLabel && <CursorTimeLabel leftPx={cursorLabelLeftPx} label={cursorLabel} />}
             </div>
           </div>

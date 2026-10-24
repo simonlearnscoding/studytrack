@@ -2,7 +2,7 @@
 import { convexTest } from 'convex-test'
 import { describe, expect, it } from 'vitest'
 import { api, internal } from './_generated/api'
-import { startOfDay, DASHBOARD_TIME_ZONE } from './sessions/util'
+import { startOfDay, DASHBOARD_TIME_ZONE } from './workSessions/util'
 import schema from './schema'
 import type { StudyMode } from './bot/types'
 
@@ -23,7 +23,7 @@ function makeTest() {
 
 type Test = ReturnType<typeof makeTest>
 
-async function seedSession(
+async function seedWorkSession(
   t: Test,
   opts: {
     discordId?: string
@@ -48,7 +48,7 @@ async function seedSession(
         }))
     }
 
-    const sessionId = await ctx.db.insert('session', {
+    const workSessionId = await ctx.db.insert('workSession', {
       discordId: opts.discordId,
       userId,
       status: opts.endedAt === undefined ? 'active' : 'ended',
@@ -57,8 +57,8 @@ async function seedSession(
     })
 
     for (const partial of opts.partials) {
-      await ctx.db.insert('sessionPartial', {
-        sessionId,
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
         discordId: opts.discordId,
         userId,
         channelId: partial.mode === 'break' ? undefined : 'chan-a',
@@ -102,7 +102,7 @@ describe('dailyTotals.rollupDay', () => {
   it('counts one ended camera partial as Study, Deep focus and Total time', async () => {
     const t = makeTest()
     const start = DAY_START + 2 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 30 * M,
@@ -126,7 +126,7 @@ describe('dailyTotals.rollupDay', () => {
   it('counts a screen-share partial as Deep focus, matching camera', async () => {
     const t = makeTest()
     const start = DAY_START + 2 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 30 * M,
@@ -148,7 +148,7 @@ describe('dailyTotals.rollupDay', () => {
   it('adds a Pause to Total time only', async () => {
     const t = makeTest()
     const start = DAY_START + 1 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 2 * H,
@@ -169,11 +169,11 @@ describe('dailyTotals.rollupDay', () => {
     })
   })
 
-  it('splits a 23:30–00:30 session into 30 minutes on each Day', async () => {
+  it('splits a 23:30–00:30 workSession into 30 minutes on each Day', async () => {
     const t = makeTest()
     const start = DAY_START - 30 * M // 2026-06-14 23:30 Zurich
     const end = DAY_START + 30 * M // 2026-06-15 00:30 Zurich
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: end,
@@ -202,7 +202,7 @@ describe('dailyTotals.rollupDay', () => {
   it('counts an active partial up to the Day end', async () => {
     const t = makeTest()
     const start = DAY_END - 30 * M
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       partials: [{ mode: 'voice', startedAt: start }],
@@ -218,7 +218,7 @@ describe('dailyTotals.rollupDay', () => {
   it('is idempotent: rolling the same Day twice gives the same rows', async () => {
     const t = makeTest()
     const start = DAY_START + 1 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 1 * H,
@@ -246,13 +246,13 @@ describe('dailyTotals.rollupDay', () => {
   it('combines manual and voice time for one discordId into one row', async () => {
     const t = makeTest()
     const start = DAY_START + 1 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 1 * H,
       partials: [{ mode: 'voice', startedAt: start, endedAt: start + 1 * H }],
     })
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start + 2 * H,
       endedAt: start + 3 * H,
@@ -269,7 +269,7 @@ describe('dailyTotals.rollupDay', () => {
   it('gives no row to a member with only Pause time', async () => {
     const t = makeTest()
     const start = DAY_START + 1 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 1 * H,
@@ -285,7 +285,7 @@ describe('dailyTotals.rollupDay', () => {
     const t = makeTest()
     const dayStart = startOfDay(Date.UTC(2026, 2, 29, 12, 0, 0), DASHBOARD_TIME_ZONE)
     const dayEnd = dayStart + 23 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: dayStart,
       endedAt: dayEnd,
@@ -303,7 +303,7 @@ describe('dailyTotals.rollupDay', () => {
     const t = makeTest()
     const dayStart = startOfDay(Date.UTC(2025, 9, 26, 12, 0, 0), DASHBOARD_TIME_ZONE)
     const dayEnd = dayStart + 25 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: dayStart,
       endedAt: dayEnd,
@@ -389,7 +389,7 @@ describe('dailyTotals.getCalendar', () => {
     expect(rows).toEqual([{ dayStart: PREV_DAY_START, deepFocusMs: 30 * M, totalMs: 1 * H }])
   })
 
-  it('merges today live from Sessions, replacing any stored today row', async () => {
+  it('merges today live from WorkSessions, replacing any stored today row', async () => {
     const t = makeTest()
     await seedAda(t)
     await seedDailyTotal(t, {
@@ -400,7 +400,7 @@ describe('dailyTotals.getCalendar', () => {
       totalMs: 9 * H,
     })
     const start = DAY_START + 1 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 2 * H,
@@ -422,7 +422,7 @@ describe('dailyTotals.getCalendar', () => {
     const t = makeTest()
     await seedAda(t)
     const start = DAY_START + 1 * H
-    await seedSession(t, {
+    await seedWorkSession(t, {
       discordId: 'ada',
       startedAt: start,
       endedAt: start + 1 * H,

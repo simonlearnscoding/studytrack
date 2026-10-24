@@ -1,4 +1,4 @@
-import type { DashboardMember } from '@studytrack/backend/convex/sessions/types'
+import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
 import { useMetric } from '~/hooks/use-metric-preference'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
@@ -25,12 +25,12 @@ export function PresenceRail({
   // The idle line's trailing dots cycle 1→2→3 on the same second tick, so a member
   // with nothing to name still reads as alive rather than stuck.
   const dots = '.'.repeat((Math.floor(now / 1000) % 3) + 1)
-  // The live "time in session" cuts follow the site-wide metric switch.
+  // The live "time in workSession" cuts follow the site-wide metric switch.
   const metric = useMetric()
   const people = members?.map((member) => toLiveRoomPerson(member, mounted ? now : null, metric))
   const loading = people === undefined
   // The room's shared timer: shown whenever someone is here, and gone with the
-  // last person (the value is derived from the active sessions alone).
+  // last person (the value is derived from the active workSessions alone).
   const showMeter = people !== undefined && people.length > 0
 
   return (
@@ -104,7 +104,7 @@ function RoomRowSkeleton() {
   )
 }
 
-// The mode icon, beside the session length: how they are studying, in the mode's
+// The mode icon, beside the workSession length: how they are studying, in the mode's
 // colour. `break` is not a way of studying, so it is excluded — no icon.
 function ModeGlyph({ mode }: { mode: keyof typeof MODE_ICON }) {
   const Icon = MODE_ICON[mode]

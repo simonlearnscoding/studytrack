@@ -3,15 +3,15 @@ import { nightBands } from '@studytrack/backend/convex/timeline/bands'
 import type { RefObject } from 'react'
 import {
   PinnedDesktopBar,
-  type PlanClick,
-  type PlanDraft,
-  type PlanDrag,
-  type PlanUpdate,
+  type PlanBlockClick,
+  type PlanBlockDraft,
+  type PlanBlockDrag,
+  type PlanBlockUpdate,
 } from './desktop-bar'
 import { PinnedMobileLane } from './lanes/mobile-lane'
 import { NamesColumn } from './lanes/names-column'
 import { TrackLegend } from './track-legend'
-import type { SessionClick } from './lanes/row-track'
+import type { WorkSessionClick } from './lanes/row-track'
 import { TrackScroller } from './track-scroller'
 import { useCentreOnNow } from '../hooks/use-centre-on-now'
 
@@ -38,12 +38,12 @@ export function DayTimeline({
   scrollerRef,
   isNightBandHeldOpen,
   onToggleBand,
-  draftPlan,
-  onPlanDrag,
-  onPlanDoubleClick,
-  onPlanUpdate,
-  onPlanClick,
-  onSessionClick,
+  draftPlanBlock,
+  onPlanBlockDrag,
+  onPlanBlockDoubleClick,
+  onPlanBlockUpdate,
+  onPlanBlockClick,
+  onWorkSessionClick,
 }: {
   window: TimelineWindow
   rows: TimelineRowVM[]
@@ -51,12 +51,12 @@ export function DayTimeline({
   scrollerRef: RefObject<HTMLDivElement | null>
   isNightBandHeldOpen: boolean
   onToggleBand: () => void
-  draftPlan?: PlanDraft | null
-  onPlanDrag?: (span: PlanDrag) => void
-  onPlanDoubleClick?: (span: PlanDrag) => void
-  onPlanUpdate?: (update: PlanUpdate) => void
-  onPlanClick?: (click: PlanClick) => void
-  onSessionClick?: (click: SessionClick) => void
+  draftPlanBlock?: PlanBlockDraft | null
+  onPlanBlockDrag?: (span: PlanBlockDrag) => void
+  onPlanBlockDoubleClick?: (span: PlanBlockDrag) => void
+  onPlanBlockUpdate?: (update: PlanBlockUpdate) => void
+  onPlanBlockClick?: (click: PlanBlockClick) => void
+  onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
   const yourRow = rows.find((row) => row.you)
   const { bands, hidden } = nightBands(axis, rows)
@@ -76,7 +76,7 @@ export function DayTimeline({
           row={yourRow}
           nowLabel={nowLabel}
           scrollerRef={scrollerRef}
-          onSessionClick={onSessionClick}
+          onWorkSessionClick={onWorkSessionClick}
         />
       )}
 
@@ -90,18 +90,18 @@ export function DayTimeline({
             row={yourRow}
             nowLabel={nowLabel}
             scrollerRef={scrollerRef}
-            draftPlan={draftPlan}
-            onPlanDrag={onPlanDrag}
-            onPlanDoubleClick={onPlanDoubleClick}
-            onPlanUpdate={onPlanUpdate}
-            onPlanClick={onPlanClick}
-            onSessionClick={onSessionClick}
+            draftPlanBlock={draftPlanBlock}
+            onPlanBlockDrag={onPlanBlockDrag}
+            onPlanBlockDoubleClick={onPlanBlockDoubleClick}
+            onPlanBlockUpdate={onPlanBlockUpdate}
+            onPlanBlockClick={onPlanBlockClick}
+            onWorkSessionClick={onWorkSessionClick}
           />
           <TrackScroller
             surface={surface}
             rows={rows}
             scrollerRef={scrollerRef}
-            onSessionClick={onSessionClick}
+            onWorkSessionClick={onWorkSessionClick}
           />
         </div>
       </div>

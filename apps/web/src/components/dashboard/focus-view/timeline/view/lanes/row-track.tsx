@@ -1,23 +1,23 @@
 import type {
   TimelineBarVM,
-  TimelinePlanVM,
+  TimelinePlanBlockVM,
   TimelineRowVM,
 } from '@studytrack/backend/convex/timeline/types'
 import { Fragment } from 'react'
-import { barClass } from '../../session-bar-style'
+import { barClass } from '../../work-session-bar-style'
 
 // The plan currently being moved or resized. Its live geometry replaces the
 // stored piece(s) while the gesture is active, so the block follows the pointer
 // without a second "before" outline.
-export type PlanOverride = {
-  planId: TimelinePlanVM['id']
+export type PlanBlockOverride = {
+  planBlockId: TimelinePlanBlockVM['id']
   leftPx: number
   widthPx: number
 }
 
-// A click on a session bar, with the viewport point the popover should anchor to.
-export type SessionClick = {
-  sessionId: TimelineBarVM['sessionId']
+// A click on a workSession bar, with the viewport point the popover should anchor to.
+export type WorkSessionClick = {
+  workSessionId: TimelineBarVM['workSessionId']
   x: number
   y: number
 }
@@ -35,18 +35,18 @@ const DOT_LABEL_MAX = 160
 // Your lane is the hero of the surface: a much taller lane whose fill is
 // clearly visible (a faint fill reads as a 1px hairline however tall the box
 // is), with an inset ring and bigger done-dots. The lane box itself is square;
-// the only round ends on it are the two caps of a session.
+// the only round ends on it are the two caps of a workSession.
 export function RowTrack({
   row,
-  planOverride,
-  onSessionClick,
+  planBlockOverride,
+  onWorkSessionClick,
 }: {
   row: TimelineRowVM
-  planOverride?: PlanOverride | null
-  onSessionClick?: (click: SessionClick) => void
+  planBlockOverride?: PlanBlockOverride | null
+  onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
-  const overridden = planOverride
-    ? row.plans.findIndex((plan) => plan.id === planOverride.planId)
+  const overridden = planBlockOverride
+    ? row.planBlocks.findIndex((plan) => plan.id === planBlockOverride.planBlockId)
     : -1
 
   return (
@@ -57,15 +57,16 @@ export function RowTrack({
           : 'h-2.5 bg-white/[0.035]'
       }`}
     >
-      {row.plans.map((plan, i) => {
+      {row.planBlocks.map((plan, i) => {
         // A plan split by the night band has several pieces; the override covers
         // the first one and hides the rest, so the gesture never doubles a block.
-        if (planOverride && plan.id === planOverride.planId && i !== overridden) return null
-        const live = planOverride && i === overridden ? planOverride : plan
+        if (planBlockOverride && plan.id === planBlockOverride.planBlockId && i !== overridden)
+          return null
+        const live = planBlockOverride && i === overridden ? planBlockOverride : plan
         return (
           <div
             key={`plan-${i}`}
-            title={plan.missed ? 'Missed plan' : 'Planned session'}
+            title={plan.missed ? 'Missed plan block' : 'Plan block'}
             className={`absolute top-0 bottom-0 border border-dashed ${
               plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
             }`}
@@ -76,17 +77,17 @@ export function RowTrack({
       {row.bars.map((bar, i) => (
         <div
           key={i}
-          data-session-id={bar.sessionId}
-          role={onSessionClick ? 'button' : undefined}
-          tabIndex={onSessionClick ? 0 : undefined}
-          aria-label={onSessionClick ? 'Open study session' : undefined}
+          data-work-session-id={bar.workSessionId}
+          role={onWorkSessionClick ? 'button' : undefined}
+          tabIndex={onWorkSessionClick ? 0 : undefined}
+          aria-label={onWorkSessionClick ? 'Open work session' : undefined}
           onClick={
-            onSessionClick
+            onWorkSessionClick
               ? (event) => {
                   event.stopPropagation()
                   const rect = event.currentTarget.getBoundingClientRect()
-                  onSessionClick({
-                    sessionId: bar.sessionId,
+                  onWorkSessionClick({
+                    workSessionId: bar.workSessionId,
                     x: event.clientX || rect.left,
                     y: event.clientY || rect.top,
                   })
@@ -94,22 +95,26 @@ export function RowTrack({
               : undefined
           }
           onKeyDown={
-            onSessionClick
+            onWorkSessionClick
               ? (event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return
                   event.preventDefault()
                   const rect = event.currentTarget.getBoundingClientRect()
-                  onSessionClick({ sessionId: bar.sessionId, x: rect.left, y: rect.top })
+                  onWorkSessionClick({
+                    workSessionId: bar.workSessionId,
+                    x: rect.left,
+                    y: rect.top,
+                  })
                 }
               : undefined
           }
-          // The round caps belong to the session, not this stretch: the adapter
-          // marks the first visible piece `roundStart` (always — a session
+          // The round caps belong to the workSession, not this stretch: the adapter
+          // marks the first visible piece `roundStart` (always — a workSession
           // beginning is a beginning even when it began off screen) and the last
-          // `roundEnd` only once the session has ended. Partial boundaries in
+          // `roundEnd` only once the workSession has ended. Partial boundaries in
           // between stay square, so a mode change or a pause and return reads
           // as one continuous line instead of a row of pills.
-          className={`absolute top-0 bottom-0 ${bar.roundStart ? 'rounded-l-full' : ''} ${bar.roundEnd ? 'rounded-r-full' : ''} ${barClass(bar.mode, bar.live)} ${onSessionClick ? 'cursor-pointer' : ''}`}
+          className={`absolute top-0 bottom-0 ${bar.roundStart ? 'rounded-l-full' : ''} ${bar.roundEnd ? 'rounded-r-full' : ''} ${barClass(bar.mode, bar.live)} ${onWorkSessionClick ? 'cursor-pointer' : ''}`}
           style={{ left: bar.leftPx, width: bar.widthPx }}
         />
       ))}

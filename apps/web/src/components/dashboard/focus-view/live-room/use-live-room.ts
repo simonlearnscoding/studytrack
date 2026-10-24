@@ -1,13 +1,19 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
-import { sessionFocusMs, sessionSpanMs } from '@studytrack/backend/convex/sessions/metrics'
-import type { DashboardMember, DashboardSession } from '@studytrack/backend/convex/sessions/types'
-import { formatDurationHM } from '@studytrack/backend/convex/sessions/util'
+import {
+  workSessionFocusMs,
+  workSessionSpanMs,
+} from '@studytrack/backend/convex/workSessions/metrics'
+import type {
+  DashboardMember,
+  DashboardWorkSession,
+} from '@studytrack/backend/convex/workSessions/types'
+import { formatDurationHM } from '@studytrack/backend/convex/workSessions/util'
 import { useQuery } from 'convex/react'
 import { useDayStart } from '~/hooks/use-day-start'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { colorFor, initials } from '~/lib/avatar'
 
-type StudyMode = DashboardMember['sessions'][number]['partials'][number]['mode']
+type StudyMode = DashboardMember['workSessions'][number]['partials'][number]['mode']
 
 // One person in the present-tense room, shaped for the rail. `time` is null until
 // the client clock exists (server render), so the rail never disagrees with the
@@ -30,7 +36,7 @@ export type LiveRoomPerson = {
 // reads; the caller supplies the clock for any durations it derives.
 export function useLiveRoom(): { inRoom: DashboardMember[] | undefined; count: number } {
   const dayStart = useDayStart()
-  const members = useQuery(api.sessions.getTodaysActivitiesForDashboard, { dayStart })
+  const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, { dayStart })
   const inRoom = members
     ?.filter((member) => member.online)
     .sort((a, b) => joinedAt(a) - joinedAt(b))
@@ -38,7 +44,7 @@ export function useLiveRoom(): { inRoom: DashboardMember[] | undefined; count: n
 }
 
 // Map a live member to the rail's row: their name, how long they have been in
-// (their own session, in the metric the site switch fronts — Deep focus or
+// (their own workSession, in the metric the site switch fronts — Deep focus or
 // Total) and the mode they are studying in. `time` is null on the server render
 // (see the type); `mode` is null on a break.
 export function toLiveRoomPerson(
@@ -47,7 +53,7 @@ export function toLiveRoomPerson(
   metric: Metric
 ): LiveRoomPerson {
   const name = member.name ?? member.discordId
-  const active = activeSession(member)
+  const active = activeWorkSession(member)
   const mode = active ? currentMode(active) : null
 
   return {
@@ -58,7 +64,7 @@ export function toLiveRoomPerson(
     time:
       active && now !== null
         ? formatDurationHM(
-            metric === 'focus' ? sessionFocusMs(active, now) : sessionSpanMs(active, now)
+            metric === 'focus' ? workSessionFocusMs(active, now) : workSessionSpanMs(active, now)
           )
         : null,
     mode: mode && mode !== 'break' ? mode : null,
@@ -67,21 +73,21 @@ export function toLiveRoomPerson(
   }
 }
 
-function activeSession(member: DashboardMember): DashboardSession | undefined {
-  return member.sessions.find((session) => session.status === 'active')
+function activeWorkSession(member: DashboardMember): DashboardWorkSession | undefined {
+  return member.workSessions.find((workSession) => workSession.status === 'active')
 }
 
 function joinedAt(member: DashboardMember): number {
-  return activeSession(member)?.startedAt ?? Number.MAX_SAFE_INTEGER
+  return activeWorkSession(member)?.startedAt ?? Number.MAX_SAFE_INTEGER
 }
 
-// The mode of the partial still running, or the latest one if the session has just
+// The mode of the partial still running, or the latest one if the workSession has just
 // closed; this is the "how they are studying" the rail shows as an icon.
 function currentMode(
-  session: DashboardSession
-): DashboardSession['partials'][number]['mode'] | null {
+  workSession: DashboardWorkSession
+): DashboardWorkSession['partials'][number]['mode'] | null {
   const current =
-    session.partials.find((partial) => partial.endedAt === null) ?? session.partials[0]
+    workSession.partials.find((partial) => partial.endedAt === null) ?? workSession.partials[0]
   return current?.mode ?? null
 }
 

@@ -1,10 +1,10 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 
-// The member's live session tracking: `isOnline` covers both a Discord session
-// and the manual web timer (the glossary's Online), while `isManual` says the
-// web timer is the one running — only that one can be stopped here.
-export type SessionTracking = {
+// The member's live work session tracking: `isOnline` covers both a Discord
+// work session and the manual web timer (the glossary's Online), while `isManual`
+// says the web timer is the one running — only that one can be stopped here.
+export type WorkSessionTracking = {
   isOnline: boolean
   isManual: boolean
   startedAt: number | null
@@ -13,7 +13,7 @@ export type SessionTracking = {
   toggleManual: () => void
 }
 
-export function useTrackingStatus(): SessionTracking {
+export function useTrackingStatus(): WorkSessionTracking {
   const status = useQuery(api.tracking.getMine)
   const start = useMutation(api.tracking.start)
   const stop = useMutation(api.tracking.stop)
@@ -21,7 +21,7 @@ export function useTrackingStatus(): SessionTracking {
   const isOnline = status?.mode != null
   const isManual = status?.mode === 'manual'
   // `status` is null until the Clerk user is synced to a users row. An object
-  // with `mode: null` means the member is online but not in a session yet.
+  // with `mode: null` means the member is online but not in a work session yet.
   const canStartManual = status?.mode === null
 
   const startManual = () => {
