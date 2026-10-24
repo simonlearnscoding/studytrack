@@ -36,3 +36,4 @@ Direction: [[Roadmap]].
 
 - [[ST-27 Task planning and active task]] (ST-27): todo · #ready-for-agent · backend for day-planned tasks, Session attribution, and the active task. Beta wiring follows.
 - [[ST-29 Task reordering by drag]] (ST-29): in-review · #ready-for-agent · manual task order per Day, whole-row drag in the beta pane, optimistic drop. Supersedes ST-27's oldest-first ordering clause.
+- [[ST-30 Foldable Done group]] (ST-30): todo · #ready-for-agent · foldable `Done · 4` group at the foot of the queue, remembered cross-device; first use of the shared task group.
