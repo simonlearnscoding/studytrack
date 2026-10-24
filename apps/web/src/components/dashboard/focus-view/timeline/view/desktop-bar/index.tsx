@@ -70,27 +70,11 @@ export function PinnedDesktopBar({
 }) {
   const now = axis.nowPx
   const {
-    mirrorRef,
-    barRef,
-    dragDraft,
-    edit,
-    pending,
-    hoveredPlanId,
-    cursorPx,
-    onLanePointerDown,
-    onLanePointerMove,
-    onLanePointerUp,
-    onLanePointerCancel,
-    onLanePointerLeave,
-    onLaneDoubleClick,
-    startMove,
-    onMoveMove,
-    onMoveUp,
-    onMoveCancel,
-    startResize,
-    onResizeMove,
-    onResizeUp,
-    onResizeCancel,
+    refs: { mirrorRef, barRef },
+    gesture: { dragDraft, edit, pending, hoveredPlanId, cursorPx },
+    laneEvents,
+    moveEvents,
+    resizeEvents,
   } = usePlanGestures({
     axis,
     row,
@@ -221,24 +205,16 @@ export function PinnedDesktopBar({
             titles. Without a signed-in row the bar degrades to the hour strip. */}
         {row && (
           <div className="h-[5.5rem] pt-8">
-            <div
-              className="cursor-crosshair relative select-none"
-              onPointerDown={onLanePointerDown}
-              onPointerMove={onLanePointerMove}
-              onPointerUp={onLanePointerUp}
-              onPointerCancel={onLanePointerCancel}
-              onPointerLeave={onLanePointerLeave}
-              onDoubleClick={onLaneDoubleClick}
-            >
+            <div className="cursor-crosshair relative select-none" {...laneEvents}>
               <RowTrack row={row} planOverride={planOverride} onSessionClick={onSessionClick} />
               {onPlanUpdate &&
                 row.planBlocks.map((block) => (
                   <span
                     key={`${block.id}-body`}
-                    onPointerDown={(event) => startMove(event, block)}
-                    onPointerMove={onMoveMove}
-                    onPointerUp={onMoveUp}
-                    onPointerCancel={onMoveCancel}
+                    onPointerDown={(event) => moveEvents.start(event, block)}
+                    onPointerMove={moveEvents.onPointerMove}
+                    onPointerUp={moveEvents.onPointerUp}
+                    onPointerCancel={moveEvents.onPointerCancel}
                     className="absolute top-0 bottom-0 z-[3] cursor-grab active:cursor-grabbing"
                     style={{ left: block.startPx, width: block.endPx - block.startPx }}
                   />
@@ -251,10 +227,10 @@ export function PinnedDesktopBar({
                         key={edge}
                         role="separator"
                         aria-label={`Resize plan ${edge}`}
-                        onPointerDown={(event) => startResize(event, block, edge)}
-                        onPointerMove={onResizeMove}
-                        onPointerUp={onResizeUp}
-                        onPointerCancel={onResizeCancel}
+                        onPointerDown={(event) => resizeEvents.start(event, block, edge)}
+                        onPointerMove={resizeEvents.onPointerMove}
+                        onPointerUp={resizeEvents.onPointerUp}
+                        onPointerCancel={resizeEvents.onPointerCancel}
                         className="absolute top-0 bottom-0 z-[4] w-2 -translate-x-1/2 cursor-ew-resize rounded-full hover:bg-primary/25"
                         style={{ left: edge === 'start' ? block.startPx : block.endPx }}
                       />

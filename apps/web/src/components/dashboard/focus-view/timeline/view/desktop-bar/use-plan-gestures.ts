@@ -304,27 +304,28 @@ export function usePlanGestures({
   const onResizeCancel = () => setEdit(null)
 
   return {
-    mirrorRef,
-    barRef,
-    dragDraft,
-    edit,
-    pending,
-    hoveredPlanId,
-    cursorPx,
-    onLanePointerDown,
-    onLanePointerMove,
-    onLanePointerUp,
-    onLanePointerCancel,
-    onLanePointerLeave,
-    onLaneDoubleClick,
-    startMove,
-    onMoveMove,
-    onMoveUp,
-    onMoveCancel,
-    startResize,
-    onResizeMove,
-    onResizeUp,
-    onResizeCancel,
+    refs: { mirrorRef, barRef },
+    gesture: { dragDraft, edit, pending, hoveredPlanId, cursorPx },
+    laneEvents: {
+      onPointerDown: onLanePointerDown,
+      onPointerMove: onLanePointerMove,
+      onPointerUp: onLanePointerUp,
+      onPointerCancel: onLanePointerCancel,
+      onPointerLeave: onLanePointerLeave,
+      onDoubleClick: onLaneDoubleClick,
+    },
+    moveEvents: {
+      start: startMove,
+      onPointerMove: onMoveMove,
+      onPointerUp: onMoveUp,
+      onPointerCancel: onMoveCancel,
+    },
+    resizeEvents: {
+      start: startResize,
+      onPointerMove: onResizeMove,
+      onPointerUp: onResizeUp,
+      onPointerCancel: onResizeCancel,
+    },
   }
 }
 
