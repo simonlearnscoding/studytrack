@@ -1,7 +1,13 @@
 import type { TimelineRowVM, TimelineWindow } from '@studytrack/backend/convex/timeline/types'
 import { nightBands } from '@studytrack/backend/convex/timeline/bands'
 import type { RefObject } from 'react'
-import { PinnedDesktopBar, type PlanClick, type PlanDrag, type PlanUpdate } from './desktop-bar'
+import {
+  PinnedDesktopBar,
+  type PlanClick,
+  type PlanDraft,
+  type PlanDrag,
+  type PlanUpdate,
+} from './desktop-bar'
 import { PinnedMobileLane } from './mobile-lane'
 import { NamesColumn } from './names-column'
 import { TrackLegend } from './track-legend'
@@ -28,6 +34,7 @@ export function DayTimeline({
   scrollerRef,
   locked,
   onToggleBand,
+  draftPlan,
   onPlanDrag,
   onPlanDoubleClick,
   onPlanUpdate,
@@ -40,6 +47,7 @@ export function DayTimeline({
   scrollerRef: RefObject<HTMLDivElement | null>
   locked: boolean
   onToggleBand: () => void
+  draftPlan?: PlanDraft | null
   onPlanDrag?: (span: PlanDrag) => void
   onPlanDoubleClick?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
@@ -78,6 +86,7 @@ export function DayTimeline({
             row={yourRow}
             nowLabel={nowLabel}
             scrollerRef={scrollerRef}
+            draftPlan={draftPlan}
             onPlanDrag={onPlanDrag}
             onPlanDoubleClick={onPlanDoubleClick}
             onPlanUpdate={onPlanUpdate}

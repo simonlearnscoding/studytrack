@@ -15,7 +15,16 @@ type PopupBase = {
   tasks: DashboardSessionTask[]
 }
 
+// A gesture's uncommitted window, waiting on the Create button. It has no
+// member or task list — those belong to a stored plan.
+type DraftPlan = {
+  kind: 'draft'
+  startAt: number
+  endAt: number
+}
+
 export type SessionPopupData =
+  | DraftPlan
   | (PopupBase & {
       kind: 'plan'
       planId: Id<'plannedSession'>
@@ -34,13 +43,50 @@ export function SessionPopupContent({
   dayStart,
   now,
   onRemove,
+  onCreate,
+  onCancel,
+  isCreating = false,
+  createError,
 }: {
   data: SessionPopupData
   dayStart: number
   now: number
   onRemove?: () => void
+  onCreate?: () => void
+  onCancel?: () => void
+  isCreating?: boolean
+  createError?: string | null
 }) {
   const [confirming, setConfirming] = useState(false)
+
+  // Nothing is stored while the draft is open: Create is the only writer, and
+  // Cancel (or dismissing the popover) leaves no Plan behind.
+  if (data.kind === 'draft') {
+    return (
+      <>
+        <div className="text-caption text-muted-foreground">
+          <p className="text-body font-semibold text-foreground">New plan</p>
+          <p className="mt-1 font-mono">
+            {formatClock(toMinute(data.startAt, dayStart))} –{' '}
+            {formatClock(toMinute(data.endAt, dayStart))} ·{' '}
+            {formatDurationHM(data.endAt - data.startAt)}
+          </p>
+        </div>
+
+        {createError && <p className="mt-2 text-caption text-destructive">{createError}</p>}
+
+        <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/[0.06] pt-2.5">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={onCreate} disabled={isCreating}>
+            Create
+          </Button>
+        </div>
+      </>
+    )
+  }
+
   const endAt = data.endAt ?? now
   const title = data.kind === 'plan' ? 'Planned session' : 'Study session'
   const status =

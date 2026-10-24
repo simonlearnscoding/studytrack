@@ -10,7 +10,7 @@ import {
   resolvePlanStart,
   type PlanSpan,
 } from '@studytrack/backend/convex/timeline/gesture'
-import { formatClock, pxToMinute } from '@studytrack/backend/convex/timeline/util'
+import { formatClock, minuteToPx, pxToMinute } from '@studytrack/backend/convex/timeline/util'
 import {
   Fragment,
   useEffect,
@@ -33,7 +33,10 @@ const DOUBLE_CLICK_PLAN_MIN = 2 * 60
 // Keeps the cursor readout fully on the axis when the pointer nears an edge.
 const CURSOR_LABEL_EDGE_PX = 28
 
-export type PlanDrag = { startMin: number; endMin: number }
+export type PlanDraft = { startMin: number; endMin: number }
+// A completed planning gesture: the window it drew, plus the viewport point the
+// draft popover anchors to.
+export type PlanDrag = PlanDraft & { x: number; y: number }
 export type PlanUpdate = {
   planId: TimelinePlanBlockVM['id']
   startMin: number
@@ -68,7 +71,7 @@ type PlanGesture = MoveGesture | ResizeGesture
 // The from – until label a resolved span wears. Gestures and the resting
 // pointer all route through this, so the times read the same whichever is in
 // flight.
-function spanText(span: PlanSpan): string {
+function spanText(span: { startMin: number; endMin: number }): string {
   return `${formatClock(span.startMin)} – ${formatClock(span.endMin)}`
 }
 
@@ -137,6 +140,7 @@ export function PinnedDesktopBar({
   row,
   nowLabel,
   scrollerRef,
+  draftPlan,
   onPlanDrag,
   onPlanDoubleClick,
   onPlanUpdate,
@@ -147,6 +151,9 @@ export function PinnedDesktopBar({
   row?: TimelineRowVM
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
+  // The window of the draft popover, kept drawn on the lane until the member
+  // decides; null when no draft is open.
+  draftPlan?: PlanDraft | null
   onPlanDrag?: (span: PlanDrag) => void
   onPlanDoubleClick?: (span: PlanDrag) => void
   onPlanUpdate?: (update: PlanUpdate) => void
@@ -235,7 +242,7 @@ export function PinnedDesktopBar({
     setDrag({ ...drag, toPx: pointerPx })
   }
 
-  const onLanePointerUp = () => {
+  const onLanePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (drag) {
       const span = resolvePlanDraft({
         segments: axis.segments,
@@ -246,7 +253,12 @@ export function PinnedDesktopBar({
         nowPx: drag.nowPx,
       })
       if (span && span.widthPx >= DRAG_PX_THRESHOLD) {
-        onPlanDrag?.({ startMin: span.startMin, endMin: span.endMin })
+        onPlanDrag?.({
+          startMin: span.startMin,
+          endMin: span.endMin,
+          x: event.clientX,
+          y: event.clientY,
+        })
       }
     }
     setDrag(null)
@@ -266,6 +278,8 @@ export function PinnedDesktopBar({
     onPlanDoubleClick?.({
       startMin: start.startMin,
       endMin: start.startMin + DOUBLE_CLICK_PLAN_MIN,
+      x: event.clientX,
+      y: event.clientY,
     })
   }
 
@@ -408,6 +422,16 @@ export function PinnedDesktopBar({
   const dragLeft = draft?.leftPx ?? 0
   const dragWidth = draft?.widthPx ?? 0
   const dragLabel = draft && dragWidth >= DRAG_PX_THRESHOLD ? spanText(draft) : null
+
+  // The dashed span stays on the lane while its draft popover is open, so the
+  // member confirms a block they can still see. `minuteToPx` is null inside a
+  // collapsed band, where no plan can start anyway.
+  const openDraftLeftPx = draftPlan ? minuteToPx(axis.segments, draftPlan.startMin) : null
+  const openDraftEndPx = draftPlan ? minuteToPx(axis.segments, draftPlan.endMin) : null
+  const openDraft =
+    openDraftLeftPx != null && openDraftEndPx != null
+      ? { leftPx: openDraftLeftPx, widthPx: openDraftEndPx - openDraftLeftPx }
+      : null
 
   // The live geometry that replaces the stored block during a gesture. There is
   // deliberately no "before" outline: the block itself moves.
@@ -554,6 +578,15 @@ export function PinnedDesktopBar({
                 />
               )}
               {dragLabel && <PlanSpanLabel leftPx={dragLeft} label={dragLabel} />}
+              {draftPlan && openDraft && (
+                <>
+                  <div
+                    className="border-primary/55 bg-primary/10 pointer-events-none absolute inset-y-0 border border-dashed"
+                    style={{ left: openDraft.leftPx, width: openDraft.widthPx }}
+                  />
+                  <PlanSpanLabel leftPx={openDraft.leftPx} label={spanText(draftPlan)} />
+                </>
+              )}
               {editLabel && <PlanSpanLabel leftPx={editLabelLeftPx} label={editLabel} />}
               {hoverLabel && <PlanSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
               {cursorLabel && <CursorTimeLabel leftPx={cursorLabelLeftPx} label={cursorLabel} />}

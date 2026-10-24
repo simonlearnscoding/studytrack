@@ -44,6 +44,8 @@ export function TimelineSection() {
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
   const nowMin = toMinute(now, dayStart)
   const [popup, setPopup] = useState<{ data: SessionPopupData; x: number; y: number } | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
   const [manual, toggleBand] = useExpansionPreference()
   const auto = useAutoExpansion(nowMin)
   const createPlan = useMutation(api.plannedSessions.create)
@@ -65,6 +67,13 @@ export function TimelineSection() {
     window: axis,
     metric,
   })
+  const draftPlan =
+    popup?.data.kind === 'draft'
+      ? {
+          startMin: toMinute(popup.data.startAt, dayStart),
+          endMin: toMinute(popup.data.endAt, dayStart),
+        }
+      : null
 
   const openPlan = (click: PlanClick) => {
     const owner = members?.find((member) => member.plans.some((plan) => plan.id === click.planId))
@@ -86,21 +95,47 @@ export function TimelineSection() {
     })
   }
 
-  // Both planning gestures land on the same create mutation; the gesture decides
-  // the span (a drag draws it, a double-click asks for two hours).
-  const createPlanAt = (span: PlanDrag) => {
-    void createPlan({
-      dayStart,
-      plannedStart: dayStart + span.startMin * 60_000,
-      plannedEnd: dayStart + span.endMin * 60_000,
-    }).catch((error) => console.error('[studytrack] plan change failed', error))
+  const closePopup = () => {
+    setPopup(null)
+    setCreateError(null)
+    setIsCreating(false)
+  }
+
+  // Both planning gestures (a drag draws the span, a double-click asks for two
+  // hours) open the same draft popover. Nothing is stored until Create.
+  const openPlanDraft = (span: PlanDrag) => {
+    setCreateError(null)
+    setIsCreating(false)
+    setPopup({
+      x: span.x,
+      y: span.y,
+      data: {
+        kind: 'draft',
+        startAt: dayStart + span.startMin * 60_000,
+        endAt: dayStart + span.endMin * 60_000,
+      },
+    })
+  }
+
+  const createDraftPlan = () => {
+    if (popup?.data.kind !== 'draft') return
+    const { startAt, endAt } = popup.data
+    setIsCreating(true)
+    setCreateError(null)
+    void createPlan({ dayStart, plannedStart: startAt, plannedEnd: endAt })
+      .then(closePopup)
+      .catch((error) => {
+        console.error('[studytrack] plan create failed', error)
+        setCreateError(planCreateMessage(error))
+        setIsCreating(false)
+      })
   }
 
   const removePopupPlan = () => {
     if (popup?.data.kind !== 'plan') return
     const planId = popup.data.planId
     void removePlan({ planId })
-      .then(() => setPopup(null))
+      .then(closePopup)
       .catch((error) => console.error('[studytrack] plan remove failed', error))
   }
 
@@ -141,8 +176,9 @@ export function TimelineSection() {
           scrollerRef={scrollerRef}
           locked={auto.morning}
           onToggleBand={toggleBand}
-          onPlanDrag={createPlanAt}
-          onPlanDoubleClick={createPlanAt}
+          draftPlan={draftPlan}
+          onPlanDrag={openPlanDraft}
+          onPlanDoubleClick={openPlanDraft}
           onPlanClick={openPlan}
           onSessionClick={openSession}
           onPlanUpdate={(update) => {
@@ -158,7 +194,7 @@ export function TimelineSection() {
       <Popover
         open={popup !== null}
         onOpenChange={(open) => {
-          if (!open) setPopup(null)
+          if (!open) closePopup()
         }}
       >
         {popup && (
@@ -170,11 +206,21 @@ export function TimelineSection() {
         <PopoverContent side="bottom" align="start" sideOffset={8} className="w-64 p-3">
           {popup && (
             <SessionPopupContent
-              key={popup.data.kind === 'plan' ? popup.data.planId : popup.data.sessionId}
+              key={
+                popup.data.kind === 'plan'
+                  ? popup.data.planId
+                  : popup.data.kind === 'session'
+                    ? popup.data.sessionId
+                    : `draft-${popup.data.startAt}`
+              }
               data={popup.data}
               dayStart={dayStart}
               now={now}
               onRemove={popup.data.kind === 'plan' ? removePopupPlan : undefined}
+              onCreate={popup.data.kind === 'draft' ? createDraftPlan : undefined}
+              onCancel={popup.data.kind === 'draft' ? closePopup : undefined}
+              isCreating={popup.data.kind === 'draft' && isCreating}
+              createError={popup.data.kind === 'draft' ? createError : null}
             />
           )}
         </PopoverContent>
@@ -195,4 +241,13 @@ function planMissed(member: DashboardMember, startAt: number, endAt: number, now
         (partial.endedAt ?? Number.POSITIVE_INFINITY) > startAt
     )
   )
+}
+
+// The two refusals a draft can still hit after the popover opened: the clock
+// crossed the start, or a live read brought in an overlapping plan.
+function planCreateMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : ''
+  if (message.includes('overlaps')) return 'That time is already planned.'
+  if (message.includes('past')) return 'That time is in the past.'
+  return 'Could not create the plan.'
 }
