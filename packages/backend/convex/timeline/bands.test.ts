@@ -14,8 +14,8 @@ const row = (hiddenCount: number): TimelineRowVM => ({
   live: false,
   tail: '—',
   bars: [],
-  plans: [],
   planBlocks: [],
+  planBlockWalls: [],
   dots: [],
   hiddenCount,
 })

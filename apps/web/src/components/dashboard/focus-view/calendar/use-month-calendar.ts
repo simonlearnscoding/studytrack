@@ -3,13 +3,13 @@ import {
   buildMonthGrid,
   monthLabel,
   type MonthCell,
-} from '@studytrack/backend/convex/sessions/calendar'
+} from '@studytrack/backend/convex/workSessions/calendar'
 import {
   DASHBOARD_TIME_ZONE,
   nextMonthStart,
   shiftMonth,
   startOfDay,
-} from '@studytrack/backend/convex/sessions/util'
+} from '@studytrack/backend/convex/workSessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
 import { useMetric } from '~/hooks/use-metric-preference'

@@ -95,7 +95,7 @@ export function Leaderboard({
           className={`flex items-center justify-center px-4 ${compact ? 'min-h-44' : 'min-h-48'}`}
         >
           <p className="text-body text-center text-muted-foreground">
-            No sessions yet. Join a study voice channel to start the board.
+            No workSessions yet. Join a study voice channel to start the board.
           </p>
         </div>
       ) : (

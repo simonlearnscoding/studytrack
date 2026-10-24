@@ -58,7 +58,7 @@ describe('tasks.listMine', () => {
       done: false,
       completedAt: null,
       plannedAt: DAY,
-      plannedSessionId: null,
+      plannedWorkSessionId: null,
     })
   })
 
@@ -282,25 +282,25 @@ describe('tasks.reschedule', () => {
     expect(tasks.map((task) => task.title)).toEqual(['Legacy one', 'Legacy two', 'Movable'])
   })
 
-  it('clears the Session plan when the task moves to another Day', async () => {
+  it('clears the WorkSession plan when the task moves to another Day', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Planned', YESTERDAY)
     const taskId = await idOf(t, 'Planned')
     await t.run(async (ctx) => {
-      const sessionId = await ctx.db.insert('session', {
+      const workSessionId = await ctx.db.insert('workSession', {
         status: 'ended',
         startedAt: YESTERDAY,
         endedAt: YESTERDAY + 60_000,
       })
-      await ctx.db.patch(taskId, { plannedSessionId: sessionId })
+      await ctx.db.patch(taskId, { plannedWorkSessionId: workSessionId })
     })
 
     await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
 
     const moved = (await tasksOf(t)).find((task) => task._id === taskId)
     expect(moved?.plannedAt).toBe(DAY)
-    expect(moved?.plannedSessionId).toBeUndefined()
+    expect(moved?.plannedWorkSessionId).toBeUndefined()
   })
 
   it('is a no-op when the task is already on that Day', async () => {

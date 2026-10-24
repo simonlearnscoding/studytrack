@@ -4,7 +4,7 @@ import { Button } from '~/components/ui/button'
 import type { StoredPopupData } from './types'
 import { PopupWindow } from './window-line'
 
-// A stored Plan or Session. Both answer "what is this block on the lane?", so
+// A stored planBlock or workSession. Both answer "what is this block on the lane?", so
 // they share the frame; only the vocabulary and the remove action differ.
 export function StoredPopup({
   data,
@@ -18,14 +18,14 @@ export function StoredPopup({
   onRemove?: () => void
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
-  const isPlan = data.kind === 'plan'
+  const isPlanBlock = data.kind === 'planBlock'
   const endAt = data.endAt ?? now
-  const status = isPlan ? (data.missed ? 'Missed' : 'Planned') : data.live ? 'Live' : 'Done'
-  const kindLabel = isPlan ? 'Plan' : 'Study session'
-  const tasksHeading = isPlan ? 'Tasks planned' : 'Tasks in this session'
-  const emptyTasksMessage = isPlan
+  const status = isPlanBlock ? (data.missed ? 'Missed' : 'Planned') : data.live ? 'Live' : 'Done'
+  const kindLabel = isPlanBlock ? 'Plan block' : 'Work session'
+  const tasksHeading = isPlanBlock ? 'Tasks planned' : 'Tasks in this work session'
+  const emptyTasksMessage = isPlanBlock
     ? 'No tasks linked to this plan yet.'
-    : 'No tasks in this session.'
+    : 'No tasks in this work session.'
 
   return (
     <>
@@ -63,7 +63,7 @@ export function StoredPopup({
         )}
       </div>
 
-      {isPlan && onRemove && (
+      {isPlanBlock && onRemove && (
         <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/6 pt-2.5">
           {confirmingRemove ? (
             <>

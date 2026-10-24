@@ -45,12 +45,12 @@ function voiceEvent(
   }
 }
 
-async function sessionsOf(t: Test) {
-  return await t.run(async (ctx) => await ctx.db.query('session').collect())
+async function workSessionsOf(t: Test) {
+  return await t.run(async (ctx) => await ctx.db.query('workSession').collect())
 }
 
 async function partialsOf(t: Test) {
-  return await t.run(async (ctx) => await ctx.db.query('sessionPartial').collect())
+  return await t.run(async (ctx) => await ctx.db.query('workSessionPartial').collect())
 }
 
 describe('bot.recordVoiceEvent', () => {
@@ -61,7 +61,7 @@ describe('bot.recordVoiceEvent', () => {
     ).rejects.toThrow(/Unauthorized/)
   })
 
-  it('opens a session and its first partial on joining', async () => {
+  it('opens a workSession and its first partial on joining', async () => {
     const t = makeTest()
     const res = await t.mutation(
       api.bot.recordVoiceEvent,
@@ -69,21 +69,25 @@ describe('bot.recordVoiceEvent', () => {
     )
     expect(res).toEqual({ started: true })
 
-    const sessions = await sessionsOf(t)
-    expect(sessions).toHaveLength(1)
-    expect(sessions[0]).toMatchObject({ discordId: 'discord-1', guildId: GUILD, status: 'active' })
+    const workSessions = await workSessionsOf(t)
+    expect(workSessions).toHaveLength(1)
+    expect(workSessions[0]).toMatchObject({
+      discordId: 'discord-1',
+      guildId: GUILD,
+      status: 'active',
+    })
 
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(1)
     expect(partials[0]).toMatchObject({ channelId: 'chan-a', mode: 'voice', status: 'active' })
-    expect(partials[0].sessionId).toBe(sessions[0]._id)
+    expect(partials[0].workSessionId).toBe(workSessions[0]._id)
     expect(partials[0].durationMs).toBeUndefined()
 
-    // The bot upserts the user (with the Discord username) and links the session.
+    // The bot upserts the user (with the Discord username) and links the workSession.
     const users = await t.run(async (ctx) => await ctx.db.query('users').collect())
     expect(users).toHaveLength(1)
     expect(users[0]).toMatchObject({ discordId: 'discord-1', name: 'discord-user' })
-    expect(sessions[0].userId).toBe(users[0]._id)
+    expect(workSessions[0].userId).toBe(users[0]._id)
   })
 
   it('records the mode the member joined in', async () => {
@@ -106,7 +110,7 @@ describe('bot.recordVoiceEvent', () => {
     expect(await partialsOf(t)).toHaveLength(1)
   })
 
-  it('opens a new partial on the same session when the mode changes', async () => {
+  it('opens a new partial on the same workSession when the mode changes', async () => {
     const t = makeTest()
     await t.mutation(api.bot.recordVoiceEvent, voiceEvent(snap(), snap({ channelId: 'chan-a' })))
     const res = await t.mutation(
@@ -115,8 +119,8 @@ describe('bot.recordVoiceEvent', () => {
     )
     expect(res).toEqual({ started: true })
 
-    // Same session, a second partial.
-    expect(await sessionsOf(t)).toHaveLength(1)
+    // Same workSession, a second partial.
+    expect(await workSessionsOf(t)).toHaveLength(1)
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(2)
     const active = partials.find((p) => p.status === 'active')
@@ -126,7 +130,7 @@ describe('bot.recordVoiceEvent', () => {
     expect(ended?.durationMs).toBeTypeOf('number')
   })
 
-  it('opens a new partial on the same session when moving channels', async () => {
+  it('opens a new partial on the same workSession when moving channels', async () => {
     const t = makeTest()
     await t.mutation(api.bot.recordVoiceEvent, voiceEvent(snap(), snap({ channelId: 'chan-a' })))
     const res = await t.mutation(
@@ -135,14 +139,14 @@ describe('bot.recordVoiceEvent', () => {
     )
     expect(res).toEqual({ started: true })
 
-    expect(await sessionsOf(t)).toHaveLength(1)
+    expect(await workSessionsOf(t)).toHaveLength(1)
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(2)
     expect(partials.find((p) => p.status === 'ended')?.channelId).toBe('chan-a')
     expect(partials.find((p) => p.status === 'active')?.channelId).toBe('chan-b')
   })
 
-  it('ends the session and its partial on leaving voice', async () => {
+  it('ends the workSession and its partial on leaving voice', async () => {
     const t = makeTest()
     await t.mutation(api.bot.recordVoiceEvent, voiceEvent(snap(), snap({ channelId: 'chan-a' })))
     const res = await t.mutation(
@@ -151,10 +155,10 @@ describe('bot.recordVoiceEvent', () => {
     )
     expect(res).toEqual({ ended: 1 })
 
-    const sessions = await sessionsOf(t)
-    expect(sessions).toHaveLength(1)
-    expect(sessions[0]).toMatchObject({ status: 'ended' })
-    expect(sessions[0].endedAt).toBeTypeOf('number')
+    const workSessions = await workSessionsOf(t)
+    expect(workSessions).toHaveLength(1)
+    expect(workSessions[0]).toMatchObject({ status: 'ended' })
+    expect(workSessions[0].endedAt).toBeTypeOf('number')
 
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(1)
@@ -162,7 +166,7 @@ describe('bot.recordVoiceEvent', () => {
     expect(partials[0].durationMs).toBeTypeOf('number')
   })
 
-  it('reopens the session with a break partial when re-joining within 30 minutes', async () => {
+  it('reopens the workSession with a break partial when re-joining within 30 minutes', async () => {
     const t = makeTest()
     await t.mutation(api.bot.recordVoiceEvent, voiceEvent(snap(), snap({ channelId: 'chan-a' })))
     await t.mutation(api.bot.recordVoiceEvent, voiceEvent(snap({ channelId: 'chan-a' }), snap()))
@@ -172,16 +176,16 @@ describe('bot.recordVoiceEvent', () => {
     )
     expect(res).toEqual({ started: true })
 
-    // Same session, reopened.
-    const sessions = await sessionsOf(t)
-    expect(sessions).toHaveLength(1)
-    expect(sessions[0]).toMatchObject({ status: 'active' })
-    expect(sessions[0].endedAt).toBeUndefined()
+    // Same workSession, reopened.
+    const workSessions = await workSessionsOf(t)
+    expect(workSessions).toHaveLength(1)
+    expect(workSessions[0]).toMatchObject({ status: 'active' })
+    expect(workSessions[0].endedAt).toBeUndefined()
 
     // Original partial, a break partial for the gap, and the new active partial.
     const partials = await partialsOf(t)
     expect(partials).toHaveLength(3)
-    expect(partials.every((p) => p.sessionId === sessions[0]._id)).toBe(true)
+    expect(partials.every((p) => p.workSessionId === workSessions[0]._id)).toBe(true)
 
     const brk = partials.find((p) => p.mode === 'break')
     expect(brk?.status).toBe('ended')

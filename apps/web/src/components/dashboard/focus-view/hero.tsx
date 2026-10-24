@@ -5,7 +5,7 @@ import type { QueueTask } from './tasks/task-types'
 
 const heroIdle = { together: 5, openedAt: '12:16', streak: '6d' }
 
-// The session header. Its task area mirrors the queue's Now task — the first
+// The workSession header. Its task area mirrors the queue's Now task — the first
 // open task of the Day. Read-only — the pane and the mobile dock are where you
 // complete and clear.
 export function Hero({
@@ -38,7 +38,7 @@ export function Hero({
             {minutes}
             <span className="text-subtle-foreground text-[0.62em]">m</span>
           </div>
-          <p className="text-subtle-foreground mt-1 text-xs">your session</p>
+          <p className="text-subtle-foreground mt-1 text-xs">your work session</p>
         </div>
 
         {/* Now is the topmost open task, promoted to the hero so the room can see

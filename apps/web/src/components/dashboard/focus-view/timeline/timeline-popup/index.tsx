@@ -1,13 +1,13 @@
-import { DraftPlanPopup } from './draft-plan-popup'
+import { DraftPlanBlockPopup } from './draft-plan-popup'
 import { StoredPopup } from './stored-popup'
-import type { SessionPopupData } from './types'
+import type { TimelinePopupData } from './types'
 
-export type { SessionPopupData } from './types'
+export type { TimelinePopupData } from './types'
 
 // The popover's dispatcher: an uncommitted draft asks for a decision, a stored
-// Plan or Session shows its details. Positioning, dismissal and the frame
+// planBlock or workSession shows its details. Positioning, dismissal and the frame
 // belong to the caller (a Radix Popover), so this stays a pure view.
-export function SessionPopupContent({
+export function TimelinePopupContent({
   data,
   dayStart,
   now,
@@ -17,7 +17,7 @@ export function SessionPopupContent({
   isCreating = false,
   createError,
 }: {
-  data: SessionPopupData
+  data: TimelinePopupData
   dayStart: number
   now: number
   onRemove?: () => void
@@ -28,7 +28,7 @@ export function SessionPopupContent({
 }) {
   if (data.kind === 'draft') {
     return (
-      <DraftPlanPopup
+      <DraftPlanBlockPopup
         plan={data}
         dayStart={dayStart}
         onCreate={onCreate}

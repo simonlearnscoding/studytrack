@@ -1,5 +1,5 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
-import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import type { Task, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
 import { useCachedTasks } from './use-cached-tasks'

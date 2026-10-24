@@ -1,13 +1,13 @@
-import type { DashboardMember } from '../sessions/types'
-import { memberFocusMs } from '../sessions/metrics'
-import { formatDurationHM, memberTotalMs } from '../sessions/util'
+import type { DashboardMember } from '../workSessions/types'
+import { memberFocusMs } from '../workSessions/metrics'
+import { formatDurationHM, memberTotalMs } from '../workSessions/util'
 import type {
   ExpansionState,
   TimelineBarVM,
   TimelineDotVM,
   TimelineMetric,
+  TimelinePlanBlockWallVM,
   TimelinePlanBlockVM,
-  TimelinePlanVM,
   TimelineRowVM,
   TimelineSegment,
   TimelineTick,
@@ -111,7 +111,7 @@ export function toMinute(instant: number, dayStart: number): number {
 
 // The hour until which the clock holds the night band open on its own. Later
 // than the band's own end (06:00): while you are plausibly still in or wrapping
-// up a morning session, the night you just lived through stays on screen. And
+// up a morning workSession, the night you just lived through stays on screen. And
 // because an auto-open cannot be collapsed, this one number is also the lock —
 // the toggle turns live only once the hour has passed (LD-1 / ADR-0008).
 export const AUTO_OPEN_UNTIL_MIN = 9 * 60
@@ -184,20 +184,21 @@ function toRow(
   { now, dayStart, me, window, metric }: TimelineInput
 ): TimelineRowVM {
   const bars: TimelineBarVM[] = []
-  const plans: TimelinePlanVM[] = []
   const planBlocks: TimelinePlanBlockVM[] = []
+  const planBlockWalls: TimelinePlanBlockWallVM[] = []
   const dots: TimelineDotVM[] = []
   let hiddenCount = 0
 
-  for (const plan of member.plans) {
+  for (const plan of member.planBlocks) {
     const plannedStartMin = toMinute(plan.startAt, dayStart)
     const plannedEndMin = toMinute(plan.endAt, dayStart)
-    const missed = plan.endAt <= now && !planHasEvidence(member.sessions, plan.startAt, plan.endAt)
+    const missed =
+      plan.endAt <= now && !planHasEvidence(member.workSessions, plan.startAt, plan.endAt)
     forEachVisibleSpan(
       window.segments,
       plannedStartMin,
       plannedEndMin,
-      (leftPx, widthPx) => plans.push({ id: plan.id, leftPx, widthPx, missed }),
+      (leftPx, widthPx) => planBlocks.push({ id: plan.id, leftPx, widthPx, missed }),
       () => {}
     )
 
@@ -208,17 +209,17 @@ function toRow(
     const endPx = minuteToPx(window.segments, plannedEndMin)
     if (startPx === null && endPx !== null) startPx = window.segments[0].widthPx
     if (startPx !== null && endPx !== null && endPx > startPx) {
-      planBlocks.push({ id: plan.id, startPx, endPx })
+      planBlockWalls.push({ id: plan.id, startPx, endPx })
     }
   }
 
-  for (const session of member.sessions) {
+  for (const workSession of member.workSessions) {
     let hiddenInsideBand = false
-    const sessionBars: TimelineBarVM[] = []
-    // Ascending, so the pieces of one session reach the lane in axis order and
-    // the first/last of them can carry the session's own caps. The payload
+    const workSessionBars: TimelineBarVM[] = []
+    // Ascending, so the pieces of one workSession reach the lane in axis order and
+    // the first/last of them can carry the workSession's own caps. The payload
     // hands partials over newest-first.
-    const partials = [...session.partials].sort((a, b) => a.startedAt - b.startedAt)
+    const partials = [...workSession.partials].sort((a, b) => a.startedAt - b.startedAt)
 
     for (const partial of partials) {
       const startMin = toMinute(partial.startedAt, dayStart)
@@ -228,8 +229,8 @@ function toRow(
         startMin,
         endMin,
         (leftPx, widthPx) =>
-          sessionBars.push({
-            sessionId: session.id,
+          workSessionBars.push({
+            workSessionId: workSession.id,
             leftPx,
             widthPx,
             mode: partial.mode,
@@ -243,26 +244,26 @@ function toRow(
       )
     }
 
-    // The session's own ends are the only round ones. The first visible piece
+    // The workSession's own ends are the only round ones. The first visible piece
     // always wears the round start — even when study began off screen (before
     // the day, or inside the collapsed night band), that edge is where the
-    // session enters the lane and must read as its beginning. The last piece
-    // wears a round end only once the session has really ended on screen; while
+    // workSession enters the lane and must read as its beginning. The last piece
+    // wears a round end only once the workSession has really ended on screen; while
     // it runs, the now-line is what cuts the line, so that edge stays square.
-    const firstBar = sessionBars[0]
-    const lastBar = sessionBars[sessionBars.length - 1]
+    const firstBar = workSessionBars[0]
+    const lastBar = workSessionBars[workSessionBars.length - 1]
     if (firstBar) firstBar.roundStart = true
     if (
       lastBar &&
-      session.status === 'ended' &&
-      session.endedAt !== null &&
-      minuteToPx(window.segments, toMinute(session.endedAt, dayStart)) !== null
+      workSession.status === 'ended' &&
+      workSession.endedAt !== null &&
+      minuteToPx(window.segments, toMinute(workSession.endedAt, dayStart)) !== null
     ) {
       lastBar.roundEnd = true
     }
-    bars.push(...sessionBars)
+    bars.push(...workSessionBars)
 
-    for (const task of session.tasks) {
+    for (const task of workSession.tasks) {
       // Planned-only entries carry no instant and are not dots.
       if (task.completedAt === null) continue
       const hit = segmentAt(window.segments, toMinute(task.completedAt, dayStart))
@@ -284,22 +285,22 @@ function toRow(
       (metric ?? 'total') === 'focus' ? memberFocusMs(member, now) : memberTotalMs(member, now)
     ),
     bars: bars.sort((a, b) => a.leftPx - b.leftPx),
-    plans: plans.sort((a, b) => a.leftPx - b.leftPx),
-    planBlocks: planBlocks.sort((a, b) => a.startPx - b.startPx),
+    planBlocks: planBlocks.sort((a, b) => a.leftPx - b.leftPx),
+    planBlockWalls: planBlockWalls.sort((a, b) => a.startPx - b.startPx),
     dots: dots.sort((a, b) => a.leftPx - b.leftPx),
     hiddenCount,
   }
 }
 
-// A plan counts as kept when some non-break voice time overlaps its window. Only
-// an ended window needs this: before it ends the plan is simply upcoming.
+// A planBlock counts as kept when some non-break voice time overlaps its window.
+// Only an ended window needs this: before it ends the block is simply upcoming.
 function planHasEvidence(
-  sessions: DashboardMember['sessions'],
+  workSessions: DashboardMember['workSessions'],
   startAt: number,
   endAt: number
 ): boolean {
-  return sessions.some((session) =>
-    session.partials.some(
+  return workSessions.some((workSession) =>
+    workSession.partials.some(
       (partial) =>
         partial.mode !== 'break' &&
         partial.startedAt < endAt &&

@@ -3,10 +3,10 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type {
   DashboardMember,
   DashboardPartial,
-  DashboardSession,
-  SessionTaskSource,
+  DashboardWorkSession,
+  WorkSessionTaskSource,
 } from './types'
-import { attachTasksToSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
+import { attachTasksToWorkSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
 
@@ -22,7 +22,7 @@ export async function listActive(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) return []
   return await ctx.db
-    .query('sessionPartial')
+    .query('workSessionPartial')
     .withIndex('by_status', (q) => q.eq('status', 'active'))
     .collect()
 }
@@ -31,10 +31,10 @@ export async function listActive(ctx: QueryCtx) {
 export async function listRecent(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) return []
-  return await ctx.db.query('sessionPartial').order('desc').take(25)
+  return await ctx.db.query('workSessionPartial').order('desc').take(25)
 }
 
-// One card per member for the dashboard: their whole day's sessions and partials,
+// One card per member for the dashboard: their whole day's workSessions and partials,
 // grouped. Returns raw timestamps only — the client derives live durations and
 // totals against its own clock (see ./util). `dayStart` (epoch ms) is passed by
 // the caller because queries must not read the wall clock; it stays stable for
@@ -52,12 +52,12 @@ export async function getTodaysActivitiesForDashboard(
   }
   const members = await groupTodaysMembers(ctx, dayStart)
   const withTasks = await attachDayTasks(ctx, members, dayStart)
-  const withPlans = await attachDayPlans(ctx, withTasks, dayStart)
-  return await attachActiveTasks(ctx, withPlans)
+  const withPlanBlocks = await attachDayPlanBlocks(ctx, withTasks, dayStart)
+  return await attachActiveTasks(ctx, withPlanBlocks)
 }
 
 // The shared day-window read, without any auth: everyone who studied today (or is
-// still running), grouped session → member. Both the dashboard query above and the
+// still running), grouped workSession → member. Both the dashboard query above and the
 // bot leaderboard build on this; the caller decides who may read it.
 export async function groupTodaysMembers(
   ctx: QueryCtx,
@@ -67,59 +67,60 @@ export async function groupTodaysMembers(
   // latter may have started before midnight and is part of the live picture.
   const [today, active] = await Promise.all([
     ctx.db
-      .query('sessionPartial')
+      .query('workSessionPartial')
       .withIndex('by_startedAt', (q) => q.gte('startedAt', dayStart))
       .take(MAX_TODAY_PARTIALS),
     ctx.db
-      .query('sessionPartial')
+      .query('workSessionPartial')
       .withIndex('by_status', (q) => q.eq('status', 'active'))
       .take(MAX_ACTIVE_PARTIALS),
   ])
 
-  const byId = new Map<Id<'sessionPartial'>, Doc<'sessionPartial'>>()
+  const byId = new Map<Id<'workSessionPartial'>, Doc<'workSessionPartial'>>()
   for (const partial of [...today, ...active]) byId.set(partial._id, partial)
   const partials = [...byId.values()]
 
-  // Group partials under their session, then sessions under their member.
-  const partialsBySession = new Map<Id<'session'>, Doc<'sessionPartial'>[]>()
+  // Group partials under their workSession, then workSessions under their member.
+  const partialsByWorkSession = new Map<Id<'workSession'>, Doc<'workSessionPartial'>[]>()
   for (const partial of partials) {
-    const list = partialsBySession.get(partial.sessionId) ?? []
+    const list = partialsByWorkSession.get(partial.workSessionId) ?? []
     list.push(partial)
-    partialsBySession.set(partial.sessionId, list)
+    partialsByWorkSession.set(partial.workSessionId, list)
   }
 
-  const sessionsByMember = new Map<string, DashboardSession[]>()
+  const workSessionsByMember = new Map<string, DashboardWorkSession[]>()
   const userByMember = new Map<string, Id<'users'> | null>()
 
-  for (const [sessionId, sessionPartials] of partialsBySession) {
-    const session = await ctx.db.get(sessionId)
-    if (!session) continue
+  for (const [workSessionId, workSessionPartials] of partialsByWorkSession) {
+    const workSession = await ctx.db.get(workSessionId)
+    if (!workSession) continue
 
-    // Manual sessions have no Discord id, so a member is keyed by their user row
-    // when needed and only falls back to the session id in the impossible case.
-    const memberKey = session.discordId ?? (session.userId ? String(session.userId) : sessionId)
-    const list = sessionsByMember.get(memberKey) ?? []
-    list.push(buildSession(session, sessionPartials))
-    sessionsByMember.set(memberKey, list)
+    // Manual workSessions have no Discord id, so a member is keyed by their user row
+    // when needed and only falls back to the workSession id in the impossible case.
+    const memberKey =
+      workSession.discordId ?? (workSession.userId ? String(workSession.userId) : workSessionId)
+    const list = workSessionsByMember.get(memberKey) ?? []
+    list.push(buildWorkSession(workSession, workSessionPartials))
+    workSessionsByMember.set(memberKey, list)
     if (!userByMember.has(memberKey)) {
-      const userId = session.userId ?? sessionPartials.find((p) => p.userId)?.userId ?? null
+      const userId = workSession.userId ?? workSessionPartials.find((p) => p.userId)?.userId ?? null
       userByMember.set(memberKey, userId ?? null)
     }
   }
 
   const members: DashboardMember[] = []
-  for (const [memberKey, sessions] of sessionsByMember) {
+  for (const [memberKey, workSessions] of workSessionsByMember) {
     const userId = userByMember.get(memberKey) ?? null
     const user = userId ? await ctx.db.get(userId) : null
-    sessions.sort((a, b) => b.startedAt - a.startedAt)
+    workSessions.sort((a, b) => b.startedAt - a.startedAt)
     members.push({
       userId,
       discordId: memberKey,
       name: user?.name ?? null,
       image: user?.image ?? null,
-      online: sessions.some((s) => s.status === 'active'),
-      sessions,
-      plans: [],
+      online: workSessions.some((s) => s.status === 'active'),
+      workSessions,
+      planBlocks: [],
       activeTask: null,
     })
   }
@@ -127,13 +128,13 @@ export async function groupTodaysMembers(
   return members
 }
 
-// Safety net: a forgotten session (e.g. the bot restarted while someone was
+// Safety net: a forgotten workSession (e.g. the bot restarted while someone was
 // connected) is closed after 8 hours instead of counting forever. Ends both the
-// stale partial and the session it belongs to.
+// stale partial and the workSession it belongs to.
 export async function closeStale(ctx: MutationCtx) {
   const now = Date.now()
   const active = await ctx.db
-    .query('sessionPartial')
+    .query('workSessionPartial')
     .withIndex('by_status', (q) => q.eq('status', 'active'))
     .collect()
 
@@ -145,28 +146,28 @@ export async function closeStale(ctx: MutationCtx) {
         endedAt: now,
         durationMs: now - partial.startedAt,
       })
-      await ctx.db.patch(partial.sessionId, { status: 'ended', endedAt: now })
+      await ctx.db.patch(partial.workSessionId, { status: 'ended', endedAt: now })
       closed += 1
     }
   }
   return closed
 }
 
-function buildSession(
-  session: Doc<'session'>,
-  partials: Doc<'sessionPartial'>[]
-): DashboardSession {
+function buildWorkSession(
+  workSession: Doc<'workSession'>,
+  partials: Doc<'workSessionPartial'>[]
+): DashboardWorkSession {
   return {
-    id: session._id,
-    status: session.status,
-    startedAt: session.startedAt,
-    endedAt: session.endedAt ?? null,
+    id: workSession._id,
+    status: workSession.status,
+    startedAt: workSession.startedAt,
+    endedAt: workSession.endedAt ?? null,
     partials: partials.map(toDashboardPartial).sort((a, b) => b.startedAt - a.startedAt),
     tasks: [],
   }
 }
 
-function toDashboardPartial(partial: Doc<'sessionPartial'>): DashboardPartial {
+function toDashboardPartial(partial: Doc<'workSessionPartial'>): DashboardPartial {
   return {
     id: partial._id,
     channelId: partial.channelId ?? null,
@@ -176,7 +177,7 @@ function toDashboardPartial(partial: Doc<'sessionPartial'>): DashboardPartial {
   }
 }
 
-// Bind each member's Day tasks to their sessions. Two indexed reads replace the
+// Bind each member's Day tasks to their workSessions. Two indexed reads replace the
 // old newest-first scan: the Day's plan (by `plannedAt`) and the Day's completions
 // (by `completedAt`), so an old task finished today still shows. Both are bounded;
 // task content is public, so titles ride along (ADR-0007).
@@ -210,28 +211,28 @@ async function attachDayTasks(
       // A task planned and finished today arrives from both reads; keep one row.
       const byId = new Map(planned.map((task) => [task._id, task]))
       for (const task of completed) byId.set(task._id, task)
-      const sources: SessionTaskSource[] = [...byId.values()].map(toSessionTaskSource)
+      const sources: WorkSessionTaskSource[] = [...byId.values()].map(toWorkSessionTaskSource)
       if (sources.length === 0) return member
 
-      return { ...member, sessions: attachTasksToSessions(member.sessions, sources) }
+      return { ...member, workSessions: attachTasksToWorkSessions(member.workSessions, sources) }
     })
   )
 }
 
-// Attach each member's planned sessions for the Day. Plans are public (ADR-0007)
-// and are not Sessions, so a plan with no partials must still get a card:
+// Attach each member's planBlocks for the Day. planBlocks are public (ADR-0007)
+// and are not workSessions, so one with no partials must still get a card:
 // members not produced by the partial-first grouping are appended as offline
-// stubs. A member may have several plans; each one gets an entry.
-async function attachDayPlans(
+// stubs. A member may have several planBlocks; each one gets an entry.
+async function attachDayPlanBlocks(
   ctx: QueryCtx,
   members: DashboardMember[],
   dayStart: number
 ): Promise<DashboardMember[]> {
-  const plans = await ctx.db
-    .query('plannedSession')
+  const planBlocks = await ctx.db
+    .query('planBlock')
     .withIndex('by_dayStart', (q) => q.eq('dayStart', dayStart))
     .take(MAX_PLANS_PER_DAY)
-  if (plans.length === 0) return members
+  if (planBlocks.length === 0) return members
 
   const result = members.map((member) => ({ ...member }))
   const byUser = new Map<string, DashboardMember>()
@@ -239,7 +240,7 @@ async function attachDayPlans(
     if (member.userId) byUser.set(String(member.userId), member)
   }
 
-  for (const plan of plans) {
+  for (const plan of planBlocks) {
     const key = String(plan.userId)
     let member = byUser.get(key)
     if (!member) {
@@ -250,19 +251,19 @@ async function attachDayPlans(
         name: user?.name ?? null,
         image: user?.image ?? null,
         online: false,
-        sessions: [],
-        plans: [],
+        workSessions: [],
+        planBlocks: [],
         activeTask: null,
       }
       result.push(member)
       byUser.set(key, member)
     }
 
-    member.plans.push({ id: plan._id, startAt: plan.plannedStart, endAt: plan.plannedEnd })
+    member.planBlocks.push({ id: plan._id, startAt: plan.plannedStart, endAt: plan.plannedEnd })
   }
 
   for (const member of result) {
-    member.plans.sort((a, b) => a.startAt - b.startAt)
+    member.planBlocks.sort((a, b) => a.startAt - b.startAt)
   }
 
   return result
@@ -289,12 +290,12 @@ async function attachActiveTasks(
   )
 }
 
-function toSessionTaskSource(task: Doc<'task'>): SessionTaskSource {
+function toWorkSessionTaskSource(task: Doc<'task'>): WorkSessionTaskSource {
   return {
     id: task._id,
     title: task.title,
     createdAt: task._creationTime,
-    plannedSessionId: task.plannedSessionId ?? null,
+    plannedWorkSessionId: task.plannedWorkSessionId ?? null,
     completedAt: task.completedAt ?? null,
   }
 }

@@ -1,6 +1,6 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import { DASHBOARD_TIME_ZONE, startOfDay } from '../sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import { getMe } from '../users/service'
 import type { ActiveTask, Task, TaskPlacement } from './types'
 import { byQueueOrder, insertionIndex, planOrder } from './util'
@@ -92,7 +92,7 @@ export async function reorderTasks(
 }
 
 // Move one owned task to another Day, at the bottom of that Day's queue. A plan
-// link cannot survive the move: a planned Session belongs to the old Day, so it
+// link cannot survive the move: a planned WorkSession belongs to the old Day, so it
 // is cleared. Both Days' live queries update by themselves.
 export async function rescheduleTask(
   ctx: MutationCtx,
@@ -111,7 +111,7 @@ export async function rescheduleTask(
   const position = await appendPosition(ctx, target)
   await ctx.db.patch(task._id, {
     plannedAt,
-    plannedSessionId: undefined,
+    plannedWorkSessionId: undefined,
     position,
   })
 }
@@ -259,6 +259,6 @@ function toTask(task: Doc<'task'>): Task {
     done: task.done,
     completedAt: task.completedAt ?? null,
     plannedAt: task.plannedAt,
-    plannedSessionId: task.plannedSessionId ?? null,
+    plannedWorkSessionId: task.plannedWorkSessionId ?? null,
   }
 }

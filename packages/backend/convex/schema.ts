@@ -34,7 +34,7 @@ export default defineSchema({
   // it. For now every voice channel counts as study, so there is no guild config.
   // A manual stint (started on the web) has no guild, and its member may have no
   // Discord id, so both are optional.
-  session: defineTable({
+  workSession: defineTable({
     discordId: v.optional(v.string()),
     userId: v.optional(v.id('users')),
     guildId: v.optional(v.string()),
@@ -47,9 +47,9 @@ export default defineSchema({
     .index('by_userId', ['userId', 'status']),
 
   // One row per stretch of time in a single state: same channel, same camera /
-  // screen-share mode. Belongs to exactly one session (FK below).
-  sessionPartial: defineTable({
-    sessionId: v.id('session'),
+  // screen-share mode. Belongs to exactly one workSession (FK below).
+  workSessionPartial: defineTable({
+    workSessionId: v.id('workSession'),
     discordId: v.optional(v.string()),
     userId: v.optional(v.id('users')),
     guildId: v.optional(v.string()),
@@ -61,7 +61,7 @@ export default defineSchema({
     endedAt: v.optional(v.number()),
     durationMs: v.optional(v.number()),
   })
-    .index('by_sessionId', ['sessionId', 'status'])
+    .index('by_workSessionId', ['workSessionId', 'status'])
     .index('by_status', ['status'])
     .index('by_discordId', ['discordId', 'status'])
     .index('by_userId', ['userId', 'startedAt'])
@@ -88,8 +88,8 @@ export default defineSchema({
   // titles, the active task and the up-next suggestion all show in the room.
   // Only the owner writes it. `plannedAt` is the Europe/Zurich Day the task is
   // planned for (always a day start, never a time). `completedAt` is set when the
-  // task is marked done and cleared when it is reopened. `plannedSessionId` is an
-  // explicit "planned into this Session" link, set only with `plannedAt`.
+  // task is marked done and cleared when it is reopened. `plannedWorkSessionId` is an
+  // explicit "planned into this workSession" link, set only with `plannedAt`.
   task: defineTable({
     userId: v.id('users'),
     title: v.string(),
@@ -97,20 +97,20 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     plannedAt: v.number(),
     position: v.optional(v.number()),
-    plannedSessionId: v.optional(v.id('session')),
+    plannedWorkSessionId: v.optional(v.id('workSession')),
   })
     .index('by_userId', ['userId'])
     .index('by_userId_plannedAt', ['userId', 'plannedAt'])
     .index('by_userId_completedAt', ['userId', 'completedAt'])
-    .index('by_plannedSessionId', ['plannedSessionId']),
+    .index('by_plannedWorkSessionId', ['plannedWorkSessionId']),
 
-  // A member's planned session: a future block on their own lane, not a
-  // Session (no voice evidence, no partials). A member may have several plans at
-  // once, so each drag inserts a row instead of replacing one; plans for the same
-  // member and Day may touch but never overlap.
-  // `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
-  // `plannedEnd` are the instants the block covers.
-  plannedSession: defineTable({
+  // A member's planBlock: a future window on their own lane, not a workSession
+  // (no voice evidence, no partials). A member may have several planBlocks at
+  // once, so each drag inserts a row instead of replacing one; planBlocks for the
+  // same member and Day may touch but never overlap. `dayStart` is the
+  // Europe/Zurich Day the planBlock belongs to; `plannedStart` and `plannedEnd`
+  // are the instants the block covers.
+  planBlock: defineTable({
     userId: v.id('users'),
     dayStart: v.number(),
     plannedStart: v.number(),

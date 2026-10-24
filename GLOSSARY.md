@@ -5,17 +5,17 @@ The bot reports what Discord says; the backend decides what it means.
 
 ## Language
 
-**Session**:
-The whole sitting: from a member first joining a study channel until they leave
+**workSession**:
+The whole stretch: from a member first joining a study channel until they leave
 voice. It stitches together every partial in between, including short pauses —
-re-entering within 30 minutes continues the same session.
-_Avoid_: Sitting, study session
+re-entering within 30 minutes continues the same workSession.
+_Avoid_: Session, sitting, study session
 
-**Plan**:
+**planBlock**:
 A future window a member places on their own lane — a Day, a start, an end. It
 is an intention, not evidence: it has no voice partials and never becomes a
-Session. Several may sit on one Day as long as they touch at most at an edge.
-_Avoid_: Planned session, plan block, calendar entry
+workSession. Several may sit on one Day as long as they touch at most at an edge.
+_Avoid_: Plan, planned session, calendar entry
 
 **Partial**:
 A stretch of time during which one member's voice state in a study channel is
@@ -24,18 +24,18 @@ voice state changes, however short the stretch.
 _Avoid_: Leg, chunk, study session
 
 **Pause**:
-The gap between two study partials of the same session — time when the member is
-not in a study channel (coffee, phone). A pause belongs to its session but is
+The gap between two study partials of the same workSession — time when the member is
+not in a study channel (coffee, phone). A pause belongs to its workSession but is
 never study time.
 _Avoid_: Break, idle
 
 **Online**:
-A member who has an active session right now — in a study channel, or tracking
+A member who has an active workSession right now — in a study channel, or tracking
 manually.
 _Avoid_: Present, connected
 
 **Offline**:
-A member who has studied today but has no active session now — every session
+A member who has studied today but has no active workSession now — every workSession
 they started today has ended.
 _Avoid_: Away, inactive
 
@@ -58,7 +58,7 @@ Discord. It is overridden the moment a Discord voice state arrives.
 _Avoid_: Logging, focus, web tracking
 
 **Study time**:
-Time a member spends in a study mode, across their sessions — pauses excluded.
+Time a member spends in a study mode, across their workSessions — pauses excluded.
 The base unit every total is built from.
 _Avoid_: Focus time, hours
 
@@ -68,17 +68,17 @@ Study time with camera or screen share on — `camera`, `screenShare` or
 _Avoid_: Cam time
 
 **Total time**:
-The whole span of a member's sessions, pauses included. What the personal rail
+The whole span of a member's workSessions, pauses included. What the personal rail
 reports as "Total time"; distinct from Study time, which never counts a pause.
 _Avoid_: Elapsed, study time
 
 **Focus rate**:
-The share of Total time spent in Deep focus. With no session time there is no
+The share of Total time spent in Deep focus. With no workSession time there is no
 rate; the dashboard shows "—", never 0%.
 _Avoid_: Focus score, productivity
 
 **Voice transition**:
-What a before/after pair of voice states means for a session: `enter` (joining
+What a before/after pair of voice states means for a workSession: `enter` (joining
 from outside), `leave` (going to outside), `change` (any other difference), or
 `none` (nothing changed).
 _Avoid_: Move, event
@@ -134,7 +134,7 @@ because it studies together, not as separate people.
 _Avoid_: Community, energy, vibe, culture
 
 **Collective focus time**:
-The room's shared effort in a sitting: the time every member still in a session
+The room's shared effort in a workSession: the time every member still in a workSession
 has put in, summed — each person adds a second for every second they study, so
 three people deep-focusing an hour read `3h`. Under the Focus metric it counts
 Deep focus only; under Total, every second in the room. It exists only while the
@@ -187,13 +187,13 @@ _Avoid_: Setting, option, config
 
 **Task group**:
 A named slice of the task queue shown under its own heading, with a count and a
-caret that folds it away — the Done tasks today, planned-session groups later.
+caret that folds it away — the Done tasks today, planBlock groups later.
 Membership is derived from the queue, never stored as a second list, and folding
 changes only what is shown.
 _Avoid_: Section, bucket, category
 
 **Focus view**:
-The page about _now_: the live room, your current Session, today's Tasks. The
+The page about _now_: the live room, your current workSession, today's Tasks. The
 current dashboard is the Focus view.
 _Avoid_: Action panel, dashboard, home
 

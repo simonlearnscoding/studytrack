@@ -1,9 +1,9 @@
 import type {
   DashboardMember,
   DashboardPartial,
-  DashboardSession,
-  DashboardSessionTask,
-  SessionTaskSource,
+  DashboardWorkSession,
+  DashboardWorkSessionTask,
+  WorkSessionTaskSource,
 } from './types'
 
 // The dashboard's "today" is one shared calendar day in this timezone, so every
@@ -20,16 +20,22 @@ export function partialDurationMs(
   return Math.max(0, (partial.endedAt ?? now) - partial.startedAt)
 }
 
-// Study time in one session: every partial's duration with breaks left out.
-export function sessionStudyMs(session: Pick<DashboardSession, 'partials'>, now: number): number {
-  return session.partials
+// Study time in one workSession: every partial's duration with breaks left out.
+export function workSessionStudyMs(
+  workSession: Pick<DashboardWorkSession, 'partials'>,
+  now: number
+): number {
+  return workSession.partials
     .filter((partial) => partial.mode !== 'break')
     .reduce((sum, partial) => sum + partialDurationMs(partial, now), 0)
 }
 
-// A member's study time across every session today.
-export function memberTotalMs(member: Pick<DashboardMember, 'sessions'>, now: number): number {
-  return member.sessions.reduce((sum, session) => sum + sessionStudyMs(session, now), 0)
+// A member's study time across every workSession today.
+export function memberTotalMs(member: Pick<DashboardMember, 'workSessions'>, now: number): number {
+  return member.workSessions.reduce(
+    (sum, workSession) => sum + workSessionStudyMs(workSession, now),
+    0
+  )
 }
 
 // Most study time today first. The dashboard splits online/offline into separate
@@ -38,59 +44,60 @@ export function sortMembers(members: DashboardMember[], now: number): DashboardM
   return [...members].sort((a, b) => memberTotalMs(b, now) - memberTotalMs(a, now))
 }
 
-// A completed task belongs to the session whose span contains its `completedAt`:
+// A completed task belongs to the workSession whose span contains its `completedAt`:
 // `startedAt <= completedAt < (endedAt ?? now)`. The query has no wall clock, so
-// a still-running session's open end is `Infinity` — equivalent to `now` because
+// a still-running workSession's open end is `Infinity` — equivalent to `now` because
 // `completedAt` is always a past instant.
-export function sessionContainsCompletedAt(
-  session: Pick<DashboardSession, 'startedAt' | 'endedAt'>,
+export function workSessionContainsCompletedAt(
+  workSession: Pick<DashboardWorkSession, 'startedAt' | 'endedAt'>,
   completedAt: number
 ): boolean {
   return (
-    completedAt >= session.startedAt && completedAt < (session.endedAt ?? Number.POSITIVE_INFINITY)
+    completedAt >= workSession.startedAt &&
+    completedAt < (workSession.endedAt ?? Number.POSITIVE_INFINITY)
   )
 }
 
-// Attach each session's deduped task union: tasks explicitly planned into it,
+// Attach each workSession's deduped task union: tasks explicitly planned into it,
 // then tasks finished while it was running, each appearing at most once. A member's
-// sessions never overlap (re-entering within 30 minutes continues the same
-// session), so a completion binds to at most one. Planned entries come first in
+// workSessions never overlap (re-entering within 30 minutes continues the same
+// workSession), so a completion binds to at most one. Planned entries come first in
 // creation order (oldest first); finished-only entries follow by completion time.
-export function attachTasksToSessions(
-  sessions: DashboardSession[],
-  tasks: SessionTaskSource[]
-): DashboardSession[] {
-  return sessions.map((session) => ({
-    ...session,
-    tasks: tasksForSession(session, tasks),
+export function attachTasksToWorkSessions(
+  workSessions: DashboardWorkSession[],
+  tasks: WorkSessionTaskSource[]
+): DashboardWorkSession[] {
+  return workSessions.map((workSession) => ({
+    ...workSession,
+    tasks: tasksForWorkSession(workSession, tasks),
   }))
 }
 
-function tasksForSession(
-  session: Pick<DashboardSession, 'id' | 'startedAt' | 'endedAt'>,
-  tasks: SessionTaskSource[]
-): DashboardSessionTask[] {
-  const planned: DashboardSessionTask[] = tasks
-    .filter((task) => task.plannedSessionId === session.id)
+function tasksForWorkSession(
+  workSession: Pick<DashboardWorkSession, 'id' | 'startedAt' | 'endedAt'>,
+  tasks: WorkSessionTaskSource[]
+): DashboardWorkSessionTask[] {
+  const planned: DashboardWorkSessionTask[] = tasks
+    .filter((task) => task.plannedWorkSessionId === workSession.id)
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((task) => ({
       id: task.id,
       title: task.title,
       planned: true,
       // Planned-only stays null even if the task is Done elsewhere; only a
-      // completion inside this session's span marks it finished here.
+      // completion inside this workSession's span marks it finished here.
       completedAt:
-        task.completedAt !== null && sessionContainsCompletedAt(session, task.completedAt)
+        task.completedAt !== null && workSessionContainsCompletedAt(workSession, task.completedAt)
           ? task.completedAt
           : null,
     }))
 
-  const finishedOnly: DashboardSessionTask[] = tasks
+  const finishedOnly: DashboardWorkSessionTask[] = tasks
     .filter(
       (task) =>
-        task.plannedSessionId !== session.id &&
+        task.plannedWorkSessionId !== workSession.id &&
         task.completedAt !== null &&
-        sessionContainsCompletedAt(session, task.completedAt)
+        workSessionContainsCompletedAt(workSession, task.completedAt)
     )
     .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0))
     .map((task) => ({

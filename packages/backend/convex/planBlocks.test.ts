@@ -3,7 +3,7 @@ import { convexTest } from 'convex-test'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { api } from './_generated/api'
 import schema from './schema'
-import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from './sessions/util'
+import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from './workSessions/util'
 
 const modules = import.meta.glob('./**/*.ts')
 
@@ -42,10 +42,10 @@ function plan(identity: { subject: string }, over: { start?: number; end?: numbe
 }
 
 async function rowsOf(t: Test) {
-  return await t.run(async (ctx) => await ctx.db.query('plannedSession').collect())
+  return await t.run(async (ctx) => await ctx.db.query('planBlock').collect())
 }
 
-describe('plannedSessions.create', () => {
+describe('planBlocks.create', () => {
   beforeAll(() => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
@@ -56,29 +56,27 @@ describe('plannedSessions.create', () => {
 
   it('rejects an unauthenticated caller', async () => {
     const t = makeTest()
-    await expect(t.mutation(api.plannedSessions.create, plan(ADA))).rejects.toThrow(
-      /Not authenticated/
-    )
+    await expect(t.mutation(api.planBlocks.create, plan(ADA))).rejects.toThrow(/Not authenticated/)
   })
 
   it('stores the drag window and shows it on the member card', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
 
     const [row] = await rowsOf(t)
     expect(row).toMatchObject({ dayStart: DAY, plannedStart: START, plannedEnd: END })
 
     const res = await t
       .withIdentity(ADA)
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({
       name: 'Ada',
       online: false,
-      sessions: [],
-      plans: [{ id: row._id, startAt: START, endAt: END }],
+      workSessions: [],
+      planBlocks: [{ id: row._id, startAt: START, endAt: END }],
     })
   })
 
@@ -86,10 +84,10 @@ describe('plannedSessions.create', () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     await t
       .withIdentity(ADA)
-      .mutation(api.plannedSessions.create, plan(ADA, { start: START + 2 * H, end: END + 3 * H }))
+      .mutation(api.planBlocks.create, plan(ADA, { start: START + 2 * H, end: END + 3 * H }))
 
     const rows = await rowsOf(t)
     expect(rows).toHaveLength(2)
@@ -100,24 +98,20 @@ describe('plannedSessions.create', () => {
 
     const res = await t
       .withIdentity(ADA)
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
-    expect(res[0].plans).toHaveLength(2)
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+    expect(res[0].planBlocks).toHaveLength(2)
   })
 
   it('refuses a plan that overlaps an existing one', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
 
     await expect(
-      t
-        .withIdentity(ADA)
-        .mutation(api.plannedSessions.create, plan(ADA, { start: START + 30 * 60_000 }))
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { start: START + 30 * 60_000 }))
     ).rejects.toThrow(/overlaps/)
     await expect(
-      t
-        .withIdentity(ADA)
-        .mutation(api.plannedSessions.create, plan(ADA, { end: END - 30 * 60_000 }))
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { end: END - 30 * 60_000 }))
     ).rejects.toThrow(/overlaps/)
 
     expect(await rowsOf(t)).toHaveLength(1)
@@ -127,10 +121,10 @@ describe('plannedSessions.create', () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     await t
       .withIdentity(ADA)
-      .mutation(api.plannedSessions.create, plan(ADA, { start: END, end: END + H }))
+      .mutation(api.planBlocks.create, plan(ADA, { start: END, end: END + H }))
 
     expect(await rowsOf(t)).toHaveLength(2)
   })
@@ -140,7 +134,7 @@ describe('plannedSessions.create', () => {
     await seedUser(t, ADA, 'Ada')
 
     await expect(
-      t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA, { start: DAY + 11 * H }))
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { start: DAY + 11 * H }))
     ).rejects.toThrow(/past/)
   })
 
@@ -149,7 +143,7 @@ describe('plannedSessions.create', () => {
     await seedUser(t, ADA, 'Ada')
 
     await expect(
-      t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA, { start: START + 60_000 }))
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { start: START + 60_000 }))
     ).rejects.toThrow(/15-minute/)
   })
 
@@ -159,9 +153,7 @@ describe('plannedSessions.create', () => {
     const dayEnd = nextDayStart(DAY, DASHBOARD_TIME_ZONE)
 
     await expect(
-      t
-        .withIdentity(ADA)
-        .mutation(api.plannedSessions.create, plan(ADA, { end: dayEnd + 15 * 60_000 }))
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { end: dayEnd + 15 * 60_000 }))
     ).rejects.toThrow(/inside its Day/)
   })
 
@@ -170,20 +162,20 @@ describe('plannedSessions.create', () => {
     await seedUser(t, ADA, 'Ada')
     await seedUser(t, BOB, 'Bob')
 
-    await t.withIdentity(BOB).mutation(api.plannedSessions.create, plan(BOB))
+    await t.withIdentity(BOB).mutation(api.planBlocks.create, plan(BOB))
 
     const res = await t
       .withIdentity(ADA)
-      .query(api.sessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({
       name: 'Bob',
-      plans: [{ startAt: START, endAt: END }],
+      planBlocks: [{ startAt: START, endAt: END }],
     })
   })
 })
 
-describe('plannedSessions.update', () => {
+describe('planBlocks.update', () => {
   beforeAll(() => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
@@ -195,11 +187,11 @@ describe('plannedSessions.update', () => {
   it('moves one edge of an owned plan', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.update, {
-      planId: row._id,
+    await t.withIdentity(ADA).mutation(api.planBlocks.update, {
+      planBlockId: row._id,
       plannedStart: START + 30 * 60_000,
       plannedEnd: END,
     })
@@ -211,15 +203,15 @@ describe('plannedSessions.update', () => {
   it('refuses a resize that overlaps a neighbouring plan', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     await t
       .withIdentity(ADA)
-      .mutation(api.plannedSessions.create, plan(ADA, { start: END, end: END + H }))
+      .mutation(api.planBlocks.create, plan(ADA, { start: END, end: END + H }))
     const [first] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(ADA).mutation(api.plannedSessions.update, {
-        planId: first._id,
+      t.withIdentity(ADA).mutation(api.planBlocks.update, {
+        planBlockId: first._id,
         plannedStart: START,
         plannedEnd: END + 30 * 60_000,
       })
@@ -230,27 +222,27 @@ describe('plannedSessions.update', () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await seedUser(t, BOB, 'Bob')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(BOB).mutation(api.plannedSessions.update, {
-        planId: row._id,
+      t.withIdentity(BOB).mutation(api.planBlocks.update, {
+        planBlockId: row._id,
         plannedStart: START,
         plannedEnd: END + H,
       })
-    ).rejects.toThrow(/Plan not found/)
+    ).rejects.toThrow(/Plan block not found/)
   })
 
   it('refuses a resize that starts in the past', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(ADA).mutation(api.plannedSessions.update, {
-        planId: row._id,
+      t.withIdentity(ADA).mutation(api.planBlocks.update, {
+        planBlockId: row._id,
         plannedStart: DAY + 11 * H,
         plannedEnd: END,
       })
@@ -258,7 +250,7 @@ describe('plannedSessions.update', () => {
   })
 })
 
-describe('plannedSessions.remove', () => {
+describe('planBlocks.remove', () => {
   beforeAll(() => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
@@ -270,10 +262,10 @@ describe('plannedSessions.remove', () => {
   it('deletes an owned plan', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
-    await t.withIdentity(ADA).mutation(api.plannedSessions.remove, { planId: row._id })
+    await t.withIdentity(ADA).mutation(api.planBlocks.remove, { planBlockId: row._id })
 
     expect(await rowsOf(t)).toEqual([])
   })
@@ -282,17 +274,17 @@ describe('plannedSessions.remove', () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await seedUser(t, BOB, 'Bob')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
     await expect(
-      t.withIdentity(BOB).mutation(api.plannedSessions.remove, { planId: row._id })
-    ).rejects.toThrow(/Plan not found/)
+      t.withIdentity(BOB).mutation(api.planBlocks.remove, { planBlockId: row._id })
+    ).rejects.toThrow(/Plan block not found/)
     expect(await rowsOf(t)).toHaveLength(1)
   })
 })
 
-describe('plannedSessions.listMine', () => {
+describe('planBlocks.listMine', () => {
   beforeAll(() => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
@@ -303,20 +295,20 @@ describe('plannedSessions.listMine', () => {
 
   it('returns nothing when unauthenticated', async () => {
     const t = makeTest()
-    expect(await t.query(api.plannedSessions.listMine, { dayStart: DAY })).toEqual([])
+    expect(await t.query(api.planBlocks.listMine, { dayStart: DAY })).toEqual([])
   })
 
   it('returns only the caller plans for the selected Day', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await seedUser(t, BOB, 'Bob')
-    await t.withIdentity(ADA).mutation(api.plannedSessions.create, plan(ADA))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     await t
       .withIdentity(ADA)
-      .mutation(api.plannedSessions.create, plan(ADA, { start: END, end: END + H }))
-    await t.withIdentity(BOB).mutation(api.plannedSessions.create, plan(BOB))
+      .mutation(api.planBlocks.create, plan(ADA, { start: END, end: END + H }))
+    await t.withIdentity(BOB).mutation(api.planBlocks.create, plan(BOB))
 
-    const mine = await t.withIdentity(ADA).query(api.plannedSessions.listMine, { dayStart: DAY })
+    const mine = await t.withIdentity(ADA).query(api.planBlocks.listMine, { dayStart: DAY })
     expect(mine.map((entry) => entry.plannedStart)).toEqual([START, END])
   })
 })

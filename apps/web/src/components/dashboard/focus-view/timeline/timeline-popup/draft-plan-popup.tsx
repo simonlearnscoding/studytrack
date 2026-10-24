@@ -1,10 +1,10 @@
 import { Button } from '~/components/ui/button'
-import type { DraftPlanPopupData } from './types'
+import type { DraftPlanBlockPopupData } from './types'
 import { PopupWindow } from './window-line'
 
 // Nothing is stored while the draft is open: Create is the only writer, and
-// Cancel (or dismissing the popover) leaves no Plan behind.
-export function DraftPlanPopup({
+// Cancel (or dismissing the popover) leaves no planBlock behind.
+export function DraftPlanBlockPopup({
   plan,
   dayStart,
   onCreate,
@@ -12,7 +12,7 @@ export function DraftPlanPopup({
   isCreating,
   createError,
 }: {
-  plan: DraftPlanPopupData
+  plan: DraftPlanBlockPopupData
   dayStart: number
   onCreate?: () => void
   onCancel?: () => void
@@ -22,7 +22,7 @@ export function DraftPlanPopup({
   return (
     <>
       <div className="text-caption text-muted-foreground">
-        <p className="text-body font-semibold text-foreground">New plan</p>
+        <p className="text-body font-semibold text-foreground">New plan block</p>
         <PopupWindow startAt={plan.startAt} endAt={plan.endAt} dayStart={dayStart} />
       </div>
 

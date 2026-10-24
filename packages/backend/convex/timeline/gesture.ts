@@ -1,4 +1,4 @@
-import type { TimelinePlanBlockVM, TimelineSegment } from './types'
+import type { TimelinePlanBlockWallVM, TimelineSegment } from './types'
 import { minuteToPx, pxToMinute } from './util'
 
 // Planning snaps to 15-minute marks — the dashed preview, the reported span and
@@ -6,11 +6,11 @@ import { minuteToPx, pxToMinute } from './util'
 const SNAP_MIN = 15
 
 // Which part of a plan a gesture holds: the whole block, or one of its ends.
-export type PlanEdge = 'move' | 'start' | 'end'
+export type PlanBlockEdge = 'move' | 'start' | 'end'
 
 // One plan gesture's resolved geometry: where the block sits on the axis and
 // which minutes it covers. Minutes are whole — the mutations store minutes.
-export type PlanSpan = {
+export type PlanBlockSpan = {
   leftPx: number
   widthPx: number
   startMin: number
@@ -19,7 +19,10 @@ export type PlanSpan = {
 
 // The plan a pixel sits on, if any. Half-open, so a new plan can start exactly
 // where the previous one ends.
-export function planAt(blocks: TimelinePlanBlockVM[], px: number): TimelinePlanBlockVM | null {
+export function planBlockAt(
+  blocks: TimelinePlanBlockWallVM[],
+  px: number
+): TimelinePlanBlockWallVM | null {
   return blocks.find((block) => px >= block.startPx && px < block.endPx) ?? null
 }
 
@@ -28,7 +31,7 @@ export function planAt(blocks: TimelinePlanBlockVM[], px: number): TimelinePlanB
 // inside a collapsed band, before now's quarter-hour, or on top of an existing
 // plan. `nowPx` is the now the gesture plans against; callers freeze it when a
 // gesture starts so a ticking clock cannot drift it mid-drag.
-export function resolvePlanStart({
+export function resolvePlanBlockStart({
   segments,
   px,
   nowPx,
@@ -37,12 +40,12 @@ export function resolvePlanStart({
   segments: TimelineSegment[]
   px: number
   nowPx: number
-  blocks: TimelinePlanBlockVM[]
+  blocks: TimelinePlanBlockWallVM[]
 }): { startPx: number; startMin: number } | null {
   const floorPx = planFloorPx(segments, nowPx)
   if (px < floorPx) return null
   const startPx = snapPx(segments, px, floorPx)
-  if (planAt(blocks, startPx)) return null
+  if (planBlockAt(blocks, startPx)) return null
   const minute = pxToMinute(segments, startPx)
   if (minute == null) return null
   return { startPx, startMin: Math.round(minute) }
@@ -51,7 +54,7 @@ export function resolvePlanStart({
 // Drag-to-create: the span a drag from `fromPx` to `toPx` would make — both ends
 // snapped to the grid and stopped at the past wall and the neighbouring plans.
 // Null when either end falls into a collapsed band (there is no grid there).
-export function resolvePlanDraft({
+export function resolvePlanBlockDraft({
   segments,
   axisWidthPx,
   blocks,
@@ -61,13 +64,13 @@ export function resolvePlanDraft({
 }: {
   segments: TimelineSegment[]
   axisWidthPx: number
-  blocks: TimelinePlanBlockVM[]
+  blocks: TimelinePlanBlockWallVM[]
   fromPx: number
   toPx: number
   nowPx: number
-}): PlanSpan | null {
+}): PlanBlockSpan | null {
   const floorPx = planFloorPx(segments, nowPx)
-  const to = clampToPlans(toPx, fromPx, floorPx, axisWidthPx, blocks)
+  const to = clampToPlanBlocks(toPx, fromPx, floorPx, axisWidthPx, blocks)
   const leftPx = snapPx(segments, Math.min(fromPx, to), floorPx)
   const rightPx = snapPx(segments, Math.max(fromPx, to), floorPx)
   return spanAt(segments, leftPx, rightPx - leftPx)
@@ -77,11 +80,11 @@ export function resolvePlanDraft({
 // The walls are the past floor and the neighbouring plans (the gesture's own
 // block excluded). Null when the gesture has no legal geometry: the block is
 // gone or has no width, or the walls have crossed.
-export function resolvePlanEdit({
+export function resolvePlanBlockEdit({
   segments,
   axisWidthPx,
   blocks,
-  planId,
+  planBlockId,
   edge,
   pointerPx,
   grabPx,
@@ -89,14 +92,14 @@ export function resolvePlanEdit({
 }: {
   segments: TimelineSegment[]
   axisWidthPx: number
-  blocks: TimelinePlanBlockVM[]
-  planId: TimelinePlanBlockVM['id']
-  edge: PlanEdge
+  blocks: TimelinePlanBlockWallVM[]
+  planBlockId: TimelinePlanBlockWallVM['id']
+  edge: PlanBlockEdge
   pointerPx: number
   grabPx?: number
   nowPx: number
-}): PlanSpan | null {
-  const block = blocks.find((candidate) => candidate.id === planId)
+}): PlanBlockSpan | null {
+  const block = blocks.find((candidate) => candidate.id === planBlockId)
   if (!block) return null
   const width = block.endPx - block.startPx
   if (width <= 0) return null
@@ -161,8 +164,8 @@ function snapStepPx(segments: TimelineSegment[], px: number): number {
 // before it, and the nearest start of a plan after it. Defaults are the axis
 // ends, so a lone plan is free across the whole track.
 function neighbourWalls(
-  blocks: TimelinePlanBlockVM[],
-  block: TimelinePlanBlockVM,
+  blocks: TimelinePlanBlockWallVM[],
+  block: TimelinePlanBlockWallVM,
   axisWidthPx: number
 ): { previousEndPx: number; nextStartPx: number } {
   const others = blocks.filter((other) => other.id !== block.id)
@@ -178,7 +181,11 @@ function neighbourWalls(
 
 // A pixel span → a whole-minute span, or null when either end is hidden in a
 // collapsed band.
-function spanAt(segments: TimelineSegment[], leftPx: number, widthPx: number): PlanSpan | null {
+function spanAt(
+  segments: TimelineSegment[],
+  leftPx: number,
+  widthPx: number
+): PlanBlockSpan | null {
   const startMin = pxToMinute(segments, leftPx)
   const endMin = pxToMinute(segments, leftPx + widthPx)
   if (startMin == null || endMin == null) return null
@@ -193,12 +200,12 @@ function spanAt(segments: TimelineSegment[], leftPx: number, widthPx: number): P
 // Stop a drag at the next plan in the direction of travel, and never let it go
 // left of the past wall. The from-pixel is always outside a plan (pointer-down
 // rejects that), so only the blocks ahead of it can be walls.
-function clampToPlans(
+function clampToPlanBlocks(
   px: number,
   fromPx: number,
   floorPx: number,
   axisWidthPx: number,
-  blocks: TimelinePlanBlockVM[]
+  blocks: TimelinePlanBlockWallVM[]
 ): number {
   if (px >= fromPx) {
     const wall = blocks

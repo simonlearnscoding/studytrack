@@ -3,7 +3,7 @@ import { convexTest } from 'convex-test'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import schema from './schema'
-import { DASHBOARD_TIME_ZONE, startOfDay } from './sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfDay } from './workSessions/util'
 
 const modules = import.meta.glob('./**/*.ts')
 

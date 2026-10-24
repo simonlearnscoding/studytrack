@@ -1,4 +1,4 @@
-import type { DashboardPartial } from '@studytrack/backend/convex/sessions/types'
+import type { DashboardPartial } from '@studytrack/backend/convex/workSessions/types'
 import { Mic, Monitor, MonitorPlay, PenLine, Video, type LucideIcon } from 'lucide-react'
 
 type StudyMode = DashboardPartial['mode']

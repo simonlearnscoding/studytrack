@@ -1,4 +1,4 @@
-import { DASHBOARD_TIME_ZONE, startOfMonth } from '@studytrack/backend/convex/sessions/util'
+import { DASHBOARD_TIME_ZONE, startOfMonth } from '@studytrack/backend/convex/workSessions/util'
 import { create } from 'zustand'
 
 /**

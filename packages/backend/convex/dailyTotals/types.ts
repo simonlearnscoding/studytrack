@@ -7,7 +7,7 @@ export const rollupDayArgs = v.object({ dayStart: v.number() })
 export const backfillArgs = v.object({ dayStart: v.optional(v.number()) })
 
 // The caller's own record from a Day onwards. The caller supplies `fromDayStart`
-// because queries must not read the wall clock (see ../sessions/util).
+// because queries must not read the wall clock (see ../workSessions/util).
 export const listMineArgs = v.object({ fromDayStart: v.number() })
 
 // One Month window for the private calendar, plus the caller's clock so today's

@@ -2,7 +2,7 @@ import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
 import type { RefObject } from 'react'
 import { NowLine } from '../axis/markers'
 import { BandLayer } from '../axis/night-band'
-import { RowTrack, type SessionClick } from '../lanes/row-track'
+import { RowTrack, type WorkSessionClick } from '../lanes/row-track'
 import type { AxisSurface } from '../../types'
 import { useTrackPan } from './use-track-pan'
 
@@ -20,12 +20,12 @@ export function TrackScroller({
   surface: { axis, bands, hidden, isNightBandHeldOpen, onToggleBand },
   rows,
   scrollerRef,
-  onSessionClick,
+  onWorkSessionClick,
 }: {
   surface: AxisSurface
   rows: TimelineRowVM[]
   scrollerRef: RefObject<HTMLDivElement | null>
-  onSessionClick?: (click: SessionClick) => void
+  onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
   const hasYourRow = rows.some((row) => row.you)
   const panHandlers = useTrackPan(scrollerRef)
@@ -69,13 +69,13 @@ export function TrackScroller({
         <NowLine left={axis.nowPx} className="top-0 bottom-1.5 z-[3]" />
 
         {/* contract: tracks only; the name column is the pinned sibling. a
-            shadcn Popover hangs off each bar (session details) in prod. */}
+            shadcn Popover hangs off each bar (workSession details) in prod. */}
         <div className={`relative z-[2] flex flex-col gap-3.5 ${hasYourRow ? 'lg:pt-3.5' : ''}`}>
           {rows
             .filter((row) => !row.you)
             .map((row) => (
               <div key={row.key} className="flex h-6 items-center">
-                <RowTrack row={row} onSessionClick={onSessionClick} />
+                <RowTrack row={row} onWorkSessionClick={onWorkSessionClick} />
               </div>
             ))}
         </div>

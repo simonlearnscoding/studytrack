@@ -45,7 +45,7 @@
   --primary: #34d399; /* emerald — every live/active/success state */
   --primary-foreground: #0b0e14; /* near-black, NOT white */
   --primary-tint: #112a27; /* emerald @ 14% over bg — chips, NOW badges */
-  --gold: #f3cf6b; /* "longest session" badge only */
+  --gold: #f3cf6b; /* "longest work session" badge only */
 
   --destructive: #f87171; /* red-400 (reads soft on dark) */
   --destructive-foreground: #e9edf3; /* foreground */
@@ -151,7 +151,7 @@
   letter-spacing: -0.01em;
 }
 
-/* The session clock, the biggest mono figure on screen — 32 → 48px. Unit
+/* The work-session clock, the biggest mono figure on screen — 32 → 48px. Unit
    suffixes inside it are sized in em, so they ride along as it scales. */
 @utility text-clock {
   font-size: clamp(2rem, 1.77rem + 1.03vw, 3rem);

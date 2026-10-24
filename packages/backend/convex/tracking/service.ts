@@ -10,33 +10,35 @@ export async function getMine(ctx: QueryCtx): Promise<TrackingStatus | null> {
   const user = await getMe(ctx)
   if (!user) return null
 
-  const session = await findActiveSession(ctx, user)
-  if (!session) return { mode: null, startedAt: null }
+  const workSession = await findActiveWorkSession(ctx, user)
+  if (!workSession) return { mode: null, startedAt: null }
 
-  const partial = await activePartial(ctx, session._id)
+  const partial = await activePartial(ctx, workSession._id)
   return { mode: partial?.mode ?? null, startedAt: partial?.startedAt ?? null }
 }
 
 // Start manually tracking study time, for time spent away from Discord. Rejected
-// while a Discord voice session (or an existing manual one) is active — Discord
+// while a Discord voice workSession (or an existing manual one) is active — Discord
 // is the trusted witness and manual is only a fallback (ADR-0001).
 export async function startManual(ctx: MutationCtx): Promise<void> {
   const user = await requireUser(ctx)
-  const session = await findActiveSession(ctx, user)
-  const action = decideManualStart(session ? await activePartialMode(ctx, session._id) : null)
+  const workSession = await findActiveWorkSession(ctx, user)
+  const action = decideManualStart(
+    workSession ? await activePartialMode(ctx, workSession._id) : null
+  )
 
   if (action === 'reject-on-discord') throw new Error('You are already studying in Discord.')
   if (action === 'reject-tracking') throw new Error('You are already tracking.')
 
   const now = Date.now()
-  const sessionId = await ctx.db.insert('session', {
+  const workSessionId = await ctx.db.insert('workSession', {
     discordId: user.discordId,
     userId: user._id,
     status: 'active',
     startedAt: now,
   })
-  await ctx.db.insert('sessionPartial', {
-    sessionId,
+  await ctx.db.insert('workSessionPartial', {
+    workSessionId,
     discordId: user.discordId,
     userId: user._id,
     mode: 'manual',
@@ -46,22 +48,22 @@ export async function startManual(ctx: MutationCtx): Promise<void> {
 }
 
 // Stop the member's manual tracking. A no-op when nothing is running, and it
-// never touches a Discord session — those are closed by the voice strategies.
+// never touches a Discord workSession — those are closed by the voice strategies.
 export async function stopManual(ctx: MutationCtx): Promise<void> {
   const user = await requireUser(ctx)
-  const session = await findActiveSession(ctx, user)
-  if (!session) return
-  if ((await activePartialMode(ctx, session._id)) !== 'manual') return
+  const workSession = await findActiveWorkSession(ctx, user)
+  if (!workSession) return
+  if ((await activePartialMode(ctx, workSession._id)) !== 'manual') return
 
   const now = Date.now()
-  for (const partial of await activePartials(ctx, session._id)) {
+  for (const partial of await activePartials(ctx, workSession._id)) {
     await ctx.db.patch(partial._id, {
       status: 'ended',
       endedAt: now,
       durationMs: now - partial.startedAt,
     })
   }
-  await ctx.db.patch(session._id, { status: 'ended', endedAt: now })
+  await ctx.db.patch(workSession._id, { status: 'ended', endedAt: now })
 }
 
 async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
@@ -70,35 +72,39 @@ async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
   return user
 }
 
-// The member's one active session, found by user row first (manual sessions may
+// The member's one active workSession, found by user row first (manual workSessions may
 // have no Discord id at all) and then by Discord id as a fallback.
-async function findActiveSession(ctx: QueryCtx, user: Doc<'users'>) {
+async function findActiveWorkSession(ctx: QueryCtx, user: Doc<'users'>) {
   const byUser = await ctx.db
-    .query('session')
+    .query('workSession')
     .withIndex('by_userId', (q) => q.eq('userId', user._id).eq('status', 'active'))
     .first()
   if (byUser) return byUser
   if (!user.discordId) return null
   return await ctx.db
-    .query('session')
+    .query('workSession')
     .withIndex('by_discordId', (q) => q.eq('discordId', user.discordId).eq('status', 'active'))
     .first()
 }
 
-async function activePartial(ctx: QueryCtx, sessionId: Id<'session'>) {
+async function activePartial(ctx: QueryCtx, workSessionId: Id<'workSession'>) {
   return await ctx.db
-    .query('sessionPartial')
-    .withIndex('by_sessionId', (q) => q.eq('sessionId', sessionId).eq('status', 'active'))
+    .query('workSessionPartial')
+    .withIndex('by_workSessionId', (q) =>
+      q.eq('workSessionId', workSessionId).eq('status', 'active')
+    )
     .first()
 }
 
-async function activePartialMode(ctx: QueryCtx, sessionId: Id<'session'>) {
-  return (await activePartial(ctx, sessionId))?.mode ?? null
+async function activePartialMode(ctx: QueryCtx, workSessionId: Id<'workSession'>) {
+  return (await activePartial(ctx, workSessionId))?.mode ?? null
 }
 
-async function activePartials(ctx: QueryCtx, sessionId: Id<'session'>) {
+async function activePartials(ctx: QueryCtx, workSessionId: Id<'workSession'>) {
   return await ctx.db
-    .query('sessionPartial')
-    .withIndex('by_sessionId', (q) => q.eq('sessionId', sessionId).eq('status', 'active'))
+    .query('workSessionPartial')
+    .withIndex('by_workSessionId', (q) =>
+      q.eq('workSessionId', workSessionId).eq('status', 'active')
+    )
     .collect()
 }

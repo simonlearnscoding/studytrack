@@ -14,7 +14,7 @@ export function getStudyMode({
 }
 
 // What the before/after snapshots mean. Any change to where the member is or how
-// they are engaged is a 'change' — the handler starts a new session for it.
+// they are engaged is a 'change' — the handler starts a new workSession for it.
 export function getVoiceTransition(from: VoiceSnapshot, to: VoiceSnapshot): VoiceTransition {
   if (to.channelId === null) return from.channelId === null ? 'none' : 'leave'
   if (from.channelId === null) return 'enter'

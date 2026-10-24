@@ -4,7 +4,7 @@ import { formatClock, pxToMinute } from '@studytrack/backend/convex/timeline/uti
 // The from – until label a resolved span wears. Gestures and the resting
 // pointer all route through this, so the times read the same whichever is in
 // flight.
-export function planSpanText(span: { startMin: number; endMin: number }): string {
+export function planBlockSpanText(span: { startMin: number; endMin: number }): string {
   return `${formatClock(span.startMin)} – ${formatClock(span.endMin)}`
 }
 

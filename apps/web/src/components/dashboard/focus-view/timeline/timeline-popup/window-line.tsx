@@ -1,8 +1,8 @@
-import { formatDurationHM } from '@studytrack/backend/convex/sessions/util'
+import { formatDurationHM } from '@studytrack/backend/convex/workSessions/util'
 import { formatClock, toMinute } from '@studytrack/backend/convex/timeline/util'
 
 // The one line every popover branch shows: start – end · duration, all in the
-// Day's clock. `endAt` is the live now for an active session, resolved by the
+// Day's clock. `endAt` is the live now for an active workSession, resolved by the
 // caller.
 export function PopupWindow({
   startAt,

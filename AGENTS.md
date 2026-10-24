@@ -1,7 +1,7 @@
 # studytrack — agent guide
 
 Discord study-tracker. People join a study voice channel; the bot reports the
-event; Convex records the session; the web dashboard updates live.
+event; Convex records the workSession; the web dashboard updates live.
 
 ## Layout
 
@@ -29,7 +29,7 @@ packages/
    mutation checks `ctx.auth.getUserIdentity()` (users) or the shared secret
    (bot) before doing anything.
 2. The bot is a dumb reporter: it forwards raw voice events; Convex decides
-   whether they open/close a session.
+   whether they open/close a workSession.
 3. `_generated/` and `routeTree.gen.ts` are generated — never edit by hand.
 
 ## Workflow

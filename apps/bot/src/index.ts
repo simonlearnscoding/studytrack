@@ -31,7 +31,7 @@ client.once('clientReady', async () => {
 })
 
 // The bot is a dumb reporter: it forwards the raw before/after snapshots and
-// lets Convex decide whether they open, change or close a session.
+// lets Convex decide whether they open, change or close a workSession.
 client.on('voiceStateUpdate', async (oldState, newState) => {
   if (newState.member?.user.bot) return
 

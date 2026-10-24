@@ -1,7 +1,7 @@
 import { useMetricPreference } from '~/hooks/use-metric-preference'
 
 // The per-surface metric switch lives in the room rail's header, beside "In the
-// room" — the one control every Standing / live-session surface follows (ST-12
+// room" — the one control every Standing / live work-session surface follows (ST-12
 // "Web Period board").
 const metrics = ['focus', 'total'] as const
 

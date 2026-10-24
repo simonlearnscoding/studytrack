@@ -10,7 +10,7 @@ import {
   startOfDay,
   startOfMonth,
   startOfWeek,
-} from '@studytrack/backend/convex/sessions/util'
+} from '@studytrack/backend/convex/workSessions/util'
 
 // The bot-owned leaderboard channel. Hardcoded for now (see ST-9): the board is
 // the channel's only content, so it is cleared on every start.

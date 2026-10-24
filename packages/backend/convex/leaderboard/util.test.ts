@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
-import type { DashboardMember, DashboardPartial, DashboardSession } from '../sessions/types'
+import type { DashboardMember, DashboardPartial, DashboardWorkSession } from '../workSessions/types'
 import type { LeaderboardRow } from './types'
 import { MAX_LEADERBOARD_ROWS, rankTotals, todaysTotals } from './util'
 
@@ -12,7 +12,7 @@ const DAY_START = Date.UTC(2026, 5, 14, 22, 0, 0)
 
 function partial(overrides: Partial<DashboardPartial> = {}): DashboardPartial {
   return {
-    id: 'p1' as Id<'sessionPartial'>,
+    id: 'p1' as Id<'workSessionPartial'>,
     channelId: 'chan-a',
     mode: 'voice',
     startedAt: 0,
@@ -21,9 +21,9 @@ function partial(overrides: Partial<DashboardPartial> = {}): DashboardPartial {
   }
 }
 
-function session(partials: DashboardPartial[], overrides: Partial<DashboardSession> = {}) {
+function workSession(partials: DashboardPartial[], overrides: Partial<DashboardWorkSession> = {}) {
   return {
-    id: 's1' as Id<'session'>,
+    id: 's1' as Id<'workSession'>,
     status: 'ended' as const,
     startedAt: 0,
     endedAt: null,
@@ -40,8 +40,8 @@ function member(overrides: Partial<DashboardMember> = {}): DashboardMember {
     name: null,
     image: null,
     online: false,
-    sessions: [],
-    plans: [],
+    workSessions: [],
+    planBlocks: [],
     activeTask: null,
     ...overrides,
   }
@@ -64,8 +64,8 @@ describe('todaysTotals', () => {
       discordId: 'ada',
       name: 'Ada',
       online: true,
-      sessions: [
-        session([partial({ mode: 'camera', startedAt: 0, endedAt: 30 * M })], {
+      workSessions: [
+        workSession([partial({ mode: 'camera', startedAt: 0, endedAt: 30 * M })], {
           startedAt: 0,
           endedAt: 1 * H,
         }),
@@ -78,8 +78,8 @@ describe('todaysTotals', () => {
   it('counts screen share as Deep focus, but not voice, manual or break', () => {
     const ada = member({
       discordId: 'ada',
-      sessions: [
-        session([
+      workSessions: [
+        workSession([
           partial({ mode: 'screenShare', startedAt: 0, endedAt: 15 * M }),
           partial({ mode: 'voice', startedAt: 15 * M, endedAt: 30 * M }),
           partial({ mode: 'manual', startedAt: 30 * M, endedAt: 45 * M }),
@@ -91,12 +91,12 @@ describe('todaysTotals', () => {
     expect(totals).toMatchObject({ deepFocusMs: 15 * M })
   })
 
-  it('clips a session that straddled midnight to the Day', () => {
+  it('clips a workSession that straddled midnight to the Day', () => {
     const start = DAY_START - 30 * M
     const ada = member({
       discordId: 'ada',
-      sessions: [
-        session([partial({ mode: 'camera', startedAt: start, endedAt: null })], {
+      workSessions: [
+        workSession([partial({ mode: 'camera', startedAt: start, endedAt: null })], {
           status: 'active',
           startedAt: start,
           endedAt: null,
@@ -109,8 +109,8 @@ describe('todaysTotals', () => {
 
   it('does not count time after now', () => {
     const ada = member({
-      sessions: [
-        session([partial({ mode: 'camera', startedAt: 0, endedAt: 2 * H })], {
+      workSessions: [
+        workSession([partial({ mode: 'camera', startedAt: 0, endedAt: 2 * H })], {
           startedAt: 0,
           endedAt: 2 * H,
         }),

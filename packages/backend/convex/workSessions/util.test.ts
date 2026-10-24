@@ -3,13 +3,13 @@ import type { Id } from '../_generated/dataModel'
 import type {
   DashboardMember,
   DashboardPartial,
-  DashboardSession,
-  DashboardSessionTask,
-  SessionTaskSource,
+  DashboardWorkSession,
+  DashboardWorkSessionTask,
+  WorkSessionTaskSource,
 } from './types'
 import {
   DASHBOARD_TIME_ZONE,
-  attachTasksToSessions,
+  attachTasksToWorkSessions,
   dayOfMonth,
   formatDuration,
   formatDurationClock,
@@ -20,8 +20,8 @@ import {
   nextWeekStart,
   partialDurationMs,
   previousDayStart,
-  sessionContainsCompletedAt,
-  sessionStudyMs,
+  workSessionContainsCompletedAt,
+  workSessionStudyMs,
   shiftMonth,
   sortMembers,
   startOfDay,
@@ -34,7 +34,7 @@ const H = 60 * 60 * 1000
 
 function partial(overrides: Partial<DashboardPartial> = {}): DashboardPartial {
   return {
-    id: 'p1' as Id<'sessionPartial'>,
+    id: 'p1' as Id<'workSessionPartial'>,
     channelId: 'chan-a',
     mode: 'voice',
     startedAt: 0,
@@ -43,14 +43,14 @@ function partial(overrides: Partial<DashboardPartial> = {}): DashboardPartial {
   }
 }
 
-function session(partials: DashboardPartial[], overrides: Partial<DashboardSession> = {}) {
+function workSession(partials: DashboardPartial[], overrides: Partial<DashboardWorkSession> = {}) {
   return {
-    id: 's1' as Id<'session'>,
+    id: 's1' as Id<'workSession'>,
     status: 'ended' as const,
     startedAt: 0,
     endedAt: null,
     partials,
-    tasks: [] as DashboardSessionTask[],
+    tasks: [] as DashboardWorkSessionTask[],
     ...overrides,
   }
 }
@@ -62,8 +62,8 @@ function member(overrides: Partial<DashboardMember> = {}): DashboardMember {
     name: null,
     image: null,
     online: false,
-    sessions: [],
-    plans: [],
+    workSessions: [],
+    planBlocks: [],
     activeTask: null,
     ...overrides,
   }
@@ -83,10 +83,10 @@ describe('partialDurationMs', () => {
   })
 })
 
-describe('sessionStudyMs', () => {
+describe('workSessionStudyMs', () => {
   it('sums partials but skips breaks', () => {
-    const value = sessionStudyMs(
-      session([
+    const value = workSessionStudyMs(
+      workSession([
         partial({ startedAt: 0, endedAt: 1 * H }),
         partial({ mode: 'break', startedAt: 1 * H, endedAt: 1 * H + 10 * M }),
         partial({ mode: 'camera', startedAt: 1 * H + 10 * M, endedAt: 1 * H + 30 * M }),
@@ -97,16 +97,18 @@ describe('sessionStudyMs', () => {
   })
 
   it('counts a running partial up to now', () => {
-    expect(sessionStudyMs(session([partial({ startedAt: 0, endedAt: null })]), 20 * M)).toBe(20 * M)
+    expect(
+      workSessionStudyMs(workSession([partial({ startedAt: 0, endedAt: null })]), 20 * M)
+    ).toBe(20 * M)
   })
 })
 
 describe('memberTotalMs', () => {
-  it('sums every session today', () => {
+  it('sums every workSession today', () => {
     const m = member({
-      sessions: [
-        session([partial({ startedAt: 0, endedAt: 1 * H })]),
-        session([partial({ startedAt: 2 * H, endedAt: 2 * H + 30 * M })]),
+      workSessions: [
+        workSession([partial({ startedAt: 0, endedAt: 1 * H })]),
+        workSession([partial({ startedAt: 2 * H, endedAt: 2 * H + 30 * M })]),
       ],
     })
     expect(memberTotalMs(m, 3 * H)).toBe(90 * M)
@@ -118,15 +120,15 @@ describe('sortMembers', () => {
     const least = member({
       discordId: 'least',
       online: true,
-      sessions: [session([partial({ startedAt: 0, endedAt: 5 * M })])],
+      workSessions: [workSession([partial({ startedAt: 0, endedAt: 5 * M })])],
     })
     const most = member({
       discordId: 'most',
-      sessions: [session([partial({ startedAt: 0, endedAt: 3 * H })])],
+      workSessions: [workSession([partial({ startedAt: 0, endedAt: 3 * H })])],
     })
     const middle = member({
       discordId: 'middle',
-      sessions: [session([partial({ startedAt: 0, endedAt: 1 * H })])],
+      workSessions: [workSession([partial({ startedAt: 0, endedAt: 1 * H })])],
     })
 
     const sorted = sortMembers([least, most, middle], 3 * H)
@@ -134,76 +136,78 @@ describe('sortMembers', () => {
   })
 })
 
-describe('sessionContainsCompletedAt', () => {
-  const ended = session([], { startedAt: 1 * H, endedAt: 2 * H })
+describe('workSessionContainsCompletedAt', () => {
+  const ended = workSession([], { startedAt: 1 * H, endedAt: 2 * H })
 
   it('accepts a completion inside the span', () => {
-    expect(sessionContainsCompletedAt(ended, 90 * M)).toBe(true)
+    expect(workSessionContainsCompletedAt(ended, 90 * M)).toBe(true)
   })
 
-  it('accepts the instant the session starts but not the instant it ends', () => {
-    expect(sessionContainsCompletedAt(ended, 1 * H)).toBe(true)
-    expect(sessionContainsCompletedAt(ended, 2 * H)).toBe(false)
+  it('accepts the instant the workSession starts but not the instant it ends', () => {
+    expect(workSessionContainsCompletedAt(ended, 1 * H)).toBe(true)
+    expect(workSessionContainsCompletedAt(ended, 2 * H)).toBe(false)
   })
 
-  it('treats a running session as open-ended', () => {
-    const running = session([], { status: 'active', startedAt: 1 * H, endedAt: null })
-    expect(sessionContainsCompletedAt(running, 5 * H)).toBe(true)
-    expect(sessionContainsCompletedAt(running, 30 * M)).toBe(false)
+  it('treats a running workSession as open-ended', () => {
+    const running = workSession([], { status: 'active', startedAt: 1 * H, endedAt: null })
+    expect(workSessionContainsCompletedAt(running, 5 * H)).toBe(true)
+    expect(workSessionContainsCompletedAt(running, 30 * M)).toBe(false)
   })
 })
 
-describe('attachTasksToSessions', () => {
-  function task(overrides: Partial<SessionTaskSource> = {}): SessionTaskSource {
+describe('attachTasksToWorkSessions', () => {
+  function task(overrides: Partial<WorkSessionTaskSource> = {}): WorkSessionTaskSource {
     return {
       id: 't1' as Id<'task'>,
       title: 'Read a chapter',
       createdAt: 0,
-      plannedSessionId: null,
+      plannedWorkSessionId: null,
       completedAt: null,
       ...overrides,
     }
   }
 
-  const sessions = [
-    session([], { id: 's1' as Id<'session'>, startedAt: 1 * H, endedAt: 2 * H }),
-    session([], { id: 's2' as Id<'session'>, startedAt: 3 * H, endedAt: 4 * H }),
+  const workSessions = [
+    workSession([], { id: 's1' as Id<'workSession'>, startedAt: 1 * H, endedAt: 2 * H }),
+    workSession([], { id: 's2' as Id<'workSession'>, startedAt: 3 * H, endedAt: 4 * H }),
   ]
 
   it('shows a planned-only task as planned with no completion instant', () => {
-    const tasks = [task({ plannedSessionId: 's1' as Id<'session'> })]
+    const tasks = [task({ plannedWorkSessionId: 's1' as Id<'workSession'> })]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks).toEqual([
       { id: 't1' as Id<'task'>, title: 'Read a chapter', planned: true, completedAt: null },
     ])
     expect(bound[1].tasks).toEqual([])
   })
 
-  it('binds a finished task to the session whose span contains its completion', () => {
+  it('binds a finished task to the workSession whose span contains its completion', () => {
     const tasks = [
       task({ id: 't1' as Id<'task'>, title: 'First', completedAt: 90 * M }),
       task({ id: 't2' as Id<'task'>, title: 'Second', completedAt: 3 * H + 10 * M }),
       task({ id: 't3' as Id<'task'>, title: 'In the gap', completedAt: 2 * H + 30 * M }),
     ]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks.map((t) => t.title)).toEqual(['First'])
     expect(bound[1].tasks.map((t) => t.title)).toEqual(['Second'])
   })
 
-  it('shows a task planned and finished in the same session once, with both states', () => {
-    const tasks = [task({ plannedSessionId: 's1' as Id<'session'>, completedAt: 90 * M })]
+  it('shows a task planned and finished in the same workSession once, with both states', () => {
+    const tasks = [task({ plannedWorkSessionId: 's1' as Id<'workSession'>, completedAt: 90 * M })]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks).toHaveLength(1)
     expect(bound[0].tasks[0]).toMatchObject({ planned: true, completedAt: 90 * M })
   })
 
-  it('shows a task planned in one session and finished in another in both', () => {
-    const tasks = [task({ plannedSessionId: 's1' as Id<'session'>, completedAt: 3 * H + 10 * M })]
+  it('shows a task planned in one workSession and finished in another in both', () => {
+    const tasks = [
+      task({ plannedWorkSessionId: 's1' as Id<'workSession'>, completedAt: 3 * H + 10 * M }),
+    ]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks).toEqual([
       { id: 't1' as Id<'task'>, title: 'Read a chapter', planned: true, completedAt: null },
     ])
@@ -217,18 +221,18 @@ describe('attachTasksToSessions', () => {
     ])
   })
 
-  it('drops a completion that falls in a gap between sessions', () => {
+  it('drops a completion that falls in a gap between workSessions', () => {
     const tasks = [task({ completedAt: 2 * H + 30 * M })]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks).toEqual([])
     expect(bound[1].tasks).toEqual([])
   })
 
   it('keeps a reopened planned task as planned-only', () => {
-    const tasks = [task({ plannedSessionId: 's1' as Id<'session'>, completedAt: null })]
+    const tasks = [task({ plannedWorkSessionId: 's1' as Id<'workSession'>, completedAt: null })]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks[0]).toMatchObject({ planned: true, completedAt: null })
   })
 
@@ -238,19 +242,19 @@ describe('attachTasksToSessions', () => {
         id: 't1' as Id<'task'>,
         title: 'Planned first',
         createdAt: 1,
-        plannedSessionId: 's1' as Id<'session'>,
+        plannedWorkSessionId: 's1' as Id<'workSession'>,
       }),
       task({
         id: 't2' as Id<'task'>,
         title: 'Planned second',
         createdAt: 2,
-        plannedSessionId: 's1' as Id<'session'>,
+        plannedWorkSessionId: 's1' as Id<'workSession'>,
       }),
       task({ id: 't3' as Id<'task'>, title: 'Finished later', completedAt: 110 * M }),
       task({ id: 't4' as Id<'task'>, title: 'Finished earlier', completedAt: 70 * M }),
     ]
 
-    const bound = attachTasksToSessions(sessions, tasks)
+    const bound = attachTasksToWorkSessions(workSessions, tasks)
     expect(bound[0].tasks.map((t) => t.title)).toEqual([
       'Planned first',
       'Planned second',

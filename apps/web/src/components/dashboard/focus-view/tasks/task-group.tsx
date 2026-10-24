@@ -7,7 +7,7 @@ import { cn } from '~/lib/utils'
  * its body. The heading is a real button carrying `aria-expanded`, and a
  * collapsed body is unmounted so its rows leave the tab order. Only the caret
  * animates, and it respects reduced motion. Done is its only caller today;
- * planned-session groups will reuse the same heading.
+ * planned-workSession groups will reuse the same heading.
  */
 export function TaskGroup({
   label,
