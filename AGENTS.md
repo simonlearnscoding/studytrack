@@ -46,6 +46,9 @@ packages/
   `cursor-default`). The shared `Button` already carries it; add it to raw
   clickable elements too.
 - Components past ~150 lines become a folder.
+- Comments explain **why**, not what. If a comment has to say what the code
+  does, rename or restructure the code instead. Keep a comment only for a
+  non-obvious constraint, invariant, or trade-off.
 - Names are concise and concrete. Say what a value _is_, not where it appears:
   `tasksById`, not `byId`; `orderedTasks`, not `ordered`; `unlistedTasks`, not
   `rest`; `cachedTasks`, not `remembered`; `isTracking`, not `live`. Avoid vague
