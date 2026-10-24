@@ -1,4 +1,4 @@
-import { Play } from 'lucide-react'
+import { Play, Square } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import type { QueueTask } from './tasks/task-types'
@@ -10,15 +10,19 @@ const heroIdle = { together: 5, openedAt: '12:16', streak: '6d' }
 // complete and clear.
 export function Hero({
   isOnline,
+  isManual,
   canStartManual,
   onStartManual,
+  onStopManual,
   elapsedMs,
   nowTask,
   onToggleNowTask,
 }: {
   isOnline: boolean
+  isManual: boolean
   canStartManual: boolean
   onStartManual: () => void
+  onStopManual: () => void
   elapsedMs: number
   nowTask: QueueTask | null
   onToggleNowTask: () => void
@@ -58,6 +62,17 @@ export function Hero({
             </>
           )}
         </div>
+
+        {/* Only the manual timer can be stopped here; a Discord workSession is
+            closed by the voice events. Mobile stops from the task sheet. */}
+        {isManual && (
+          <Button
+            className="border-destructive/30 bg-destructive-tint text-destructive hover:bg-destructive/[0.22] ml-auto gap-2 rounded-xl font-semibold max-lg:hidden"
+            onClick={onStopManual}
+          >
+            <Square className="h-3.5 w-3.5 fill-current" /> Stop tracking
+          </Button>
+        )}
       </section>
     )
   }
