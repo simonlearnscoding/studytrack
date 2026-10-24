@@ -44,7 +44,7 @@ export type { PlanClick, PlanDraft, PlanDrag, PlanUpdate } from './types'
 // (`resolvePlanStart`, `resolvePlanDraft`, `resolvePlanEdit`). The hook owns the
 // pointer state; this component owns the pixels.
 export function PinnedDesktopBar({
-  surface: { axis, bands, hidden, locked, onToggleBand },
+  surface: { axis, bands, hidden, isHeldOpen, onToggleBand },
   row,
   nowLabel,
   scrollerRef,
@@ -178,7 +178,7 @@ export function PinnedDesktopBar({
       {/* the axis mirror — panned by useMirrorScroll, clipped by the bar */}
       <div ref={mirrorRef} className="relative" style={{ width: axis.widthPx }}>
         {/* the night bands, tappable here too — same strips, same toggle */}
-        <BandLayer bands={bands} hidden={hidden} locked={locked} onToggle={onToggleBand} />
+        <BandLayer bands={bands} hidden={hidden} isHeldOpen={isHeldOpen} onToggle={onToggleBand} />
         {/* hour gridlines — the same ruler the scroller draws below, run up
             through your lane so the drag-to-plan span aims at the grid it
             snaps to (15-minute marks). They extend past the bar's bottom the

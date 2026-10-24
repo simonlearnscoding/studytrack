@@ -10,6 +10,6 @@ export type AxisSurface = {
   hidden: number
   // True while the clock is holding a band open on its own: the band renders
   // open with no fold control, so a control that could not act is never shown.
-  locked: boolean
+  isHeldOpen: boolean
   onToggleBand: () => void
 }

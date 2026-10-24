@@ -11,14 +11,14 @@ const BAND_HANDLE_PX = 24
 export function BandLayer({
   bands,
   hidden,
-  locked,
+  isHeldOpen,
   showLabel = false,
   showChevron = true,
   onToggle,
 }: {
   bands: NightBandVM[]
   hidden: number
-  locked: boolean
+  isHeldOpen: boolean
   showLabel?: boolean
   showChevron?: boolean
   onToggle: () => void
@@ -31,7 +31,7 @@ export function BandLayer({
           segment={segment}
           offsetPx={offsetPx}
           hiddenCount={hidden}
-          locked={locked}
+          isHeldOpen={isHeldOpen}
           showLabel={showLabel}
           showChevron={showChevron}
           onToggle={onToggle}
@@ -48,7 +48,7 @@ function NightBand({
   segment,
   offsetPx,
   hiddenCount,
-  locked,
+  isHeldOpen,
   showLabel,
   showChevron,
   onToggle,
@@ -56,7 +56,7 @@ function NightBand({
   segment: NightBandSegment
   offsetPx: number
   hiddenCount: number
-  locked: boolean
+  isHeldOpen: boolean
   showLabel: boolean
   showChevron: boolean
   onToggle: () => void
@@ -93,9 +93,9 @@ function NightBand({
     )
   }
 
-  // Locked open by the clock (early morning): the band is open and cannot be
+  // Held open by the clock (early morning): the band is open and cannot be
   // folded, so draw only the divider — no control that would do nothing.
-  if (locked) {
+  if (isHeldOpen) {
     return (
       <div
         aria-hidden
