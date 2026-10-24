@@ -2,8 +2,8 @@ import { api } from '@studytrack/backend/convex/_generated/api'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/sessions/util'
 import type { Task, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
-import { useCachedTasks } from '~/hooks/use-cached-tasks'
-import type { DayTaskQueue, QueueTask, TaskId } from './task-types'
+import { useCachedTasks } from './use-cached-tasks'
+import type { DayTaskQueue, QueueTask, TaskId } from '../task-types'
 
 const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
   timeZone: DASHBOARD_TIME_ZONE,

@@ -1,7 +1,7 @@
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { CornerDownLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { NEW_TASK_HOTKEY } from '~/hooks/use-task-composer-hotkey'
+import { NEW_TASK_HOTKEY } from './hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 
 // One keycap shared by every shortcut hint: a raised fill and a bright edge
