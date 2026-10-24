@@ -66,8 +66,10 @@ export function FocusView() {
         >
           <Hero
             isOnline={tracking.isOnline}
+            isManual={tracking.isManual}
             canStartManual={tracking.canStartManual}
             onStartManual={tracking.startManual}
+            onStopManual={tracking.stopManual}
             elapsedMs={workSessionElapsedMs}
             nowTask={taskQueue.state.now ?? null}
             onToggleNowTask={() => {

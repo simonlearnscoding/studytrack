@@ -10,6 +10,7 @@ export type WorkSessionTracking = {
   startedAt: number | null
   canStartManual: boolean
   startManual: () => void
+  stopManual: () => void
   toggleManual: () => void
 }
 
@@ -43,6 +44,7 @@ export function useTrackingStatus(): WorkSessionTracking {
     startedAt: status?.startedAt ?? null,
     canStartManual,
     startManual,
+    stopManual,
     toggleManual,
   }
 }
