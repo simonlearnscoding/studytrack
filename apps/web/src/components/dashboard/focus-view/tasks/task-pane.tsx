@@ -36,7 +36,13 @@ const screenReaderInstructions = {
     'Press space or enter to lift the task. Use the arrow keys to move it. Press space or enter to drop, or escape to cancel.',
 }
 
-export function TaskPane({ queue }: { queue: DayTaskQueue }) {
+export function TaskPane({
+  queue,
+  isEmbedded = false,
+}: {
+  queue: DayTaskQueue
+  isEmbedded?: boolean
+}) {
   const { state, actions } = queue
   const [title, setTitle] = useState('')
   const [draggingId, setDraggingId] = useState<TaskId | null>(null)
@@ -107,7 +113,9 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
   }
 
   return (
-    <section className="bg-card flex min-h-0 flex-1 flex-col rounded-xl border p-4 max-lg:p-3.5">
+    <section
+      className={`flex min-h-0 flex-1 flex-col p-4 max-lg:p-3.5 ${isEmbedded ? '' : 'bg-card rounded-xl border'}`}
+    >
       {/* composer */}
       <form onSubmit={submit} className="mb-3 flex gap-2">
         <div className="relative min-w-0 flex-1">

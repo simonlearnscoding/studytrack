@@ -15,9 +15,15 @@ const bucketFill: Record<CalendarBucket, string> = {
 
 const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-export function MonthCalendar({ calendar }: { calendar: MonthCalendarView }) {
+export function MonthCalendar({
+  calendar,
+  isEmbedded = false,
+}: {
+  calendar: MonthCalendarView
+  isEmbedded?: boolean
+}) {
   return (
-    <section className="bg-card rounded-xl border p-4 max-lg:p-3.5">
+    <section className={`p-4 max-lg:p-3.5 ${isEmbedded ? '' : 'bg-card rounded-xl border'}`}>
       <div className="flex items-center justify-between gap-2 pb-2.5">
         <span className="text-label">{calendar.label}</span>
         <div className="flex items-center gap-1">

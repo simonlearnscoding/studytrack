@@ -77,7 +77,7 @@ export function FocusView() {
           <DayHeading now={now} />
           <TimelineSection />
           <div className="flex flex-col gap-6">
-            <div className="xl:hidden">{monthCalendar}</div>
+            <div className="lg:hidden">{monthCalendar}</div>
             <div className="lg:hidden xl:block">
               <Leaderboard weekRows={weekRows} monthRows={monthRows} />
             </div>
@@ -86,8 +86,13 @@ export function FocusView() {
         </main>
 
         <aside className="flex min-h-0 flex-col gap-4 max-lg:hidden lg:overflow-y-auto">
-          <TaskPane queue={taskQueue} />
-          <div className="hidden xl:block">{monthCalendar}</div>
+          {/* calendar and tasks share one bubble: calendar on top, tasks below,
+              separated by a hairline rather than a gap between cards */}
+          <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
+            <MonthCalendar calendar={calendar} isEmbedded />
+            <div className="border-t" />
+            <TaskPane queue={taskQueue} isEmbedded />
+          </div>
         </aside>
       </div>
 
