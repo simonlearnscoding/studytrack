@@ -1,5 +1,6 @@
 import type { CalendarBucket } from '@studytrack/backend/convex/sessions/calendar'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '~/components/ui/button'
 import type { MonthCalendarView } from './use-month-calendar'
 
@@ -22,11 +23,39 @@ export function MonthCalendar({
   calendar: MonthCalendarView
   isEmbedded?: boolean
 }) {
+  const [isExpanded, setExpanded] = useState(false)
+  // The embedded rail calendar starts folded to the Focus day's week so it can
+  // share the bubble with the task pane; the standalone card always shows the
+  // whole month.
+  const isFolded = isEmbedded && !isExpanded
+  const focusIndex = calendar.cells.findIndex((cell) => cell.isFocus)
+  const focusRow = focusIndex < 0 ? 0 : Math.floor(focusIndex / weekdays.length)
+  const visibleCells = isFolded
+    ? calendar.cells.slice(focusRow * weekdays.length, (focusRow + 1) * weekdays.length)
+    : calendar.cells
+
   return (
     <section className={`p-4 max-lg:p-3.5 ${isEmbedded ? '' : 'bg-card rounded-xl border'}`}>
       <div className="flex items-center justify-between gap-2 pb-2.5">
         <span className="text-label">{calendar.label}</span>
         <div className="flex items-center gap-1">
+          {isEmbedded ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-expanded={isExpanded}
+              aria-label={isExpanded ? 'Show current week' : 'Show full month'}
+              onClick={() => setExpanded((expanded) => !expanded)}
+              className="text-subtle-foreground hover:text-foreground h-7 w-7"
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
@@ -55,7 +84,7 @@ export function MonthCalendar({
             {day}
           </span>
         ))}
-        {calendar.cells.map((cell) =>
+        {visibleCells.map((cell) =>
           cell.inMonth ? (
             <button
               key={cell.dayStart}
