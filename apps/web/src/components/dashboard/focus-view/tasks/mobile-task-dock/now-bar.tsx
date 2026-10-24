@@ -13,6 +13,8 @@ import type { DockTask } from './types'
 export function NowBar({
   isOnline,
   canStartManual,
+  isViewingToday,
+  dayLabel,
   now,
   roomCount,
   onStart,
@@ -21,6 +23,8 @@ export function NowBar({
 }: {
   isOnline: boolean
   canStartManual: boolean
+  isViewingToday: boolean
+  dayLabel: string
   now?: DockTask
   roomCount: number
   onStart: () => void
@@ -44,7 +48,9 @@ export function NowBar({
                 )}
               />
               <span className="min-w-0 flex-1">
-                <span className={cn('text-label block', now && 'text-primary')}>Now</span>
+                <span className={cn('text-label block', now && 'text-primary')}>
+                  {isViewingToday ? 'Now' : dayLabel}
+                </span>
                 <span className="block truncate text-sm font-medium text-foreground">
                   {now?.title ?? 'Nothing queued'}
                 </span>
@@ -52,9 +58,12 @@ export function NowBar({
             </button>
             {now && (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center">
+                {/* Controlled, so a tick never outlives its task: an uncontrolled
+                    box keeps its check when Now moves on to the next task, which
+                    made the bar disagree with the list. */}
                 <Checkbox
-                  defaultChecked={false}
-                  onClick={() => onTick()}
+                  checked={false}
+                  onCheckedChange={() => onTick()}
                   aria-label="Complete task"
                 />
               </div>

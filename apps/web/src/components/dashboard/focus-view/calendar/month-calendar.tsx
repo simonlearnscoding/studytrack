@@ -1,20 +1,30 @@
 import type { CalendarBucket } from '@studytrack/backend/convex/workSessions/calendar'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
+import { DASHBOARD_TIME_ZONE } from '@studytrack/backend/convex/workSessions/util'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '~/components/ui/button'
+import { cn } from '~/lib/utils'
 import type { MonthCalendarView } from './use-month-calendar'
 
-// The fixed heat scale: a colour always means the same amount of study. Bucket 0
-// has no fill, so absence and low study stay distinguishable.
-const bucketFill: Record<CalendarBucket, string> = {
+// The fixed heat scale stays visible as dot intensity: a colour always means the
+// same amount of study. Bucket 0 has no dot, so absence and low study stay
+// distinguishable without filling the calendar with green.
+const bucketDot: Record<CalendarBucket, string> = {
   0: '',
-  1: 'bg-primary/[0.09]',
-  2: 'bg-primary/[0.18]',
-  3: 'bg-primary/30 text-white/55',
-  4: 'bg-primary/[0.48] text-white/70',
+  1: 'bg-primary/35',
+  2: 'bg-primary/55',
+  3: 'bg-primary/75',
+  4: 'bg-primary',
 }
 
-const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+const dayLabelFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: DASHBOARD_TIME_ZONE,
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
 
 export function MonthCalendar({
   calendar,
@@ -24,80 +34,107 @@ export function MonthCalendar({
   isEmbedded?: boolean
 }) {
   const [isExpanded, setExpanded] = useState(false)
-  // The embedded rail calendar starts folded to the Focus day's week so it can
-  // share the bubble with the task pane; the standalone card always shows the
-  // whole month.
+  // The embedded rail calendar starts folded to one week so the task pane keeps
+  // the room; the standalone card always shows the whole month.
   const isFolded = isEmbedded && !isExpanded
-  const focusIndex = calendar.cells.findIndex((cell) => cell.isFocus)
-  const focusRow = focusIndex < 0 ? 0 : Math.floor(focusIndex / weekdays.length)
-  const visibleCells = isFolded
-    ? calendar.cells.slice(focusRow * weekdays.length, (focusRow + 1) * weekdays.length)
-    : calendar.cells
+  const label = isFolded ? calendar.weekLabel : calendar.monthLabel
+  const cells = isFolded ? calendar.weekCells : calendar.monthCells
+  const moveBack = isFolded ? calendar.previousWeek : calendar.previousMonth
+  const moveForward = isFolded ? calendar.nextWeek : calendar.nextMonth
+  const period = isFolded ? 'week' : 'month'
+
+  const toggleExpanded = () => {
+    if (isExpanded) {
+      calendar.showFocusWeek()
+    } else {
+      calendar.showWeekMonth()
+    }
+    setExpanded((expanded) => !expanded)
+  }
 
   return (
-    <section className={`p-4 max-lg:p-3.5 ${isEmbedded ? '' : 'bg-card rounded-xl border'}`}>
-      <div className="flex items-center justify-between gap-2 pb-2.5">
-        <span className="text-label">{calendar.label}</span>
-        <div className="flex items-center gap-1">
-          {isEmbedded ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-expanded={isExpanded}
-              aria-label={isExpanded ? 'Show current week' : 'Show full month'}
-              onClick={() => setExpanded((expanded) => !expanded)}
-              className="text-subtle-foreground hover:text-foreground h-7 w-7"
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          ) : null}
+    <section className={cn('p-3.5', isEmbedded ? 'shrink-0' : 'bg-card rounded-xl border')}>
+      <div className="flex min-w-0 items-center gap-1 pb-3">
+        <span className="min-w-0 truncate text-sm font-medium text-foreground">{label}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Previous ${period}`}
+          onClick={moveBack}
+          className="text-subtle-foreground hover:text-foreground h-6 w-6 shrink-0"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Next ${period}`}
+          onClick={moveForward}
+          className="text-subtle-foreground hover:text-foreground h-6 w-6 shrink-0"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+        {isEmbedded ? (
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            aria-label="Previous month"
-            onClick={calendar.previousMonth}
-            className="text-subtle-foreground hover:text-foreground h-7 w-7"
+            size="sm"
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded ? 'Collapse calendar to one week' : 'Expand calendar to full month'
+            }
+            onClick={toggleExpanded}
+            className="text-muted-foreground hover:text-foreground ml-auto h-7 shrink-0 gap-1.5 rounded-md px-2 text-caption"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+            <span>{isExpanded ? 'Collapse' : 'Expand month'}</span>
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            )}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Next month"
-            onClick={calendar.nextMonth}
-            className="text-subtle-foreground hover:text-foreground h-7 w-7"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        ) : null}
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {weekdays.map((day, i) => (
-          <span key={i} className="text-label text-center">
+        {weekdays.map((day) => (
+          <span key={day} className="text-label pb-1 text-center">
             {day}
           </span>
         ))}
-        {visibleCells.map((cell) =>
+        {cells.map((cell) =>
           cell.inMonth ? (
             <button
               key={cell.dayStart}
               type="button"
               onClick={() => calendar.selectDay(cell.dayStart)}
-              aria-label={`${cell.dayOfMonth} ${calendar.label}`}
+              aria-label={dayLabelFormat.format(new Date(cell.dayStart))}
               aria-pressed={cell.isFocus}
-              className={`flex aspect-[1.2] cursor-pointer items-end rounded-md border border-border-strong p-1 font-mono text-label tracking-normal text-subtle-foreground ${bucketFill[cell.bucket]} ${cell.isFocus ? 'ring-primary text-primary ring-1' : ''} ${cell.isFuture ? 'border-dashed opacity-45' : ''}`}
+              className={cn(
+                'flex h-10 cursor-pointer flex-col items-center justify-center gap-1 rounded-md font-mono text-xs transition-colors',
+                cell.isFocus
+                  ? 'bg-primary font-semibold text-primary-foreground'
+                  : cell.isToday
+                    ? 'text-primary ring-1 ring-primary/30 ring-inset hover:bg-white/[0.04]'
+                    : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
+                cell.isFuture && !cell.isFocus && 'text-hint opacity-45'
+              )}
             >
-              {cell.dayOfMonth}
+              <span>{cell.dayOfMonth}</span>
+              {cell.bucket > 0 ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'h-1 w-1 rounded-full',
+                    cell.isFocus ? 'bg-primary-foreground/70' : bucketDot[cell.bucket]
+                  )}
+                />
+              ) : null}
             </button>
           ) : (
-            <span key={cell.dayStart} aria-hidden className="aspect-[1.2]" />
+            <span key={cell.dayStart} aria-hidden className="h-10" />
           )
         )}
       </div>

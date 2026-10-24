@@ -31,7 +31,7 @@ export function TaskGroup({
         onClick={onToggle}
         aria-expanded={isExpanded}
         aria-label={`${label}, ${count} ${count === 1 ? 'task' : 'tasks'}`}
-        className="text-label flex w-full cursor-pointer items-center gap-2 border-b border-white/[0.06] px-2 py-3 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none"
+        className="text-label flex w-full cursor-pointer items-center gap-2 border-b border-white/[0.06] px-2 py-2.5 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none"
       >
         <ChevronRight
           aria-hidden
@@ -42,10 +42,10 @@ export function TaskGroup({
         />
         <span>{label}</span>
         <span aria-hidden>·</span>
-        <span>{count}</span>
+        <span className="font-mono">{count}</span>
         {trailing ? <span className="ml-auto">{trailing}</span> : null}
       </button>
-      {isExpanded ? <ul>{children}</ul> : null}
+      {isExpanded ? <ul className="space-y-0.5 pt-1">{children}</ul> : null}
     </div>
   )
 }

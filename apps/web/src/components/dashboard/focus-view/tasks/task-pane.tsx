@@ -38,9 +38,11 @@ const screenReaderInstructions = {
 
 export function TaskPane({
   queue,
+  dayLabel,
   isEmbedded = false,
 }: {
   queue: DayTaskQueue
+  dayLabel: string
   isEmbedded?: boolean
 }) {
   const { state, actions } = queue
@@ -49,6 +51,8 @@ export function TaskPane({
   const [isDoneFolded, setDoneFolded] = useDoneFold()
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef)
+
+  const openTaskCount = state.openTasks.length
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -116,21 +120,30 @@ export function TaskPane({
     <section
       className={`flex min-h-0 flex-1 flex-col p-4 max-lg:p-3.5 ${isEmbedded ? '' : 'bg-card rounded-xl border'}`}
     >
+      <div className="flex items-baseline justify-between gap-2 px-1 pb-3">
+        <h2 className="text-sm font-medium text-foreground">{dayLabel}</h2>
+        {state.status === 'ready' ? (
+          <span className="text-caption shrink-0">
+            {openTaskCount} {openTaskCount === 1 ? 'task' : 'tasks'}
+          </span>
+        ) : null}
+      </div>
+
       {/* composer */}
-      <form onSubmit={submit} className="mb-3 flex gap-2">
+      <form onSubmit={submit} className="mb-4 flex gap-2">
         <div className="relative min-w-0 flex-1">
           <Input
             ref={inputRef}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
-            placeholder=" "
+            placeholder="Add a task…"
             aria-label="New task"
-            className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"
+            className="peer h-10 rounded-lg border-white/[0.1] bg-white/[0.06] pr-20 text-sm placeholder:text-hint focus-visible:border-primary/50 focus-visible:ring-primary/20"
           />
           <TaskComposerHint />
         </div>
-        <Button type="submit" size="icon" className="h-9 w-9 shrink-0 rounded-lg">
+        <Button type="submit" size="icon" className="h-10 w-10 shrink-0 rounded-lg">
           <Plus className="h-4 w-4" />
         </Button>
       </form>
@@ -154,7 +167,7 @@ export function TaskPane({
           ) : (
             <>
               <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                <ul>
+                <ul className="space-y-0.5">
                   {state.openTasks.map((task) => (
                     <TaskItem
                       key={task.id}

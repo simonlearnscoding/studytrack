@@ -32,10 +32,10 @@ export function TaskItem({ task, isNow, onTick, onRename, onRemove }: TaskItemPr
       aria-describedby={attributes['aria-describedby']}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'group relative flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 outline-none last:border-0',
+        'group relative flex items-center gap-2 rounded-md px-2 py-2.5 outline-none transition-colors',
         !editing && 'cursor-grab select-none active:cursor-grabbing',
         isDragging && 'cursor-grabbing opacity-40',
-        isNow && 'rounded-md bg-primary/[0.06]',
+        isNow ? 'bg-primary/[0.06] hover:bg-primary/[0.09]' : 'hover:bg-white/[0.035]',
         'focus-visible:ring-2 focus-visible:ring-primary/20'
       )}
       {...(editing ? {} : listeners)}
@@ -52,7 +52,7 @@ export function DoneTaskItem({ task, onTick, onRename, onRemove }: TaskItemProps
   const editor = useTaskEditing(task, onRename)
 
   return (
-    <li className="group relative flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0">
+    <li className="group relative flex items-center gap-2 rounded-md px-2 py-2.5 transition-colors hover:bg-white/[0.035]">
       <TaskRow task={task} {...editor} onTick={onTick} onRemove={onRemove} />
     </li>
   )

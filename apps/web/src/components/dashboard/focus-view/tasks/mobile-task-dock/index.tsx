@@ -1,4 +1,8 @@
+import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { useEffect, useState } from 'react'
+import { useMounted } from '~/hooks/use-mounted'
+import { useDateStore } from '~/state/date.store'
+import { focusDayLabel, isFocusDayToday } from '../../focus-day'
 import type { DayTaskQueue } from '../task-types'
 import type { WorkSessionTracking } from '../../use-tracking-status'
 import { NowBar } from './now-bar'
@@ -20,6 +24,13 @@ export function MobileTaskDock({
   const [open, setOpen] = useState(false)
   const { state, actions } = queue
   const { isOnline, isManual, canStartManual, startManual, toggleManual } = tracking
+  // The bar is the read surface for the Day on screen, so it must say which Day
+  // that is before it offers a tick. Gated behind mount for SSR parity.
+  const selectedDate = useDateStore((dateState) => dateState.selectedDate)
+  const mounted = useMounted()
+  const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
+  const isViewingToday = !mounted || isFocusDayToday(dayStart, Date.now())
+  const dayLabel = mounted ? focusDayLabel(dayStart, isViewingToday) : 'Today'
 
   // Lock the page behind the sheet and close it on Escape.
   useEffect(() => {
@@ -40,6 +51,8 @@ export function MobileTaskDock({
       <NowBar
         isOnline={isOnline}
         canStartManual={canStartManual}
+        isViewingToday={isViewingToday}
+        dayLabel={dayLabel}
         now={state.now}
         roomCount={roomCount}
         onStart={startManual}
@@ -54,6 +67,7 @@ export function MobileTaskDock({
         openTasks={state.openTasks}
         doneTasks={state.doneTasks}
         nowId={state.now?.id ?? null}
+        dayLabel={dayLabel}
         onClose={() => setOpen(false)}
         onAdd={actions.addTask}
         onTick={actions.toggleTaskDone}

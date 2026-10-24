@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { bucketForMs, buildMonthGrid, monthLabel, type CalendarDayTotal } from './calendar'
+import {
+  bucketForMs,
+  buildMonthGrid,
+  buildWeekGrid,
+  monthLabel,
+  type CalendarDayTotal,
+} from './calendar'
 import { DASHBOARD_TIME_ZONE, dayOfMonth, nextDayStart, startOfDay } from './util'
 
 const M = 60 * 1000
@@ -117,6 +123,45 @@ describe('buildMonthGrid', () => {
     const total = grid({ monthStart, todayDayStart, totals, metric: 'total' })
     expect(focus.find((cell) => cell.dayOfMonth === 2)?.bucket).toBe(1)
     expect(total.find((cell) => cell.dayOfMonth === 2)?.bucket).toBe(4)
+  })
+})
+
+describe('buildWeekGrid', () => {
+  it('is the seven Days from Monday through Sunday, even across a month boundary', () => {
+    const weekStart = dayStart(2026, 10, 26)
+    const cells = buildWeekGrid({
+      weekStart,
+      focusDayStart: dayStart(2026, 10, 28),
+      todayDayStart: dayStart(2026, 10, 20),
+      totals: [],
+      metric: 'focus',
+      timeZone: DASHBOARD_TIME_ZONE,
+    })
+
+    expect(cells).toHaveLength(7)
+    expect(cells.map((cell) => cell.dayOfMonth)).toEqual([26, 27, 28, 29, 30, 31, 1])
+    expect(cells[2].isFocus).toBe(true)
+    expect(cells.every((cell) => cell.inMonth)).toBe(true)
+  })
+
+  it('keeps the metric buckets and leaves future Days unheated', () => {
+    const weekStart = dayStart(2026, 10, 19)
+    const totals: CalendarDayTotal[] = [
+      { dayStart: dayStart(2026, 10, 20), deepFocusMs: 20 * M, totalMs: 4 * H },
+      { dayStart: dayStart(2026, 10, 25), deepFocusMs: 4 * H, totalMs: 4 * H },
+    ]
+    const cells = buildWeekGrid({
+      weekStart,
+      focusDayStart: weekStart,
+      todayDayStart: dayStart(2026, 10, 21),
+      totals,
+      metric: 'focus',
+      timeZone: DASHBOARD_TIME_ZONE,
+    })
+
+    expect(cells[1].bucket).toBe(1)
+    expect(cells[6].bucket).toBe(0)
+    expect(cells[6].isFuture).toBe(true)
   })
 })
 
