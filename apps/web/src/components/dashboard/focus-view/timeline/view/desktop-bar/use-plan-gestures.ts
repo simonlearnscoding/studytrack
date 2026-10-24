@@ -10,6 +10,7 @@ import type {
   TimelineRowVM,
   TimelineWindow,
 } from '@studytrack/backend/convex/timeline/types'
+import { minuteToPx } from '@studytrack/backend/convex/timeline/util'
 import {
   useEffect,
   useRef,
@@ -165,9 +166,23 @@ export function usePlanGestures({
       blocks: row?.planBlocks ?? [],
     })
     if (!start) return
+    // Resolve the whole window so the preview, the popup and the mutation all
+    // share the same clamped span: a two-hour default stops at the next plan or
+    // the end of the axis instead of asking for a plan the Day cannot hold.
+    const requestedEndPx =
+      minuteToPx(axis.segments, start.startMin + DOUBLE_CLICK_PLAN_MIN) ?? axis.widthPx
+    const span = resolvePlanDraft({
+      segments: axis.segments,
+      axisWidthPx: axis.widthPx,
+      blocks: row?.planBlocks ?? [],
+      fromPx: start.startPx,
+      toPx: requestedEndPx,
+      nowPx: now,
+    })
+    if (!isPlannableSpan(span)) return
     onPlanDoubleClick?.({
-      startMin: start.startMin,
-      endMin: start.startMin + DOUBLE_CLICK_PLAN_MIN,
+      startMin: span.startMin,
+      endMin: span.endMin,
       x: event.clientX,
       y: event.clientY,
     })
