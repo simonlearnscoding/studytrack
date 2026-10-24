@@ -67,7 +67,9 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   // Now is the topmost open task of the Day. Nothing is stored: completing or
   // reordering the queue moves the marker by itself.
   const tasks = visibleTasks?.map(toQueueTask) ?? []
-  const now = tasks.find((task) => !task.done)
+  const openTasks = tasks.filter((task) => !task.done)
+  const doneTasks = tasks.filter((task) => task.done)
+  const now = openTasks[0]
 
   const addTask = (title: string, placement: TaskPlacement = 'end') => {
     void create({ title, plannedAt: dayStart, placement }).catch(logTaskError)
@@ -96,7 +98,8 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   return {
     state: {
       status: visibleTasks === undefined ? 'loading' : 'ready',
-      tasks,
+      openTasks,
+      doneTasks,
       now,
       canScheduleForToday,
     },

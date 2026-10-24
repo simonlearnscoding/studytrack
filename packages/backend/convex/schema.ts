@@ -22,10 +22,12 @@ export default defineSchema({
   // A member's own display choices. One row per member, created on the first
   // write; a missing row means the defaults in preferences/types. Each setting is
   // its own column with its own mutation, so changing one can never clear
-  // another. `metric` is the site-wide Focus / Total switch (see GLOSSARY).
+  // another. `metric` is the site-wide Focus / Total switch (see GLOSSARY);
+  // `isDoneFolded` puts the Done group away in every Day.
   preference: defineTable({
     userId: v.id('users'),
     metric,
+    isDoneFolded: v.optional(v.boolean()),
   }).index('by_userId', ['userId']),
 
   // A study stint: from joining a channel until leaving voice. Partials hang off

@@ -5,9 +5,11 @@ import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-c
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
+import { useDoneFold } from '~/hooks/use-done-fold'
 import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
+import { TaskGroup } from '../task-group'
 import type { TaskId } from '../task-types'
 import type { DockTask } from './types'
 
@@ -19,7 +21,8 @@ export function TaskSheet({
   isManualTracking,
   canStartManual,
   loading,
-  tasks,
+  openTasks,
+  doneTasks,
   nowId,
   onClose,
   onAdd,
@@ -32,7 +35,8 @@ export function TaskSheet({
   isManualTracking: boolean
   canStartManual: boolean
   loading: boolean
-  tasks: DockTask[]
+  openTasks: DockTask[]
+  doneTasks: DockTask[]
   nowId: TaskId | null
   onClose: () => void
   onAdd: (title: string, placement: TaskPlacement) => void
@@ -42,8 +46,11 @@ export function TaskSheet({
   onToggleTracking: () => void
 }) {
   const [title, setTitle] = useState('')
+  const [isDoneFolded, setDoneFolded] = useDoneFold()
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef, open)
+  const isDoneExpanded = !isDoneFolded
+  const isDoneResolved = isDoneFolded !== undefined
 
   const add = (placement: TaskPlacement) => {
     const trimmed = title.trim()
@@ -83,28 +90,58 @@ export function TaskSheet({
           <h2 className="text-label">Tasks</h2>
         </div>
 
-        <ul className="min-h-0 flex-1 overflow-y-auto px-2">
+        <div className="min-h-0 flex-1 overflow-y-auto px-2">
           {loading ? (
-            <li className="px-3 py-2">
+            <div className="px-3 py-2">
               <div className="skeleton h-9 rounded-lg" />
-            </li>
-          ) : tasks.length === 0 ? (
-            <li className="text-caption px-3 py-6 text-center">
+            </div>
+          ) : openTasks.length === 0 && doneTasks.length === 0 ? (
+            <p className="text-caption px-3 py-6 text-center">
               No tasks planned for this day — add one below.
-            </li>
+            </p>
           ) : (
-            tasks.map((task) => (
-              <SheetRow
-                key={task.id}
-                task={task}
-                isNow={task.id === nowId}
-                onTick={() => onTick(task.id)}
-                onRename={(title) => onRename(task.id, title)}
-                onRemove={() => onRemove(task.id)}
-              />
-            ))
+            <>
+              <ul>
+                {openTasks.map((task) => (
+                  <SheetRow
+                    key={task.id}
+                    task={task}
+                    isNow={task.id === nowId}
+                    onTick={() => onTick(task.id)}
+                    onRename={(title) => onRename(task.id, title)}
+                    onRemove={() => onRemove(task.id)}
+                  />
+                ))}
+              </ul>
+
+              {doneTasks.length > 0 ? (
+                <TaskGroup
+                  label="Done"
+                  count={doneTasks.length}
+                  isExpanded={isDoneExpanded}
+                  onToggle={() => setDoneFolded(isDoneExpanded)}
+                >
+                  {isDoneResolved ? (
+                    doneTasks.map((task) => (
+                      <SheetRow
+                        key={task.id}
+                        task={task}
+                        isNow={false}
+                        onTick={() => onTick(task.id)}
+                        onRename={(title) => onRename(task.id, title)}
+                        onRemove={() => onRemove(task.id)}
+                      />
+                    ))
+                  ) : (
+                    <li className="px-2 py-2">
+                      <div className="skeleton h-9 rounded-lg" />
+                    </li>
+                  )}
+                </TaskGroup>
+              ) : null}
+            </>
           )}
-        </ul>
+        </div>
 
         <div className="px-4 pt-3">
           <form onSubmit={submit} className="flex items-center gap-2">

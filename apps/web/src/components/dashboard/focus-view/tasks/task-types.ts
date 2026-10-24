@@ -8,12 +8,15 @@ export type QueueTask = Task & {
 
 export type TaskId = QueueTask['id']
 
-// The queue for one Day. `status` says whether the list is usable yet; `tasks`
-// is always an array. `canScheduleForToday` answers the pane's question without
-// leaking the Day arithmetic behind it.
+// The queue for one Day, derived from its single stored order. `status` says
+// whether the list is usable yet; the two lists are always arrays. Done always
+// comes after Open, but the split is a view — there is no second ordering.
+// `canScheduleForToday` answers the pane's question without leaking the Day
+// arithmetic behind it.
 export type DayTaskQueueState = {
   status: 'loading' | 'ready'
-  tasks: QueueTask[]
+  openTasks: QueueTask[]
+  doneTasks: QueueTask[]
   now: QueueTask | undefined
   canScheduleForToday: boolean
 }

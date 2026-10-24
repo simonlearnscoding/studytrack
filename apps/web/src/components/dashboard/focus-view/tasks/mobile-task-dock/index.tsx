@@ -51,7 +51,8 @@ export function MobileTaskDock({
         isManualTracking={isManual}
         canStartManual={canStartManual}
         loading={state.status === 'loading'}
-        tasks={state.tasks}
+        openTasks={state.openTasks}
+        doneTasks={state.doneTasks}
         nowId={state.now?.id ?? null}
         onClose={() => setOpen(false)}
         onAdd={actions.addTask}

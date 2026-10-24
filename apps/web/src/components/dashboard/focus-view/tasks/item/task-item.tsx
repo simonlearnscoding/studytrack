@@ -5,37 +5,19 @@ import { cn } from '~/lib/utils'
 import type { QueueTask } from '../task-types'
 import { TaskRow } from './task-row'
 
-export function TaskItem({
-  task,
-  isNow,
-  onTick,
-  onRename,
-  onRemove,
-}: {
+type TaskItemProps = {
   task: QueueTask
   isNow?: boolean
   onTick: () => void
   onRename: (title: string) => void
   onRemove: () => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(task.title)
+}
 
-  const startEditing = () => {
-    setDraft(task.title)
-    setEditing(true)
-  }
-
-  const commit = () => {
-    const trimmed = draft.trim()
-    if (trimmed && trimmed !== task.title) onRename(trimmed)
-    setEditing(false)
-  }
-
-  const cancel = () => {
-    setDraft(task.title)
-    setEditing(false)
-  }
+// One Open row in the sortable list. Only Open tasks join it; Done rows use
+// DoneTaskItem below, because history cannot be dragged.
+export function TaskItem({ task, isNow, onTick, onRename, onRemove }: TaskItemProps) {
+  const editor = useTaskEditing(task, onRename)
+  const { editing } = editor
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -58,18 +40,50 @@ export function TaskItem({
       )}
       {...(editing ? {} : listeners)}
     >
-      <TaskRow
-        task={task}
-        isNow={isNow}
-        editing={editing}
-        draft={draft}
-        onDraft={setDraft}
-        onCommit={commit}
-        onCancel={cancel}
-        onStartEditing={startEditing}
-        onTick={onTick}
-        onRemove={onRemove}
-      />
+      <TaskRow task={task} isNow={isNow} {...editor} onTick={onTick} onRemove={onRemove} />
     </li>
   )
+}
+
+// A Done row: a plain list item at either fold state. No drag listeners, no
+// keyboard lift, no grab cursor and no sortable announcement — only the record
+// and its actions.
+export function DoneTaskItem({ task, onTick, onRename, onRemove }: TaskItemProps) {
+  const editor = useTaskEditing(task, onRename)
+
+  return (
+    <li className="group relative flex items-center gap-2 border-b border-white/[0.04] px-2 py-2.5 last:border-0">
+      <TaskRow task={task} {...editor} onTick={onTick} onRemove={onRemove} />
+    </li>
+  )
+}
+
+function useTaskEditing(task: QueueTask, onRename: (title: string) => void) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(task.title)
+
+  const startEditing = () => {
+    setDraft(task.title)
+    setEditing(true)
+  }
+
+  const commit = () => {
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== task.title) onRename(trimmed)
+    setEditing(false)
+  }
+
+  const cancel = () => {
+    setDraft(task.title)
+    setEditing(false)
+  }
+
+  return {
+    editing,
+    draft,
+    onDraft: setDraft,
+    onCommit: commit,
+    onCancel: cancel,
+    onStartEditing: startEditing,
+  }
 }

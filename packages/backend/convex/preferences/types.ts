@@ -7,8 +7,14 @@ export type Metric = Infer<typeof metric>
 
 export const setMetricArgs = v.object({ metric })
 
+// The Done group's fold state. Absent on rows written before the column
+// existed; a missing value reads as expanded.
+export const setDoneFoldedArgs = v.object({ folded: v.boolean() })
+
 // The caller's display Preferences with defaults already applied, so the web
-// never invents its own fallback. Only the metric is stored today.
+// never invents its own fallback. The metric and the Done group's fold state are
+// stored, each in its own column.
 export type Preference = {
   metric: Metric
+  isDoneFolded: boolean
 }

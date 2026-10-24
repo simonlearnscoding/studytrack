@@ -171,12 +171,20 @@ _Avoid_: Chain, run, combo
 ## Preferences
 
 **Preference**:
-A member's own choice about how the dashboard presents things — today only the
-metric it leads with: Deep focus or Total time. Stored per member, so it follows
-them across devices; a member who never chose gets the defaults.
+A member's own choice about how the dashboard presents things: the metric it
+leads with (Deep focus or Total time) and whether the Done group is folded away.
+One choice each, global to the member rather than per Day, stored per member so
+it follows them across devices; a member who never chose gets the defaults.
 _Avoid_: Setting, option, config
 
 ## Views
+
+**Task group**:
+A named slice of the task queue shown under its own heading, with a count and a
+caret that folds it away — the Done tasks today, planned-session groups later.
+Membership is derived from the queue, never stored as a second list, and folding
+changes only what is shown.
+_Avoid_: Section, bucket, category
 
 **Focus view**:
 The page about _now_: the live room, your current Session, today's Tasks. The

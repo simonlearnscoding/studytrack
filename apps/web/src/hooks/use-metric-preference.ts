@@ -19,7 +19,16 @@ export function useMetric(): Metric {
 export function useMetricPreference(): [Metric, (metric: Metric) => void] {
   const metric = useMetric()
   const save = useMutation(api.preferences.setMetric).withOptimisticUpdate((localStore, args) => {
-    localStore.setQuery(api.preferences.mine, {}, { metric: args.metric })
+    const cachedPreference = localStore.getQuery(api.preferences.mine, {})
+    if (cachedPreference === undefined) return
+    localStore.setQuery(
+      api.preferences.mine,
+      {},
+      {
+        ...cachedPreference,
+        metric: args.metric,
+      }
+    )
   })
 
   function choose(next: Metric) {

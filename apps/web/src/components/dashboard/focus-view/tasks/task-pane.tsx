@@ -21,9 +21,11 @@ import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
+import { useDoneFold } from '~/hooks/use-done-fold'
 import { handleComposerKeyDown, useTaskComposerHotkey } from '~/hooks/use-task-composer-hotkey'
-import { TaskItem } from './item/task-item'
+import { DoneTaskItem, TaskItem } from './item/task-item'
 import { taskPaneCollisionDetection } from './dnd/task-pane-collision'
+import { TaskGroup } from './task-group'
 import { TaskOverlay } from './task-overlay'
 import { ScheduleForTodayRail } from './dnd/schedule-for-today-rail'
 import { SCHEDULE_FOR_TODAY_DROP_ID } from './dnd/task-pane-collision'
@@ -38,6 +40,7 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
   const { state, actions } = queue
   const [title, setTitle] = useState('')
   const [draggingId, setDraggingId] = useState<TaskId | null>(null)
+  const [isDoneFolded, setDoneFolded] = useDoneFold()
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef)
 
@@ -46,11 +49,16 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const ids = state.tasks.map((task) => task.id)
-  const dragging = state.tasks.find((task) => task.id === draggingId)
+  // Only Open tasks are sortable; Done rows are records and render outside the
+  // list. The reorder payload therefore carries only Open ids, and the server
+  // appends the Done ids in their current order.
+  const ids = state.openTasks.map((task) => task.id)
+  const dragging = state.openTasks.find((task) => task.id === draggingId)
+  const isDoneExpanded = !isDoneFolded
+  const isDoneResolved = isDoneFolded !== undefined
 
   const titleOf = (id: string | number) =>
-    state.tasks.find((task) => task.id === id)?.title ?? 'task'
+    state.openTasks.find((task) => task.id === id)?.title ?? 'task'
   const positionOf = (id: string | number) => ids.indexOf(id as TaskId) + 1
   // NOTE: this should probably be in a hook
   const announcements: Announcements = {
@@ -131,25 +139,52 @@ export function TaskPane({ queue }: { queue: DayTaskQueue }) {
         <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
           {state.status === 'loading' ? (
             <div className="skeleton h-16 rounded-lg" />
-          ) : state.tasks.length === 0 ? (
+          ) : state.openTasks.length === 0 && state.doneTasks.length === 0 ? (
             <p className="text-caption px-3 py-6 text-center">
               No tasks planned for this day — add one above.
             </p>
           ) : (
-            <ul>
+            <>
               <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                {state.tasks.map((task) => (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    isNow={task.id === state.now?.id}
-                    onTick={() => actions.toggleTaskDone(task.id)}
-                    onRename={(title) => actions.renameTask(task.id, title)}
-                    onRemove={() => actions.removeTask(task.id)}
-                  />
-                ))}
+                <ul>
+                  {state.openTasks.map((task) => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      isNow={task.id === state.now?.id}
+                      onTick={() => actions.toggleTaskDone(task.id)}
+                      onRename={(title) => actions.renameTask(task.id, title)}
+                      onRemove={() => actions.removeTask(task.id)}
+                    />
+                  ))}
+                </ul>
               </SortableContext>
-            </ul>
+
+              {state.doneTasks.length > 0 ? (
+                <TaskGroup
+                  label="Done"
+                  count={state.doneTasks.length}
+                  isExpanded={isDoneExpanded}
+                  onToggle={() => setDoneFolded(isDoneExpanded)}
+                >
+                  {isDoneResolved ? (
+                    state.doneTasks.map((task) => (
+                      <DoneTaskItem
+                        key={task.id}
+                        task={task}
+                        onTick={() => actions.toggleTaskDone(task.id)}
+                        onRename={(title) => actions.renameTask(task.id, title)}
+                        onRemove={() => actions.removeTask(task.id)}
+                      />
+                    ))
+                  ) : (
+                    <li className="px-2 py-2">
+                      <div className="skeleton h-9 rounded-lg" />
+                    </li>
+                  )}
+                </TaskGroup>
+              ) : null}
+            </>
           )}
         </div>
 
