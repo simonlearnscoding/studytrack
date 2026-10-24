@@ -20,8 +20,8 @@ exactly, and we keep switchable scenarios so every situation is reachable.
 
 - Route: `apps/web/src/routes/index.tsx` → `FocusView`
   (`components/dashboard/focus-view/focus-view.tsx`)
-- The timeline: `components/dashboard/focus-view/timeline/` (`view/day-timeline.tsx`,
-  `view/track-scroller.tsx`, `view/night-band.tsx`, the pinned lanes)
+- The timeline: `components/dashboard/focus-view/timeline/view/` (`index.tsx`,
+  `axis/`, `lanes/`, `desktop-bar/`, `track-scroller/`)
 - Live reads: `timeline/hooks/use-timeline.ts` and `live-room/use-live-room.ts`,
   both on `sessions.getTodaysActivitiesForDashboard`
 - Real types: `packages/backend/convex/sessions/types.ts` (`DashboardMember`,

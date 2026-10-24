@@ -8,10 +8,10 @@ import {
   type PlanDrag,
   type PlanUpdate,
 } from './desktop-bar'
-import { PinnedMobileLane } from './mobile-lane'
-import { NamesColumn } from './names-column'
+import { PinnedMobileLane } from './lanes/mobile-lane'
+import { NamesColumn } from './lanes/names-column'
 import { TrackLegend } from './track-legend'
-import type { SessionClick } from './row-track'
+import type { SessionClick } from './lanes/row-track'
 import { TrackScroller } from './track-scroller'
 import { useCentreOnNow } from '../hooks/use-centre-on-now'
 
@@ -27,6 +27,10 @@ import { useCentreOnNow } from '../hooks/use-centre-on-now'
 // pins to the page may live inside it. The names column is the scroller's
 // pinned sibling — names never scroll sideways. Your name cell is the desktop
 // bar's sticky twin (same height, same surface), so name and lane pin together.
+//
+// This index is the composition root of view/: `axis/` draws the ruler and night
+// bands, `lanes/` draws names and bars, `desktop-bar/` owns your pinned lane and
+// its gestures, and `track-scroller/` owns the room's sideways track.
 export function DayTimeline({
   window: axis,
   rows,

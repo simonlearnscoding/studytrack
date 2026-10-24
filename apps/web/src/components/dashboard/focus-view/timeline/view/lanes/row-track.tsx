@@ -4,7 +4,7 @@ import type {
   TimelineRowVM,
 } from '@studytrack/backend/convex/timeline/types'
 import { Fragment } from 'react'
-import { barClass } from '../session-bar-style'
+import { barClass } from '../../session-bar-style'
 
 // The plan currently being moved or resized. Its live geometry replaces the
 // stored piece(s) while the gesture is active, so the block follows the pointer
