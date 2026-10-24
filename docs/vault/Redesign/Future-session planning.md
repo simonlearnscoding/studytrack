@@ -48,6 +48,12 @@ sessions, and how it differs on mobile. Explicitly later.
   the same member and Day may touch at their edges but never overlap: the
   mutation refuses an overlap, and the drag stops at the next plan in the
   direction of travel and refuses to start on top of one.
+- **Creating a plan is confirmed first** (2026-10-24). A drag or a double-click
+  does not store anything: it opens the shared popover in a draft state showing
+  the window and duration, with **Create** and **Cancel**. The dashed preview
+  stays on the lane until the decision; Cancel or dismissing the popover
+  discards it. A refused create (past or overlap) keeps the popover open with a
+  short inline message instead of failing silently.
 - **Edge-drag resizes, body-drag moves** (2026-10-20). Hovering an edge of your
   own plan changes the cursor to a horizontal resize arrow; dragging that edge
   moves the start or end on the 15-minute grid. Dragging the body translates the
