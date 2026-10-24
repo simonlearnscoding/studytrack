@@ -17,7 +17,7 @@ import { useTrackPan } from './use-track-pan'
 // and mouse-drag here — dragging the room's rows acts as scroll. (Dragging
 // *your* lane, in the pinned bar above, is a planning gesture instead — LD-6.)
 export function TrackScroller({
-  surface: { axis, bands, hidden, isHeldOpen, onToggleBand },
+  surface: { axis, bands, hidden, isNightBandHeldOpen, onToggleBand },
   rows,
   scrollerRef,
   onSessionClick,
@@ -47,7 +47,7 @@ export function TrackScroller({
         <BandLayer
           bands={bands}
           hidden={hidden}
-          isHeldOpen={isHeldOpen}
+          isNightBandHeldOpen={isNightBandHeldOpen}
           showLabel
           showChevron={false}
           onToggle={onToggleBand}

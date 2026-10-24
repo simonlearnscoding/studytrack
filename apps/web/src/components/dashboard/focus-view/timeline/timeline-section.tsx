@@ -174,7 +174,7 @@ export function TimelineSection() {
           rows={rows}
           nowLabel={`now · ${formatClock(nowMin)}`}
           scrollerRef={scrollerRef}
-          isHeldOpen={auto.morning}
+          isNightBandHeldOpen={auto.morning}
           onToggleBand={toggleBand}
           draftPlan={draftPlan}
           onPlanDrag={openPlanDraft}

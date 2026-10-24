@@ -36,7 +36,7 @@ export function DayTimeline({
   rows,
   nowLabel,
   scrollerRef,
-  isHeldOpen,
+  isNightBandHeldOpen,
   onToggleBand,
   draftPlan,
   onPlanDrag,
@@ -49,7 +49,7 @@ export function DayTimeline({
   rows: TimelineRowVM[]
   nowLabel: string
   scrollerRef: RefObject<HTMLDivElement | null>
-  isHeldOpen: boolean
+  isNightBandHeldOpen: boolean
   onToggleBand: () => void
   draftPlan?: PlanDraft | null
   onPlanDrag?: (span: PlanDrag) => void
@@ -64,7 +64,7 @@ export function DayTimeline({
   // start, so the view opens on its beginning.
   const bandExpanded = bands.length > 0 && !bands[0].segment.collapsed
   useCentreOnNow(scrollerRef, axis, bandExpanded)
-  const surface = { axis, bands, hidden, isHeldOpen, onToggleBand }
+  const surface = { axis, bands, hidden, isNightBandHeldOpen, onToggleBand }
 
   return (
     <section>
