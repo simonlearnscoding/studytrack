@@ -1,4 +1,4 @@
-import type { Task } from '@studytrack/backend/convex/tasks/types'
+import type { DayTask } from '@studytrack/backend/convex/tasks/types'
 import { create } from 'zustand'
 
 /**
@@ -8,8 +8,8 @@ import { create } from 'zustand'
  * live subscription reconnects and refreshes it.
  */
 interface TaskCacheState {
-  byDay: Record<number, Task[]>
-  remember: (dayStart: number, tasks: Task[]) => void
+  byDay: Record<number, DayTask[]>
+  remember: (dayStart: number, tasks: DayTask[]) => void
 }
 
 export const useTaskCacheStore = create<TaskCacheState>((set) => ({

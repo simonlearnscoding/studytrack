@@ -1,15 +1,19 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
-import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../workSessions/util'
+import { byQueueOrder } from '../tasks/util'
 import { getMe } from '../users/service'
+import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../workSessions/util'
+import type { PlanBlockDetail, PlanBlockTask } from './types'
 
 // The planning grid: the drag snaps to quarters, so the backend only accepts
 // marks on the same grain.
 export const PLAN_GRAIN_MS = 15 * 60 * 1000
 
-// Bounded overlap read: a member's planBlocks for one Day sit far below this.
+// Bounded reads: a member's planBlocks for one Day sit far below this.
 const MAX_PLANS_PER_MEMBER_DAY = 200
+const MAX_TASKS_PER_PLAN = 200
+const MAX_ASSIGNMENTS_PER_TASK = 200
 
 // The caller's planBlocks for one Day, oldest first, without the room read.
 export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Doc<'planBlock'>[]> {
@@ -23,10 +27,35 @@ export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Doc<'pl
   return planBlocks.reverse()
 }
 
-// The first grain at or after `now`, inside the planBlock's Day. A planBlock
-// never starts in the past; one for a future Day may start at its midnight.
-export function planFloor(dayStart: number, now: number): number {
-  return dayStart + Math.max(0, Math.ceil((now - dayStart) / PLAN_GRAIN_MS)) * PLAN_GRAIN_MS
+// One planBlock with its tasks, for the stored popover. Public to every signed-in
+// member: blocks and task titles are public (ADR-0007). `isOwner` is the only
+// thing that differs between your block and someone else's.
+export async function getWithTasks(
+  ctx: QueryCtx,
+  planBlockId: Id<'planBlock'>
+): Promise<PlanBlockDetail | null> {
+  const user = await getMe(ctx)
+  if (!user) return null
+  const plan = await ctx.db.get(planBlockId)
+  if (!plan) return null
+
+  const assignments = await ctx.db
+    .query('planAssignment')
+    .withIndex('by_planBlockId', (q) => q.eq('planBlockId', planBlockId))
+    .take(MAX_TASKS_PER_PLAN)
+  const tasks = await Promise.all(assignments.map((assignment) => ctx.db.get(assignment.taskId)))
+  const ordered = tasks.filter((task): task is Doc<'task'> => task !== null).sort(byQueueOrder)
+
+  return {
+    id: plan._id,
+    userId: plan.userId,
+    dayStart: plan.dayStart,
+    title: plan.title ?? null,
+    plannedStart: plan.plannedStart,
+    plannedEnd: plan.plannedEnd,
+    isOwner: plan.userId === user._id,
+    tasks: ordered.map(toPlanBlockTask),
+  }
 }
 
 // Create one of the caller's planBlocks. A member may keep several blocks on the
@@ -86,14 +115,89 @@ export async function updatePlanBlock(
   })
 }
 
-// Delete an owned planBlock. Missing and someone else's rows share the same error.
+// Put an owned, Open task into an owned block on the same Day. A task has at most
+// one assignment to a block that has not ended (ADR-0012): moving it into this
+// block drops its assignment to every other unended block, while an ended block
+// keeps its row as the record of what was intended. The block's window decides
+// what "unended" means, read from the server clock so a stale tab cannot win it.
+export async function assignTask(
+  ctx: MutationCtx,
+  planBlockId: Id<'planBlock'>,
+  taskId: Id<'task'>
+): Promise<void> {
+  const user = await requireUser(ctx)
+  const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
+  const task = await requireOwnedTask(ctx, user, taskId)
+  const now = await getClockNow(ctx)
+
+  if (plan.plannedEnd <= now) throw new Error('That plan has ended.')
+  if (task.done) throw new Error('Only an open task can be planned.')
+  if (task.plannedAt !== plan.dayStart) {
+    throw new Error('A task can only be planned into a block on its Day.')
+  }
+
+  const existing = await taskAssignments(ctx, taskId)
+  if (existing.some((assignment) => assignment.planBlockId === planBlockId)) return
+
+  for (const assignment of existing) {
+    const block = await ctx.db.get(assignment.planBlockId)
+    if (!block || block.plannedEnd > now) await ctx.db.delete(assignment._id)
+  }
+
+  await ctx.db.insert('planAssignment', {
+    userId: user._id,
+    taskId,
+    planBlockId,
+    dayStart: plan.dayStart,
+  })
+}
+
+// Detach an owned task from an owned block. A live block still accepts the edit;
+// a past block is the record and never loses a row.
+export async function unassignTask(
+  ctx: MutationCtx,
+  planBlockId: Id<'planBlock'>,
+  taskId: Id<'task'>
+): Promise<void> {
+  const user = await requireUser(ctx)
+  const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
+  await requireOwnedTask(ctx, user, taskId)
+  const now = await getClockNow(ctx)
+
+  if (plan.plannedEnd <= now) throw new Error('A plan that has ended keeps its tasks.')
+
+  const assignments = await taskAssignments(ctx, taskId)
+  const assignment = assignments.find((row) => row.planBlockId === planBlockId)
+  if (assignment) await ctx.db.delete(assignment._id)
+}
+
+// Delete an owned planBlock that has not started, dropping its assignments. The
+// tasks stay on their Day. A started block is part of the Day's record and cannot
+// be removed; the popup hides the action for it too.
 export async function removePlanBlock(
   ctx: MutationCtx,
   planBlockId: Id<'planBlock'>
 ): Promise<void> {
   const user = await requireUser(ctx)
   const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
+  const now = await getClockNow(ctx)
+  if (now >= plan.plannedStart) {
+    throw new Error('A plan block that has started cannot be removed.')
+  }
+
+  const assignments = await ctx.db
+    .query('planAssignment')
+    .withIndex('by_planBlockId', (q) => q.eq('planBlockId', planBlockId))
+    .take(MAX_TASKS_PER_PLAN)
+  for (const assignment of assignments) await ctx.db.delete(assignment._id)
+
   await ctx.db.delete(plan._id)
+}
+
+// The first grain at or after `now`, inside the planBlock's Day. A planBlock
+// never starts in the past; one for a future Day may start at its midnight.
+export function planFloor(dayStart: number, now: number): number {
+  return dayStart + Math.max(0, Math.ceil((now - dayStart) / PLAN_GRAIN_MS)) * PLAN_GRAIN_MS
 }
 
 // The window rules every write shares: inside one Day, positive, on the 15-minute
@@ -165,4 +269,35 @@ async function requireOwnedPlanBlock(
   const plan = await ctx.db.get(planBlockId)
   if (!plan || plan.userId !== user._id) throw new Error('Plan block not found')
   return plan
+}
+
+// Same error as the tasks domain, so a missing task and someone else's task are
+// indistinguishable here too.
+async function requireOwnedTask(
+  ctx: MutationCtx,
+  user: Doc<'users'>,
+  taskId: Id<'task'>
+): Promise<Doc<'task'>> {
+  const task = await ctx.db.get(taskId)
+  if (!task || task.userId !== user._id) throw new Error('Task not found')
+  return task
+}
+
+async function taskAssignments(
+  ctx: QueryCtx | MutationCtx,
+  taskId: Id<'task'>
+): Promise<Doc<'planAssignment'>[]> {
+  return await ctx.db
+    .query('planAssignment')
+    .withIndex('by_taskId', (q) => q.eq('taskId', taskId))
+    .take(MAX_ASSIGNMENTS_PER_TASK)
+}
+
+function toPlanBlockTask(task: Doc<'task'>): PlanBlockTask {
+  return {
+    id: task._id,
+    title: task.title,
+    done: task.done,
+    completedAt: task.completedAt ?? null,
+  }
 }

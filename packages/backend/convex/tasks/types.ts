@@ -44,15 +44,29 @@ export type SetActiveTaskArgs = Infer<typeof setActiveTaskArgs>
 export type ClearActiveArgs = Infer<typeof clearActiveArgs>
 
 // The owner's view of one task. `completedAt` is null while Open; `plannedAt` is
-// the Day start it is planned for; `plannedWorkSessionId` is null unless planned into
-// a WorkSession.
+// the Day start it is planned for.
 export type Task = {
   id: Id<'task'>
   title: string
   done: boolean
   completedAt: number | null
   plannedAt: number
-  plannedWorkSessionId: Id<'workSession'> | null
+}
+
+// The plan block a task currently sits in: its name and window, enough for the
+// task row's chip. `title` is null on a block written before ST-31.
+export type TaskPlan = {
+  planBlockId: Id<'planBlock'>
+  title: string | null
+  plannedStart: number
+  plannedEnd: number
+}
+
+// A Day-row task, plus its most recent plan. The row is read without a clock, so
+// `plan` may point at a block that has already ended; the ticking view decides
+// whether it is still current (a task has at most one unended assignment).
+export type DayTask = Task & {
+  plan: TaskPlan | null
 }
 
 // The caller's one active task, with the instant it became active.

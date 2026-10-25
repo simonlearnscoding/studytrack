@@ -1,13 +1,18 @@
 import { mutation, query } from './_generated/server'
 import {
+  assignTask,
   createPlanBlock,
+  getWithTasks as readPlanBlockWithTasks,
   listMine as listMyPlanBlocks,
   removePlanBlock,
+  unassignTask,
   updatePlanBlock,
 } from './planBlocks/service'
 import {
   createPlanBlockArgs,
   listMyPlanBlocksArgs,
+  planBlockDetailArgs,
+  planTaskArgs,
   removePlanBlockArgs,
   updatePlanBlockArgs,
 } from './planBlocks/types'
@@ -16,6 +21,26 @@ import {
 export const listMine = query({
   args: listMyPlanBlocksArgs.fields,
   handler: async (ctx, args) => listMyPlanBlocks(ctx, args.dayStart),
+})
+
+// The stored popover's live read: one block and its tasks, public to viewers.
+export const getWithTasks = query({
+  args: planBlockDetailArgs.fields,
+  handler: async (ctx, args) => readPlanBlockWithTasks(ctx, args.planBlockId),
+})
+
+export const assign = mutation({
+  args: planTaskArgs.fields,
+  handler: async (ctx, args) => {
+    await assignTask(ctx, args.planBlockId, args.taskId)
+  },
+})
+
+export const unassign = mutation({
+  args: planTaskArgs.fields,
+  handler: async (ctx, args) => {
+    await unassignTask(ctx, args.planBlockId, args.taskId)
+  },
 })
 
 export const create = mutation({

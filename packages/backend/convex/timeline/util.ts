@@ -194,12 +194,25 @@ function toRow(
     const plannedEndMin = toMinute(plan.endAt, dayStart)
     const missed =
       plan.endAt <= now && !planHasEvidence(member.workSessions, plan.startAt, plan.endAt)
+    // A started block is history: the popup may rename it, but its window can no
+    // longer move. The view uses this to refuse the drag instead of snapping it
+    // back after the mutation refuses it.
+    const locked = plan.startAt <= now
     forEachVisibleSpan(
       window.segments,
       plannedStartMin,
       plannedEndMin,
       (leftPx, widthPx) =>
-        planBlocks.push({ id: plan.id, title: plan.title, leftPx, widthPx, missed }),
+        planBlocks.push({
+          id: plan.id,
+          title: plan.title,
+          startMin: plannedStartMin,
+          endMin: plannedEndMin,
+          leftPx,
+          widthPx,
+          missed,
+          locked,
+        }),
       () => {}
     )
 
@@ -210,7 +223,7 @@ function toRow(
     const endPx = minuteToPx(window.segments, plannedEndMin)
     if (startPx === null && endPx !== null) startPx = window.segments[0].widthPx
     if (startPx !== null && endPx !== null && endPx > startPx) {
-      planBlockWalls.push({ id: plan.id, title: plan.title, startPx, endPx })
+      planBlockWalls.push({ id: plan.id, title: plan.title, startPx, endPx, locked })
     }
   }
 

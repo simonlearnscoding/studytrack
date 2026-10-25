@@ -32,6 +32,18 @@ export type ListMyPlanBlocksArgs = Infer<typeof listMyPlanBlocksArgs>
 export const removePlanBlockArgs = v.object({ planBlockId: v.id('planBlock') })
 export type RemovePlanBlockArgs = Infer<typeof removePlanBlockArgs>
 
+// One planBlock's tasks, read live by its popover. Public like the block and the
+// task titles (ADR-0007); `isOwner` gates the picker and the remove controls.
+export const planBlockDetailArgs = v.object({ planBlockId: v.id('planBlock') })
+
+// Attach an owned, Open task to an owned block on the same Day. The write enforces
+// the one-unended-assignment rule and refuses an ended block.
+export const planTaskArgs = v.object({
+  planBlockId: v.id('planBlock'),
+  taskId: v.id('task'),
+})
+export type PlanTaskArgs = Infer<typeof planTaskArgs>
+
 // The owner's view of a planBlock. Not a workSession: there is no voice evidence
 // and no partials, only the window and name the member pencilled in.
 export type PlanBlock = {
@@ -41,4 +53,31 @@ export type PlanBlock = {
   title: string | null
   plannedStart: number
   plannedEnd: number
+}
+
+// A task inside a plan block. `completedAt` is null for an Open task, and can
+// also be null for a Done one (a retrospective completion, ADR-0010) — the two
+// are told apart by `done`.
+export type PlanBlockTask = {
+  id: Id<'task'>
+  title: string
+  done: boolean
+  completedAt: number | null
+}
+
+// What the stored plan popover reads: the block, its owner flag, and its tasks in
+// the Day's queue order. The window state (upcoming/live/past) is derived by the
+// caller from its ticking clock, never stored or sent.
+export type PlanBlockDetail = PlanBlock & {
+  isOwner: boolean
+  tasks: PlanBlockTask[]
+}
+
+// A past block's outcome, split by what is actually known: an inside/outside
+// instant, or a Done task with no instant at all.
+export type PlanTaskStats = {
+  doneInside: number
+  doneOutside: number
+  doneUnknownTime: number
+  open: number
 }

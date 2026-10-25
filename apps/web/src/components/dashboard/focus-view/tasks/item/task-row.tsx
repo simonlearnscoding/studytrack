@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from 'lucide-react'
+import { CalendarClock, Pencil, Trash2 } from 'lucide-react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
@@ -74,10 +74,20 @@ export function TaskRow({
               </span>
             )}
           </p>
-          {isNow && (
-            <span className="text-primary text-label flex items-center gap-1.5">
-              <span className="bg-primary size-1 rounded-full" aria-hidden />
-              Now
+          {(isNow || task.planLabel) && (
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+              {isNow && (
+                <span className="text-primary text-label flex items-center gap-1.5">
+                  <span className="bg-primary size-1 rounded-full" aria-hidden />
+                  Now
+                </span>
+              )}
+              {task.planLabel && (
+                <span className="text-subtle-foreground flex min-w-0 items-center gap-1 text-caption">
+                  <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
+                  <span className="truncate">{task.planLabel}</span>
+                </span>
+              )}
             </span>
           )}
         </div>

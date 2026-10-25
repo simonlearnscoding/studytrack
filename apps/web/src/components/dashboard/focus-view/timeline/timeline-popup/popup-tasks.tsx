@@ -1,8 +1,8 @@
 import { formatClock, toMinute } from '@studytrack/backend/convex/timeline/util'
 import type { DashboardWorkSessionTask } from '@studytrack/backend/convex/workSessions/types'
 
-// The task list both stored popovers share. A plan block names what it intends
-// to work on; a work session names what it actually did.
+// The task list a stored work session shows: what was actually finished inside
+// its span. Plan blocks read their tasks from their own live query.
 export function PopupTasks({
   heading,
   emptyMessage,
@@ -30,9 +30,7 @@ export function PopupTasks({
               <span className="shrink-0 font-mono">
                 {task.completedAt !== null
                   ? `done ${formatClock(toMinute(task.completedAt, dayStart))}`
-                  : task.planned
-                    ? 'planned'
-                    : ''}
+                  : ''}
               </span>
             </li>
           ))}

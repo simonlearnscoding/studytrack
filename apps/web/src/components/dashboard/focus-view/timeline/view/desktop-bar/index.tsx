@@ -224,36 +224,47 @@ export function PinnedDesktopBar({
                 planBlockOverride={planBlockOverride}
                 onWorkSessionClick={onWorkSessionClick}
               />
-              {onPlanBlockUpdate &&
+              {(onPlanBlockUpdate || onPlanBlockClick) &&
                 row.planBlockWalls.map((block) => (
+                  // One pointer surface for both states. A locked block enters
+                  // the same press path but resolves to a click on release, so
+                  // the popup opens from a non-focusable surface instead of a
+                  // second overlay that steals focus and closes it again.
                   <span
                     key={`${block.id}-body`}
+                    title={
+                      block.locked ? 'This plan has started, so its time is locked.' : undefined
+                    }
                     onPointerDown={(event) => moveEvents.start(event, block)}
                     onPointerMove={moveEvents.onPointerMove}
                     onPointerUp={moveEvents.onPointerUp}
                     onPointerCancel={moveEvents.onPointerCancel}
-                    className="absolute top-0 bottom-0 z-[3] cursor-grab active:cursor-grabbing"
+                    className={`absolute top-0 bottom-0 z-[3] ${
+                      block.locked ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'
+                    }`}
                     style={{ left: block.startPx, width: block.endPx - block.startPx }}
                   />
                 ))}
               {onPlanBlockUpdate &&
-                row.planBlockWalls.map((block) => (
-                  <Fragment key={block.id}>
-                    {(['start', 'end'] as const).map((edge) => (
-                      <span
-                        key={edge}
-                        role="separator"
-                        aria-label={`Resize plan ${edge}`}
-                        onPointerDown={(event) => resizeEvents.start(event, block, edge)}
-                        onPointerMove={resizeEvents.onPointerMove}
-                        onPointerUp={resizeEvents.onPointerUp}
-                        onPointerCancel={resizeEvents.onPointerCancel}
-                        className="absolute top-0 bottom-0 z-[4] w-2 -translate-x-1/2 cursor-ew-resize rounded-full hover:bg-primary/25"
-                        style={{ left: edge === 'start' ? block.startPx : block.endPx }}
-                      />
-                    ))}
-                  </Fragment>
-                ))}
+                row.planBlockWalls
+                  .filter((block) => !block.locked)
+                  .map((block) => (
+                    <Fragment key={block.id}>
+                      {(['start', 'end'] as const).map((edge) => (
+                        <span
+                          key={edge}
+                          role="separator"
+                          aria-label={`Resize plan ${edge}`}
+                          onPointerDown={(event) => resizeEvents.start(event, block, edge)}
+                          onPointerMove={resizeEvents.onPointerMove}
+                          onPointerUp={resizeEvents.onPointerUp}
+                          onPointerCancel={resizeEvents.onPointerCancel}
+                          className="absolute top-0 bottom-0 z-[4] w-2 -translate-x-1/2 cursor-ew-resize rounded-full hover:bg-primary/25"
+                          style={{ left: edge === 'start' ? block.startPx : block.endPx }}
+                        />
+                      ))}
+                    </Fragment>
+                  ))}
               {dragLabel && dragPreview && (
                 <>
                   <div

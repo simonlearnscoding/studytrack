@@ -333,8 +333,6 @@ function toWorkSessionTaskSource(task: Doc<'task'>): WorkSessionTaskSource {
   return {
     id: task._id,
     title: task.title,
-    createdAt: task._creationTime,
-    plannedWorkSessionId: task.plannedWorkSessionId ?? null,
     completedAt: task.completedAt ?? null,
   }
 }

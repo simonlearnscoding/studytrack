@@ -34,6 +34,7 @@ import type * as migrations from "../migrations.js";
 import type * as planBlocks from "../planBlocks.js";
 import type * as planBlocks_service from "../planBlocks/service.js";
 import type * as planBlocks_types from "../planBlocks/types.js";
+import type * as planBlocks_util from "../planBlocks/util.js";
 import type * as preferences from "../preferences.js";
 import type * as preferences_service from "../preferences/service.js";
 import type * as preferences_types from "../preferences/types.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   planBlocks: typeof planBlocks;
   "planBlocks/service": typeof planBlocks_service;
   "planBlocks/types": typeof planBlocks_types;
+  "planBlocks/util": typeof planBlocks_util;
   preferences: typeof preferences;
   "preferences/service": typeof preferences_service;
   "preferences/types": typeof preferences_types;

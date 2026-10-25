@@ -387,6 +387,9 @@ describe('planBlocks.remove', () => {
     vi.useFakeTimers()
     vi.setSystemTime(NOW)
   })
+  afterEach(() => {
+    vi.setSystemTime(NOW)
+  })
   afterAll(() => {
     vi.useRealTimers()
   })
@@ -412,6 +415,20 @@ describe('planBlocks.remove', () => {
     await expect(
       t.withIdentity(BOB).mutation(api.planBlocks.remove, { planBlockId: row._id })
     ).rejects.toThrow(/Plan block not found/)
+    expect(await rowsOf(t)).toHaveLength(1)
+  })
+
+  it('refuses to delete a plan after it starts', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    vi.setSystemTime(START + 30 * 60_000)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.remove, { planBlockId: row._id })
+    ).rejects.toThrow(/started/)
     expect(await rowsOf(t)).toHaveLength(1)
   })
 })

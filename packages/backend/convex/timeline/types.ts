@@ -67,24 +67,33 @@ export type TimelineDotVM = { leftPx: number; title: string }
 
 // A planBlock drawn on the lane. `missed` marks a window that has passed without
 // any voice evidence. `title` names the block and is public (ADR-0007); it is
-// null for rows written before ST-31. A planBlock can be cut by a collapsed
-// night band, so it is emitted as one piece per visible segment.
+// null for rows written before ST-31. `locked` means the block has started, so
+// its window can no longer move; the view must not offer a drag for it. A
+// planBlock can be cut by a collapsed night band, so it is emitted as one piece
+// per visible segment.
 export type TimelinePlanBlockVM = {
   id: Id<'planBlock'>
   title: string | null
+  // The block's own window in Day minutes, so a surface that only has pixels
+  // (the mobile lane) can still open the same popup the desktop bar opens.
+  startMin: number
+  endMin: number
   leftPx: number
   widthPx: number
   missed: boolean
+  locked: boolean
 }
 
 // A planBlock's visible window on the axis, used by the drag gesture as a wall:
 // a new planBlock may not start inside it or be dragged across it. `title` rides
-// along so a gesture can send it back unchanged on the update mutation.
+// along so a gesture can send it back unchanged on the update mutation, and
+// `locked` keeps a started block out of the gesture layer entirely.
 export type TimelinePlanBlockWallVM = {
   id: Id<'planBlock'>
   title: string | null
   startPx: number
   endPx: number
+  locked: boolean
 }
 
 // One member's row, already positioned on the axis. No timestamps survive this

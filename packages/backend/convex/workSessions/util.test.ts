@@ -160,8 +160,6 @@ describe('attachTasksToWorkSessions', () => {
     return {
       id: 't1' as Id<'task'>,
       title: 'Read a chapter',
-      createdAt: 0,
-      plannedWorkSessionId: null,
       completedAt: null,
       ...overrides,
     }
@@ -171,16 +169,6 @@ describe('attachTasksToWorkSessions', () => {
     workSession([], { id: 's1' as Id<'workSession'>, startedAt: 1 * H, endedAt: 2 * H }),
     workSession([], { id: 's2' as Id<'workSession'>, startedAt: 3 * H, endedAt: 4 * H }),
   ]
-
-  it('shows a planned-only task as planned with no completion instant', () => {
-    const tasks = [task({ plannedWorkSessionId: 's1' as Id<'workSession'> })]
-
-    const bound = attachTasksToWorkSessions(workSessions, tasks)
-    expect(bound[0].tasks).toEqual([
-      { id: 't1' as Id<'task'>, title: 'Read a chapter', planned: true, completedAt: null },
-    ])
-    expect(bound[1].tasks).toEqual([])
-  })
 
   it('binds a finished task to the workSession whose span contains its completion', () => {
     const tasks = [
@@ -194,33 +182,6 @@ describe('attachTasksToWorkSessions', () => {
     expect(bound[1].tasks.map((t) => t.title)).toEqual(['Second'])
   })
 
-  it('shows a task planned and finished in the same workSession once, with both states', () => {
-    const tasks = [task({ plannedWorkSessionId: 's1' as Id<'workSession'>, completedAt: 90 * M })]
-
-    const bound = attachTasksToWorkSessions(workSessions, tasks)
-    expect(bound[0].tasks).toHaveLength(1)
-    expect(bound[0].tasks[0]).toMatchObject({ planned: true, completedAt: 90 * M })
-  })
-
-  it('shows a task planned in one workSession and finished in another in both', () => {
-    const tasks = [
-      task({ plannedWorkSessionId: 's1' as Id<'workSession'>, completedAt: 3 * H + 10 * M }),
-    ]
-
-    const bound = attachTasksToWorkSessions(workSessions, tasks)
-    expect(bound[0].tasks).toEqual([
-      { id: 't1' as Id<'task'>, title: 'Read a chapter', planned: true, completedAt: null },
-    ])
-    expect(bound[1].tasks).toEqual([
-      {
-        id: 't1' as Id<'task'>,
-        title: 'Read a chapter',
-        planned: false,
-        completedAt: 3 * H + 10 * M,
-      },
-    ])
-  })
-
   it('drops a completion that falls in a gap between workSessions', () => {
     const tasks = [task({ completedAt: 2 * H + 30 * M })]
 
@@ -229,38 +190,14 @@ describe('attachTasksToWorkSessions', () => {
     expect(bound[1].tasks).toEqual([])
   })
 
-  it('keeps a reopened planned task as planned-only', () => {
-    const tasks = [task({ plannedWorkSessionId: 's1' as Id<'workSession'>, completedAt: null })]
-
-    const bound = attachTasksToWorkSessions(workSessions, tasks)
-    expect(bound[0].tasks[0]).toMatchObject({ planned: true, completedAt: null })
-  })
-
-  it('orders planned entries by creation, then finished-only entries by completion', () => {
+  it('orders a workSession tasks by completion instant', () => {
     const tasks = [
-      task({
-        id: 't1' as Id<'task'>,
-        title: 'Planned first',
-        createdAt: 1,
-        plannedWorkSessionId: 's1' as Id<'workSession'>,
-      }),
-      task({
-        id: 't2' as Id<'task'>,
-        title: 'Planned second',
-        createdAt: 2,
-        plannedWorkSessionId: 's1' as Id<'workSession'>,
-      }),
-      task({ id: 't3' as Id<'task'>, title: 'Finished later', completedAt: 110 * M }),
-      task({ id: 't4' as Id<'task'>, title: 'Finished earlier', completedAt: 70 * M }),
+      task({ id: 't1' as Id<'task'>, title: 'Finished later', completedAt: 110 * M }),
+      task({ id: 't2' as Id<'task'>, title: 'Finished earlier', completedAt: 70 * M }),
     ]
 
     const bound = attachTasksToWorkSessions(workSessions, tasks)
-    expect(bound[0].tasks.map((t) => t.title)).toEqual([
-      'Planned first',
-      'Planned second',
-      'Finished earlier',
-      'Finished later',
-    ])
+    expect(bound[0].tasks.map((t) => t.title)).toEqual(['Finished earlier', 'Finished later'])
   })
 })
 

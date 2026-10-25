@@ -1,5 +1,5 @@
 import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-composer-hint'
 import { Button } from '~/components/ui/button'
@@ -241,26 +241,34 @@ function SheetRow({
           className="h-[34px] min-w-0 flex-1 rounded-lg border border-input bg-background/60 px-2.5 text-sm text-foreground focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
         />
       ) : (
-        <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm leading-5">
-          {isNow && (
-            <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
-              NOW
-            </span>
-          )}
-          <span
-            className={cn(
-              'min-w-0 flex-1 line-clamp-2 break-words',
-              task.done ? 'text-subtle-foreground line-through' : 'text-foreground'
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="flex min-w-0 items-start gap-1.5 text-sm leading-5">
+            {isNow && (
+              <span className="bg-primary-tint text-primary shrink-0 rounded px-1 py-0.5 font-mono text-label">
+                NOW
+              </span>
             )}
-          >
-            {task.title}
-          </span>
-          {task.doneAt && (
-            <span className="text-subtle-foreground shrink-0 font-mono text-caption">
-              {task.doneAt}
+            <span
+              className={cn(
+                'min-w-0 flex-1 line-clamp-2 break-words',
+                task.done ? 'text-subtle-foreground line-through' : 'text-foreground'
+              )}
+            >
+              {task.title}
+            </span>
+            {task.doneAt && (
+              <span className="text-subtle-foreground shrink-0 font-mono text-caption">
+                {task.doneAt}
+              </span>
+            )}
+          </p>
+          {task.planLabel && (
+            <span className="text-subtle-foreground flex min-w-0 items-center gap-1 text-caption">
+              <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate">{task.planLabel}</span>
             </span>
           )}
-        </p>
+        </div>
       )}
 
       {!editing && (

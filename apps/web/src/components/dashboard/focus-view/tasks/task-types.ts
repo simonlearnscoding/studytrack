@@ -1,10 +1,12 @@
-import type { Task, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
+import type { DayTask, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 
-// The beta's row shape: the stored task plus the formatted completion time. The
-// Now marker is not carried on the row — the queue derives the top Open row and
-// the today-only Now read says whether that row is the member's Now.
-export type QueueTask = Task & {
+// The beta's row shape: the stored task plus its formatted completion time and
+// its current plan chip. The Now marker is not carried on the row — the queue
+// derives the top Open row and the today-only Now read says whether that row is
+// the member's Now.
+export type QueueTask = DayTask & {
   doneAt: string | null
+  planLabel: string | null
 }
 
 export type TaskId = QueueTask['id']

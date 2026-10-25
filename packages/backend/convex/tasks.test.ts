@@ -16,6 +16,8 @@ const YESTERDAY = DAY - 24 * 60 * 60 * 1000
 const TOMORROW = DAY + 24 * 60 * 60 * 1000
 // The real today. A completion earns an instant only when its Focus day is this.
 const TODAY = startOfDay(Date.now(), DASHBOARD_TIME_ZONE)
+// A Day that has not started yet, for an assignment whose block has not ended.
+const UPCOMING_DAY = startOfDay(Date.now() + 24 * 60 * 60 * 1000, DASHBOARD_TIME_ZONE)
 
 function makeTest() {
   return convexTest(schema, modules)
@@ -61,7 +63,7 @@ describe('tasks.listMine', () => {
       done: false,
       completedAt: null,
       plannedAt: DAY,
-      plannedWorkSessionId: null,
+      plan: null,
     })
   })
 
@@ -343,25 +345,33 @@ describe('tasks.reschedule', () => {
     expect(tasks.map((task) => task.title)).toEqual(['Legacy one', 'Legacy two', 'Movable'])
   })
 
-  it('clears the WorkSession plan when the task moves to another Day', async () => {
+  it('drops an unended plan assignment when the task moves to another Day', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
-    await create(t, ADA, 'Planned', YESTERDAY)
+    await create(t, ADA, 'Planned', UPCOMING_DAY)
     const taskId = await idOf(t, 'Planned')
     await t.run(async (ctx) => {
-      const workSessionId = await ctx.db.insert('workSession', {
-        status: 'ended',
-        startedAt: YESTERDAY,
-        endedAt: YESTERDAY + 60_000,
+      const task = await ctx.db.get(taskId)
+      if (!task) throw new Error('Missing task')
+      const planBlockId = await ctx.db.insert('planBlock', {
+        userId: task.userId,
+        dayStart: UPCOMING_DAY,
+        title: 'Read',
+        plannedStart: UPCOMING_DAY + 14 * 60 * 60 * 1000,
+        plannedEnd: UPCOMING_DAY + 15 * 60 * 60 * 1000,
       })
-      await ctx.db.patch(taskId, { plannedWorkSessionId: workSessionId })
+      await ctx.db.insert('planAssignment', {
+        userId: task.userId,
+        taskId,
+        planBlockId,
+        dayStart: UPCOMING_DAY,
+      })
     })
 
     await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
 
-    const moved = (await tasksOf(t)).find((task) => task._id === taskId)
-    expect(moved?.plannedAt).toBe(DAY)
-    expect(moved?.plannedWorkSessionId).toBeUndefined()
+    const assignments = await t.run(async (ctx) => await ctx.db.query('planAssignment').collect())
+    expect(assignments).toEqual([])
   })
 
   it('is a no-op when the task is already on that Day', async () => {

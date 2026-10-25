@@ -10,7 +10,6 @@ function task(id: string, done = false): Task {
     done,
     completedAt: done ? 1 : null,
     plannedAt: 0,
-    plannedWorkSessionId: null,
   }
 }
 

@@ -58,11 +58,9 @@ export function workSessionContainsCompletedAt(
   )
 }
 
-// Attach each workSession's deduped task union: tasks explicitly planned into it,
-// then tasks finished while it was running, each appearing at most once. A member's
-// workSessions never overlap (re-entering within 30 minutes continues the same
-// workSession), so a completion binds to at most one. Planned entries come first in
-// creation order (oldest first); finished-only entries follow by completion time.
+// Attach each workSession's tasks: only those finished while it was running, in
+// completion order. A member's workSessions never overlap (re-entering within 30
+// minutes continues the same workSession), so a completion binds to at most one.
 export function attachTasksToWorkSessions(
   workSessions: DashboardWorkSession[],
   tasks: WorkSessionTaskSource[]
@@ -77,37 +75,17 @@ function tasksForWorkSession(
   workSession: Pick<DashboardWorkSession, 'id' | 'startedAt' | 'endedAt'>,
   tasks: WorkSessionTaskSource[]
 ): DashboardWorkSessionTask[] {
-  const planned: DashboardWorkSessionTask[] = tasks
-    .filter((task) => task.plannedWorkSessionId === workSession.id)
-    .sort((a, b) => a.createdAt - b.createdAt)
-    .map((task) => ({
-      id: task.id,
-      title: task.title,
-      planned: true,
-      // Planned-only stays null even if the task is Done elsewhere; only a
-      // completion inside this workSession's span marks it finished here.
-      completedAt:
-        task.completedAt !== null && workSessionContainsCompletedAt(workSession, task.completedAt)
-          ? task.completedAt
-          : null,
-    }))
-
-  const finishedOnly: DashboardWorkSessionTask[] = tasks
+  return tasks
     .filter(
       (task) =>
-        task.plannedWorkSessionId !== workSession.id &&
-        task.completedAt !== null &&
-        workSessionContainsCompletedAt(workSession, task.completedAt)
+        task.completedAt !== null && workSessionContainsCompletedAt(workSession, task.completedAt)
     )
     .sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0))
     .map((task) => ({
       id: task.id,
       title: task.title,
-      planned: false,
       completedAt: task.completedAt,
     }))
-
-  return [...planned, ...finishedOnly]
 }
 
 // Compact duration with seconds, so a live total visibly ticks each second:

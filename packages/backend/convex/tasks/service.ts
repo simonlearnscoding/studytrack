@@ -3,10 +3,12 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import { getMe } from '../users/service'
-import type { ActiveTask, Task, TaskPlacement } from './types'
+import type { ActiveTask, DayTask, Task, TaskPlacement, TaskPlan } from './types'
 import { byQueueOrder, insertionIndex, planOrder } from './util'
 
 const MAX_TASKS = 200
+const MAX_PLANS = 200
+const MAX_ASSIGNMENTS_PER_TASK = 200
 
 // The caller's tasks **planned for one Day**, in manual order. A task with no
 // explicit position (written before the field existed) falls back to creation
@@ -14,12 +16,13 @@ const MAX_TASKS = 200
 // public (docs/adr/0007), so the room may read titles; ownership still gates
 // writes. The caller supplies the Day start, so the query never reads the wall
 // clock.
-export async function listMine(ctx: QueryCtx, dayStart: number): Promise<Task[]> {
+export async function listMine(ctx: QueryCtx, dayStart: number): Promise<DayTask[]> {
   const user = await getMe(ctx)
   if (!user) return []
 
   const tasks = await dayTasks(ctx, user._id, dayStart)
-  return tasks.map(toTask)
+  const plans = await currentPlans(ctx, user._id, dayStart)
+  return tasks.map((task) => ({ ...toTask(task), plan: plans.get(task._id) ?? null }))
 }
 
 // Add a task planned for the Day the caller is viewing. `end` (the default)
@@ -92,9 +95,10 @@ export async function reorderTasks(
   }
 }
 
-// Move one owned task to another Day, at the bottom of that Day's queue. A plan
-// link cannot survive the move: a planned WorkSession belongs to the old Day, so it
-// is cleared. Both Days' live queries update by themselves.
+// Move one owned task to another Day, at the bottom of that Day's queue. A live
+// plan cannot follow it: the block belongs to the old Day, and an assignment only
+// exists while task and block share a Day. Assignments to blocks that have ended
+// stay as the record. Both Days' live queries update by themselves.
 export async function rescheduleTask(
   ctx: MutationCtx,
   taskId: Id<'task'>,
@@ -108,13 +112,12 @@ export async function rescheduleTask(
   const task = await requireOwnedTask(ctx, user, taskId)
   if (task.plannedAt === plannedAt) return
 
+  const now = await getClockNow(ctx)
+  await dropUnendedAssignments(ctx, taskId, now)
+
   const target = await dayTasks(ctx, user._id, plannedAt)
   const position = await appendPosition(ctx, target)
-  await ctx.db.patch(task._id, {
-    plannedAt,
-    plannedWorkSessionId: undefined,
-    position,
-  })
+  await ctx.db.patch(task._id, { plannedAt, position })
 }
 
 // Flip a task between Open and Done. A live completion — the box ticked while the
@@ -160,11 +163,18 @@ export async function renameTask(
 }
 
 // Hard-delete the caller's task, Open or Done, and drop the active pointer when it
-// pointed at this task. Ownership is checked, so another member's task never leaks
-// its existence.
+// pointed at this task. Its plan assignments go with it: a hard-deleted task has
+// no title left to show, so it cannot be a past block's record. Ownership is
+// checked, so another member's task never leaks its existence.
 export async function removeTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
   const user = await requireUser(ctx)
   const task = await requireOwnedTask(ctx, user, taskId)
+
+  const assignments = await ctx.db
+    .query('planAssignment')
+    .withIndex('by_taskId', (q) => q.eq('taskId', taskId))
+    .take(MAX_ASSIGNMENTS_PER_TASK)
+  for (const assignment of assignments) await ctx.db.delete(assignment._id)
 
   await ctx.db.delete(task._id)
   await clearActiveIfMatches(ctx, user, taskId)
@@ -228,6 +238,60 @@ async function dayTasks(
   return tasks.sort(byQueueOrder)
 }
 
+// The newest assignment per task for the Day. A task can only gain a newer one
+// after its previous block ended, so the newest row is the task's current plan;
+// the ticking view checks the window to decide whether it is still current. Two
+// reads cover the whole Day — never one query per row.
+async function currentPlans(
+  ctx: QueryCtx,
+  userId: Id<'users'>,
+  dayStart: number
+): Promise<Map<Id<'task'>, TaskPlan>> {
+  const assignments = await ctx.db
+    .query('planAssignment')
+    .withIndex('by_userId_dayStart', (q) => q.eq('userId', userId).eq('dayStart', dayStart))
+    .order('desc')
+    .take(MAX_PLANS)
+  if (assignments.length === 0) return new Map()
+
+  const planBlocks = await ctx.db
+    .query('planBlock')
+    .withIndex('by_userId_dayStart', (q) => q.eq('userId', userId).eq('dayStart', dayStart))
+    .take(MAX_PLANS)
+  const blocksById = new Map(planBlocks.map((block) => [block._id, block]))
+
+  const plans = new Map<Id<'task'>, TaskPlan>()
+  for (const assignment of assignments) {
+    if (plans.has(assignment.taskId)) continue
+    const block = blocksById.get(assignment.planBlockId)
+    if (!block) continue
+    plans.set(assignment.taskId, {
+      planBlockId: block._id,
+      title: block.title ?? null,
+      plannedStart: block.plannedStart,
+      plannedEnd: block.plannedEnd,
+    })
+  }
+  return plans
+}
+
+// Drop the assignments that cannot survive a Day move. A block that has ended is
+// the record of what was planned, so its row stays.
+async function dropUnendedAssignments(
+  ctx: MutationCtx,
+  taskId: Id<'task'>,
+  now: number
+): Promise<void> {
+  const assignments = await ctx.db
+    .query('planAssignment')
+    .withIndex('by_taskId', (q) => q.eq('taskId', taskId))
+    .take(MAX_ASSIGNMENTS_PER_TASK)
+  for (const assignment of assignments) {
+    const block = await ctx.db.get(assignment.planBlockId)
+    if (!block || block.plannedEnd > now) await ctx.db.delete(assignment._id)
+  }
+}
+
 // Where a new task goes. Null while the Day still holds tasks without a position:
 // leaving it positionless keeps creation order and puts it at the bottom.
 function nextPosition(tasks: Doc<'task'>[]): number | null {
@@ -287,6 +351,5 @@ function toTask(task: Doc<'task'>): Task {
     done: task.done,
     completedAt: task.completedAt ?? null,
     plannedAt: task.plannedAt,
-    plannedWorkSessionId: task.plannedWorkSessionId ?? null,
   }
 }

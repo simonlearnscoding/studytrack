@@ -1,4 +1,5 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
+import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
 import {
   formatClock,
   mergeExpansion,
@@ -8,7 +9,7 @@ import {
 } from '@studytrack/backend/convex/timeline/util'
 import { DAY_MINUTES } from '@studytrack/backend/convex/timeline/types'
 import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
-import { useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { useRef, useState } from 'react'
 import { useMounted } from '~/hooks/use-mounted'
 import { cn } from '~/lib/utils'
@@ -62,6 +63,17 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
   const createPlanBlock = useMutation(api.planBlocks.create)
   const updatePlanBlock = useMutation(api.planBlocks.update)
   const removePlanBlock = useMutation(api.planBlocks.remove)
+  const assignPlanTask = useMutation(api.planBlocks.assign)
+  const unassignPlanTask = useMutation(api.planBlocks.unassign)
+  const [taskError, setTaskError] = useState<string | null>(null)
+  // One block at a time: the popover subscribes only while it is open, so the
+  // room's dashboard payload never carries every member's plan tasks.
+  const planBlockId = popup?.data.kind === 'planBlock' ? popup.data.planBlockId : null
+  const planDetail = useQuery(
+    api.planBlocks.getWithTasks,
+    planBlockId === null ? 'skip' : { planBlockId }
+  )
+  const planDayTasks = useQuery(api.tasks.listMine, planBlockId === null ? 'skip' : { dayStart })
 
   // False on the server, the first client paint, and while the live read lands —
   // the reveal commit lands the measured width and the members together, so the
@@ -104,7 +116,7 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
         startAt,
         endAt,
         missed: owner ? planBlockMissed(owner, startAt, endAt, now) : false,
-        tasks: [],
+        isOwner: owner?.userId != null && String(owner.userId) === me,
       },
     })
   }
@@ -115,6 +127,7 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
     setIsCreating(false)
     setUpdateError(null)
     setIsUpdating(false)
+    setTaskError(null)
   }
 
   // Both planning gestures (a drag draws the span, a double-click asks for two
@@ -175,6 +188,24 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
     void removePlanBlock({ planBlockId })
       .then(closePopup)
       .catch((error) => console.error('[studytrack] plan remove failed', error))
+  }
+
+  const assignTaskToPlan = (taskId: Id<'task'>) => {
+    if (!planBlockId) return
+    setTaskError(null)
+    void assignPlanTask({ planBlockId, taskId }).catch((error) => {
+      console.error('[studytrack] plan assign failed', error)
+      setTaskError(planBlockWriteMessage(error, 'Could not add the task.'))
+    })
+  }
+
+  const unassignTaskFromPlan = (taskId: Id<'task'>) => {
+    if (!planBlockId) return
+    setTaskError(null)
+    void unassignPlanTask({ planBlockId, taskId }).catch((error) => {
+      console.error('[studytrack] plan unassign failed', error)
+      setTaskError(planBlockWriteMessage(error, 'Could not remove the task.'))
+    })
   }
 
   const openWorkSession = (click: WorkSessionClick) => {
@@ -247,7 +278,12 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
             style={{ position: 'fixed', left: popup.x, top: popup.y, width: 0, height: 0 }}
           />
         )}
-        <PopoverContent side="bottom" align="start" sideOffset={8} className="w-64 p-3">
+        <PopoverContent
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          className="max-h-[70dvh] w-72 overflow-y-auto p-3"
+        >
           {popup && (
             <TimelinePopupContent
               key={
@@ -260,10 +296,15 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
               data={popup.data}
               dayStart={dayStart}
               now={now}
+              planDetail={popup.data.kind === 'planBlock' ? planDetail : undefined}
+              planDayTasks={popup.data.kind === 'planBlock' ? planDayTasks : undefined}
               onRemove={popup.data.kind === 'planBlock' ? removePopupPlanBlock : undefined}
               onCreate={popup.data.kind === 'draft' ? createDraftPlanBlock : undefined}
               onUpdate={popup.data.kind === 'planBlock' ? updatePopupPlanBlock : undefined}
               onCancel={popup.data.kind === 'draft' ? closePopup : undefined}
+              onAssignTask={popup.data.kind === 'planBlock' ? assignTaskToPlan : undefined}
+              onUnassignTask={popup.data.kind === 'planBlock' ? unassignTaskFromPlan : undefined}
+              taskError={popup.data.kind === 'planBlock' ? taskError : null}
               isCreating={popup.data.kind === 'draft' && isCreating}
               isUpdating={popup.data.kind === 'planBlock' && isUpdating}
               createError={popup.data.kind === 'draft' ? createError : null}

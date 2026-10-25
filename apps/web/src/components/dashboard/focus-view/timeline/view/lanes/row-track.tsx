@@ -4,6 +4,7 @@ import type {
   TimelineRowVM,
 } from '@studytrack/backend/convex/timeline/types'
 import { Fragment } from 'react'
+import type { PlanBlockClick } from '../desktop-bar/types'
 import { barClass } from '../../work-session-bar-style'
 
 // The plan currently being moved or resized. Its live geometry replaces the
@@ -39,15 +40,18 @@ const DOT_LABEL_MAX = 160
 export function RowTrack({
   row,
   planBlockOverride,
+  onPlanBlockClick,
   onWorkSessionClick,
 }: {
   row: TimelineRowVM
   planBlockOverride?: PlanBlockOverride | null
+  onPlanBlockClick?: (click: PlanBlockClick) => void
   onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
   const overridden = planBlockOverride
     ? row.planBlocks.findIndex((plan) => plan.id === planBlockOverride.planBlockId)
     : -1
+  const titledPlanIds = new Set<string>()
 
   return (
     <div
@@ -63,15 +67,64 @@ export function RowTrack({
         if (planBlockOverride && plan.id === planBlockOverride.planBlockId && i !== overridden)
           return null
         const live = planBlockOverride && i === overridden ? planBlockOverride : plan
+        // Only the first visible piece names the plan; a night-band cut would
+        // otherwise repeat the title on every piece.
+        const isFirstPiece = !titledPlanIds.has(plan.id)
+        titledPlanIds.add(plan.id)
+        const open = (x: number, y: number) =>
+          onPlanBlockClick?.({
+            planBlockId: plan.id,
+            title: plan.title,
+            startMin: plan.startMin,
+            endMin: plan.endMin,
+            x,
+            y,
+          })
         return (
           <div
             key={`plan-${i}`}
-            title={plan.title ?? (plan.missed ? 'Missed plan block' : 'Plan block')}
-            className={`absolute top-0 bottom-0 border border-dashed ${
+            role={onPlanBlockClick ? 'button' : undefined}
+            tabIndex={onPlanBlockClick ? 0 : undefined}
+            aria-label={
+              onPlanBlockClick
+                ? `Open ${plan.title ?? (plan.missed ? 'missed plan block' : 'plan block')}`
+                : undefined
+            }
+            onClick={
+              onPlanBlockClick
+                ? (event) => {
+                    event.stopPropagation()
+                    const rect = event.currentTarget.getBoundingClientRect()
+                    open(event.clientX || rect.left, event.clientY || rect.top)
+                  }
+                : undefined
+            }
+            onKeyDown={
+              onPlanBlockClick
+                ? (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    const rect = event.currentTarget.getBoundingClientRect()
+                    open(rect.left, rect.top)
+                  }
+                : undefined
+            }
+            title={
+              plan.locked
+                ? 'This plan has started, so its time is locked.'
+                : (plan.title ?? (plan.missed ? 'Missed plan block' : 'Plan block'))
+            }
+            className={`absolute top-0 bottom-0 border border-dashed outline-none focus-visible:ring-2 focus-visible:ring-primary/20 ${
               plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
-            }`}
+            } ${onPlanBlockClick ? 'cursor-pointer' : plan.locked ? 'cursor-not-allowed' : ''}`}
             style={{ left: live.leftPx, width: live.widthPx }}
-          />
+          >
+            {row.you && isFirstPiece && plan.title && (
+              <span className="text-caption text-primary pointer-events-none absolute inset-x-1 top-1/2 block -translate-y-1/2 truncate">
+                {plan.title}
+              </span>
+            )}
+          </div>
         )
       })}
       {row.bars.map((bar, i) => (

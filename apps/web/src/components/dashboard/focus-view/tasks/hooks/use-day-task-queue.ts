@@ -1,6 +1,7 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
+import { formatClock, toMinute } from '@studytrack/backend/convex/timeline/util'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
-import type { Task, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
+import type { DayTask, TaskPlacement, TaskPlan } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
 import { useCachedTasks } from './use-cached-tasks'
 import { logTaskError } from './log-task-error'
@@ -66,7 +67,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   // it, instead of flashing the loading skeleton.
   const visibleTasks = useCachedTasks(dayStart, remoteTasks)
 
-  const tasks = visibleTasks?.map(toQueueTask) ?? []
+  const tasks = visibleTasks?.map((task) => toQueueTask(task, dayStart, clockNow)) ?? []
   const openTasks = tasks.filter((task) => !task.done)
   const doneTasks = tasks.filter((task) => task.done)
   const topOpen = openTasks[0]
@@ -117,9 +118,21 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   }
 }
 
-function toQueueTask(task: Task): QueueTask {
+// The row shows a plan only while its window is still open. The read is
+// clock-free, so the newest assignment may already have ended; the ticking
+// queue decides, which also makes the chip disappear when the block ends.
+function toQueueTask(task: DayTask, dayStart: number, clockNow: number): QueueTask {
+  const plan = task.plan && task.plan.plannedEnd > clockNow ? task.plan : null
   return {
     ...task,
+    plan,
+    planLabel: plan ? planChipLabel(plan, dayStart) : null,
     doneAt: task.completedAt === null ? null : DONE_AT_FORMAT.format(new Date(task.completedAt)),
   }
+}
+
+function planChipLabel(plan: TaskPlan, dayStart: number): string {
+  const start = formatClock(toMinute(plan.plannedStart, dayStart))
+  const end = formatClock(toMinute(plan.plannedEnd, dayStart))
+  return `${plan.title ?? 'Plan'} · ${start}–${end}`
 }

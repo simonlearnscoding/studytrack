@@ -1,14 +1,13 @@
 import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
 import type { DashboardWorkSessionTask } from '@studytrack/backend/convex/workSessions/types'
 
-// What a stored popover renders. Both branches share a member, a window and a
-// task list, so the future detail surface (rename, delete, task planning) can
-// build on the same shape instead of duplicating the planBlock/workSession cases.
+// What a stored popover renders. Both branches share a member and a window; the
+// task list belongs to the branch — a workSession carries its own finished tasks,
+// while a planBlock reads them live from its detail query.
 type PopupBase = {
   member: string | null
   startAt: number
   endAt: number | null
-  tasks: DashboardWorkSessionTask[]
 }
 
 // A gesture's uncommitted window, waiting on the Create button. It has no
@@ -24,12 +23,14 @@ export type StoredPlanBlockPopupData = PopupBase & {
   planBlockId: Id<'planBlock'>
   title: string | null
   missed: boolean
+  isOwner: boolean
 }
 
 export type StoredWorkSessionPopupData = PopupBase & {
   kind: 'workSession'
   workSessionId: Id<'workSession'>
   live: boolean
+  tasks: DashboardWorkSessionTask[]
 }
 
 export type StoredPopupData = StoredPlanBlockPopupData | StoredWorkSessionPopupData

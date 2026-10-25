@@ -46,7 +46,6 @@ const workSession = (
   tasks: tasks.map((t, i) => ({
     id: `t${i}` as Id<'task'>,
     title: t.title,
-    planned: false,
     completedAt: at(t.atMin),
   })),
 })
@@ -185,11 +184,11 @@ describe('toTimelineRows', () => {
     expect(rows[0].dots).toEqual([{ leftPx: CORE_LEFT + PX_PER_HOUR / 2, title: 'Read' }])
   })
 
-  it('does not draw a dot for a planned-only task', () => {
-    const planned = workSession([partial('voice', 360, 420)])
-    planned.tasks = [{ id: 't1' as Id<'task'>, title: 'Planned', planned: true, completedAt: null }]
+  it('does not draw a dot for a completion with no known instant', () => {
+    const retrospective = workSession([partial('voice', 360, 420)])
+    retrospective.tasks = [{ id: 't1' as Id<'task'>, title: 'Retrospective', completedAt: null }]
 
-    const rows = toTimelineRows([member(0, 'Me', [planned])], input())
+    const rows = toTimelineRows([member(0, 'Me', [retrospective])], input())
     expect(rows[0].dots).toEqual([])
   })
 
@@ -340,9 +339,12 @@ describe('toTimelineRows', () => {
       {
         id: 'p1',
         title: 'Reading',
+        startMin: 16 * 60,
+        endMin: 17 * 60,
         leftPx: CORE_LEFT + 10 * PX_PER_HOUR,
         widthPx: PX_PER_HOUR,
         missed: false,
+        locked: false,
       },
     ])
     expect(rows[0].planBlockWalls).toEqual([
@@ -351,6 +353,7 @@ describe('toTimelineRows', () => {
         title: 'Reading',
         startPx: CORE_LEFT + 10 * PX_PER_HOUR,
         endPx: CORE_LEFT + 11 * PX_PER_HOUR,
+        locked: false,
       },
     ])
   })
@@ -370,12 +373,14 @@ describe('toTimelineRows', () => {
         title: 'Reading',
         startPx: CORE_LEFT + 7 * PX_PER_HOUR,
         endPx: CORE_LEFT + 8 * PX_PER_HOUR,
+        locked: true,
       },
       {
         id: 'p2',
         title: null,
         startPx: CORE_LEFT + 10 * PX_PER_HOUR,
         endPx: CORE_LEFT + 11 * PX_PER_HOUR,
+        locked: false,
       },
     ])
   })

@@ -90,8 +90,7 @@ export default defineSchema({
   // titles, the active task and the up-next suggestion all show in the room.
   // Only the owner writes it. `plannedAt` is the Europe/Zurich Day the task is
   // planned for (always a day start, never a time). `completedAt` is set when the
-  // task is marked done and cleared when it is reopened. `plannedWorkSessionId` is an
-  // explicit "planned into this workSession" link, set only with `plannedAt`.
+  // task is marked done and cleared when it is reopened.
   task: defineTable({
     userId: v.id('users'),
     title: v.string(),
@@ -99,12 +98,10 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     plannedAt: v.number(),
     position: v.optional(v.number()),
-    plannedWorkSessionId: v.optional(v.id('workSession')),
   })
     .index('by_userId', ['userId'])
     .index('by_userId_plannedAt', ['userId', 'plannedAt'])
-    .index('by_userId_completedAt', ['userId', 'completedAt'])
-    .index('by_plannedWorkSessionId', ['plannedWorkSessionId']),
+    .index('by_userId_completedAt', ['userId', 'completedAt']),
 
   // A member's planBlock: a future window on their own lane, not a workSession
   // (no voice evidence, no partials). A member may have several planBlocks at
@@ -123,6 +120,23 @@ export default defineSchema({
   })
     .index('by_userId_dayStart', ['userId', 'dayStart'])
     .index('by_dayStart', ['dayStart']),
+
+  // A Task's placement inside one planBlock (ADR-0012). One row per Task and
+  // block; `userId` and `dayStart` are the block's, denormalised so a Day read is
+  // one indexed query. The block's Day never moves (ST-31), and an assignment is
+  // only written while the Task and block share that Day. A Task has at most one
+  // assignment to a block that has not ended; rows for ended blocks stay as the
+  // record. No position and no state: order belongs to the task queue, state to
+  // the block's window.
+  planAssignment: defineTable({
+    userId: v.id('users'),
+    taskId: v.id('task'),
+    planBlockId: v.id('planBlock'),
+    dayStart: v.number(),
+  })
+    .index('by_userId_dayStart', ['userId', 'dayStart'])
+    .index('by_taskId', ['taskId'])
+    .index('by_planBlockId', ['planBlockId']),
 
   // A development deployment's fake clock: one row holding the offset from real
   // time. Production never reads it (see devClock/), so this table is inert there.

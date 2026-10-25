@@ -1,4 +1,5 @@
 import type { TimelineRowVM } from '@studytrack/backend/convex/timeline/types'
+import type { PlanBlockClick } from '../desktop-bar'
 import { useRef, type RefObject } from 'react'
 import { HourLabels, NowLine, NowPill } from '../axis/markers'
 import { BandLayer } from '../axis/night-band'
@@ -16,12 +17,14 @@ export function PinnedMobileLane({
   nowLabel,
   showNow,
   scrollerRef,
+  onPlanBlockClick,
   onWorkSessionClick,
 }: { surface: AxisSurface } & {
   row: TimelineRowVM
   nowLabel: string
   showNow: boolean
   scrollerRef: RefObject<HTMLDivElement | null>
+  onPlanBlockClick?: (click: PlanBlockClick) => void
   onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
   const mirrorRef = useRef<HTMLDivElement>(null)
@@ -56,7 +59,11 @@ export function PinnedMobileLane({
               {showNow && <NowPill label={nowLabel} left={now} className="top-0 z-[3]" />}
             </div>
             <div className="flex h-9 items-center">
-              <RowTrack row={row} onWorkSessionClick={onWorkSessionClick} />
+              <RowTrack
+                row={row}
+                onPlanBlockClick={onPlanBlockClick}
+                onWorkSessionClick={onWorkSessionClick}
+              />
             </div>
           </div>
         </div>

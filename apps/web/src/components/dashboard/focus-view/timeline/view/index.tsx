@@ -79,6 +79,7 @@ export function DayTimeline({
           nowLabel={nowLabel}
           showNow={showNow}
           scrollerRef={scrollerRef}
+          onPlanBlockClick={onPlanBlockClick}
           onWorkSessionClick={onWorkSessionClick}
         />
       )}

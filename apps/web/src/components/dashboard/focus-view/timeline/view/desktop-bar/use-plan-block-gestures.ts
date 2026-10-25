@@ -10,7 +10,7 @@ import type {
   TimelineRowVM,
   TimelineWindow,
 } from '@studytrack/backend/convex/timeline/types'
-import { minuteToPx } from '@studytrack/backend/convex/timeline/util'
+import { minuteToPx, pxToMinute } from '@studytrack/backend/convex/timeline/util'
 import {
   useEffect,
   useRef,
@@ -82,6 +82,17 @@ export function usePlanBlockGestures({
   // pure seam last resolved. `blocks` and `nowPx` are the snapshot the walls
   // are computed from.
   const [edit, setEdit] = useState<PlanBlockGesture | null>(null)
+
+  // A started block has no geometry to drag. Keep its press in the same
+  // pointer path as a move anyway, so the popup opens from a non-focusable
+  // surface on release; a separate focusable overlay would steal focus from
+  // the Radix popover and close it again.
+  const [lockedPress, setLockedPress] = useState<{
+    planBlockId: TimelinePlanBlockWallVM['id']
+    title: TimelinePlanBlockWallVM['title']
+    startMin: number
+    endMin: number
+  } | null>(null)
 
   // Committed geometry held on screen until the live read catches up, so a
   // released block never snaps back to its old position for a frame.
@@ -195,6 +206,16 @@ export function usePlanBlockGestures({
   const startMove = (event: ReactPointerEvent<HTMLSpanElement>, block: TimelinePlanBlockWallVM) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
     event.stopPropagation()
+    if (block.locked) {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      setLockedPress({
+        planBlockId: block.id,
+        title: block.title,
+        startMin: pxToMinute(axis.segments, block.startPx) ?? 0,
+        endMin: pxToMinute(axis.segments, block.endPx) ?? 0,
+      })
+      return
+    }
     const grabPx = lanePx(event)
     const blocks = row?.planBlockWalls ?? []
     const span = resolvePlanBlockEdit({
@@ -214,6 +235,7 @@ export function usePlanBlockGestures({
   }
 
   const onMoveMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (lockedPress) return
     if (edit?.kind !== 'move') return
     const pointerPx = lanePx(event)
     const span = resolvePlanBlockEdit({
@@ -233,6 +255,18 @@ export function usePlanBlockGestures({
   }
 
   const onMoveUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (lockedPress) {
+      onPlanBlockClick?.({
+        planBlockId: lockedPress.planBlockId,
+        title: lockedPress.title,
+        startMin: lockedPress.startMin,
+        endMin: lockedPress.endMin,
+        x: event.clientX,
+        y: event.clientY,
+      })
+      setLockedPress(null)
+      return
+    }
     if (edit?.kind !== 'move') return
     const title = edit.blocks.find((block) => block.id === edit.planBlockId)?.title ?? null
     if (edit.moved) {
@@ -269,6 +303,7 @@ export function usePlanBlockGestures({
     edge: 'start' | 'end'
   ) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
+    if (block.locked) return
     event.stopPropagation()
     const blocks = row?.planBlockWalls ?? []
     const span = resolvePlanBlockEdit({
@@ -329,7 +364,10 @@ export function usePlanBlockGestures({
     setHoveredPlanBlockId(null)
     setCursorPx(null)
   }
-  const onMoveCancel = () => setEdit(null)
+  const onMoveCancel = () => {
+    setLockedPress(null)
+    setEdit(null)
+  }
   const onResizeCancel = () => setEdit(null)
 
   return {

@@ -15,23 +15,18 @@ export type DashboardPartial = {
 }
 
 // A task a workSession should show, exposed to the room (ADR-0007: task content is
-// public). `planned` marks an explicit plan into this workSession; `completedAt` is
-// scoped to this workSession and stays null for a planned-only entry, even when the
-// task is Done elsewhere.
+// public). `completedAt` is scoped to this workSession: a task ticked outside it
+// does not appear here, and one finished in a pause is attributed to neither.
 export type DashboardWorkSessionTask = {
   id: Id<'task'>
   title: string
-  planned: boolean
   completedAt: number | null
 }
 
-// The task facts the workSession union needs from the Day reads: the explicit plan
-// link, the completion instant, and creation order for planned entries.
+// The task facts the workSession read needs from the Day: the completion instant.
 export type WorkSessionTaskSource = {
   id: Id<'task'>
   title: string
-  createdAt: number
-  plannedWorkSessionId: Id<'workSession'> | null
   completedAt: number | null
 }
 
@@ -42,8 +37,8 @@ export type DashboardWorkSession = {
   startedAt: number
   endedAt: number | null
   partials: DashboardPartial[]
-  // The deduped union of tasks planned into and finished in this workSession (see
-  // ./util). Each task appears at most once.
+  // The tasks finished inside this workSession (see ./util). A task appears at
+  // most once.
   tasks: DashboardWorkSessionTask[]
 }
 
