@@ -7,11 +7,16 @@ export const MINUTE_MS = 60_000
 export const HOUR_MS = 60 * MINUTE_MS
 export const DAY_MS = 24 * HOUR_MS
 
+// The web must opt in before it calls the devClock module at all. Local dev can
+// point at a deployment that does not have the module yet; a skipped query keeps
+// that dashboard working instead of throwing. Production builds never set this.
+const isDevClockBuild = import.meta.env.VITE_DEV_CLOCK === '1'
+
 // The dev clock offset is deployment-wide and lives on the server, so the ticking
 // client clock and the clock the server uses for writes start from the same
 // value. Production always reads zero (see devClock/service).
 export function useDevClockOffset(): number {
-  return useQuery(api.devClock.get, {})?.offsetMs ?? 0
+  return useQuery(api.devClock.get, isDevClockBuild ? {} : 'skip')?.offsetMs ?? 0
 }
 
 export function useDevClock() {
