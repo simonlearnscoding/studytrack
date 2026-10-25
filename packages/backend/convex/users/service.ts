@@ -1,3 +1,4 @@
+import { isDevBypass } from '../auth/service'
 import type { Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { UpsertFromClerkArgs } from './types'
@@ -11,11 +12,10 @@ export async function getMe(ctx: QueryCtx) {
       .withIndex('by_clerkUserId', (q) => q.eq('clerkUserId', identity.subject))
       .unique()
   }
-  // DEV: the local deployment runs signed-out (DEV_AUTH_BYPASS, default-backend
-  // .env.local) and may name a seeded member to stand in for the caller, so
+  // The local deployment may name a seeded member to stand in for the caller, so
   // member-scoped reads (dailyTotals.listMine) can be exercised without a real
   // sign-in. Prod sets neither variable, so this branch never runs there.
-  if (process.env.DEV_AUTH_BYPASS === '1') return await devImpersonated(ctx)
+  if (isDevBypass()) return await devImpersonated(ctx)
   return null
 }
 

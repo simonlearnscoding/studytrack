@@ -2,9 +2,10 @@ import { mutation, query } from './_generated/server'
 import {
   getMine,
   setDoneFolded as applySetDoneFolded,
+  setLeaderboardPeriod as applySetLeaderboardPeriod,
   setMetric as applySetMetric,
 } from './preferences/service'
-import { setDoneFoldedArgs, setMetricArgs } from './preferences/types'
+import { setDoneFoldedArgs, setLeaderboardPeriodArgs, setMetricArgs } from './preferences/types'
 
 // Thin entry: the handlers only wire args to logic. Auth and db work lives in
 // ./preferences/service; the arg validators and view type live in
@@ -25,5 +26,12 @@ export const setDoneFolded = mutation({
   args: setDoneFoldedArgs.fields,
   handler: async (ctx, args) => {
     await applySetDoneFolded(ctx, args.folded)
+  },
+})
+
+export const setLeaderboardPeriod = mutation({
+  args: setLeaderboardPeriodArgs.fields,
+  handler: async (ctx, args) => {
+    await applySetLeaderboardPeriod(ctx, args.period)
   },
 })

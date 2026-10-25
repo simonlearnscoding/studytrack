@@ -37,3 +37,15 @@ Direction: [[Roadmap]].
 - [[ST-27 Task planning and active task]] (ST-27): todo · #ready-for-agent · backend for day-planned tasks, Session attribution, and the active task. Beta wiring follows.
 - [[ST-29 Task reordering by drag]] (ST-29): in-review · #ready-for-agent · manual task order per Day, whole-row drag in the beta pane, optimistic drop. Supersedes ST-27's oldest-first ordering clause.
 - [[ST-30 Foldable Done group]] (ST-30): todo · #ready-for-agent · foldable `Done · 4` group at the foot of the queue, remembered cross-device; first use of the shared task group.
+
+## Planning
+
+Plan blocks are the future windows on the timeline. This arc adds a name, a task
+link and a visible group in the task pane, with a dev clock to test the time
+states. ADR-0012 records the assignment shape.
+
+- [[ST-31 Plan block title and editable window]] (ST-31): todo · #ready-for-agent · title + editable create/edit popover
+- [[ST-32 Dev clock]] (ST-32): todo · #ready-for-agent · dev-only time travel for plan state
+- [[ST-33 Plan block task assignment]] (ST-33): todo · #ready-for-agent · blocked by ST-31
+- [[ST-34 Plan a block with tasks]] (ST-34): todo · #ready-for-agent · blocked by ST-31, ST-33
+- [[ST-35 Plan groups in the task view]] (ST-35): todo · #ready-for-agent · blocked by ST-32, ST-33

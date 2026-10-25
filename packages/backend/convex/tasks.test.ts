@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test'
 import { describe, expect, it } from 'vitest'
 import { api } from './_generated/api'
 import schema from './schema'
+import { DASHBOARD_TIME_ZONE, startOfDay } from './workSessions/util'
 
 const modules = import.meta.glob('./**/*.ts')
 
@@ -13,6 +14,8 @@ const BOB = { subject: 'clerk-bob' }
 const DAY = Date.UTC(2026, 5, 14, 22, 0, 0)
 const YESTERDAY = DAY - 24 * 60 * 60 * 1000
 const TOMORROW = DAY + 24 * 60 * 60 * 1000
+// The real today. A completion earns an instant only when its Focus day is this.
+const TODAY = startOfDay(Date.now(), DASHBOARD_TIME_ZONE)
 
 function makeTest() {
   return convexTest(schema, modules)
@@ -106,6 +109,61 @@ describe('tasks.listMine', () => {
   })
 })
 
+describe('tasks.getNow', () => {
+  it('returns nothing when unauthenticated', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Read a chapter')
+
+    expect(await t.query(api.tasks.getNow, { dayStart: DAY })).toBeNull()
+  })
+
+  it('returns the first Open task in queue order and advances as tasks are done', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Second')
+    await create(t, ADA, 'Top')
+    const [second, top] = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    await t.withIdentity(ADA).mutation(api.tasks.reorder, {
+      dayStart: DAY,
+      orderedTaskIds: [top.id, second.id],
+    })
+
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY }))?.title).toBe(
+      'Top'
+    )
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: top.id,
+      focusDayStart: TODAY,
+    })
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY }))?.title).toBe(
+      'Second'
+    )
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: second.id,
+      focusDayStart: TODAY,
+    })
+    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY })).toBeNull()
+  })
+
+  it('is scoped to the Day it is asked for', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Today', DAY)
+    await create(t, ADA, 'Tomorrow', TOMORROW)
+
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY }))?.title).toBe(
+      'Today'
+    )
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: TOMORROW }))?.title).toBe(
+      'Tomorrow'
+    )
+    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: YESTERDAY })).toBeNull()
+  })
+})
+
 describe('tasks.reorder', () => {
   async function ids(t: Test, identity: { subject: string }, dayStart = DAY) {
     const tasks = await t.withIdentity(identity).query(api.tasks.listMine, { dayStart })
@@ -147,7 +205,10 @@ describe('tasks.reorder', () => {
     await create(t, ADA, 'Done')
     const [active, done] = await ids(t, ADA)
     await t.withIdentity(ADA).mutation(api.tasks.setActive, { taskId: active })
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: done })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: done,
+      focusDayStart: TODAY,
+    })
     const completedBefore = (await tasksOf(t)).find((task) => task._id === done)?.completedAt
 
     await t.withIdentity(ADA).mutation(api.tasks.reorder, {
@@ -405,7 +466,10 @@ describe('tasks.create', () => {
     await create(t, ADA, 'Current now')
     await create(t, ADA, 'Later')
     const before = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: before[0].id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: before[0].id,
+      focusDayStart: TODAY,
+    })
 
     await t.withIdentity(ADA).mutation(api.tasks.create, {
       title: 'Next up',
@@ -460,15 +524,88 @@ describe('tasks.toggle', () => {
     await create(t, ADA, 'Read a chapter')
     const [task] = await tasksOf(t)
 
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
     let [after] = await tasksOf(t)
     expect(after.done).toBe(true)
     expect(after.completedAt).toBeTypeOf('number')
 
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
     ;[after] = await tasksOf(t)
     expect(after.done).toBe(false)
     expect(after.completedAt).toBeUndefined()
+  })
+
+  it('leaves the instant absent when the box is ticked while viewing another Day', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Yesterday work', YESTERDAY)
+    const [task] = await tasksOf(t)
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: YESTERDAY,
+    })
+
+    const [after] = await tasksOf(t)
+    expect(after.done).toBe(true)
+    expect(after.completedAt).toBeUndefined()
+
+    const [listed] = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: YESTERDAY })
+    expect(listed).toMatchObject({ done: true, completedAt: null })
+  })
+
+  it('records no instant for a future Day either', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Tomorrow work', TOMORROW)
+    const [task] = await tasksOf(t)
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TOMORROW,
+    })
+
+    const [after] = await tasksOf(t)
+    expect(after.done).toBe(true)
+    expect(after.completedAt).toBeUndefined()
+  })
+
+  it('keys the instant on the viewed Day, not the Day the task was planned for', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Old plan, finished live', YESTERDAY)
+    const [task] = await tasksOf(t)
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
+
+    const [after] = await tasksOf(t)
+    expect(after.completedAt).toBeTypeOf('number')
+  })
+
+  it('rejects a Focus day that is not a Day start', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Read a chapter')
+    const [task] = await tasksOf(t)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.tasks.toggle, {
+        taskId: task._id,
+        focusDayStart: TODAY + 1,
+      })
+    ).rejects.toThrow(/Day start/)
+
+    const [after] = await tasksOf(t)
+    expect(after.done).toBe(false)
   })
 
   it('moves a checked task below the Open ones', async () => {
@@ -478,7 +615,10 @@ describe('tasks.toggle', () => {
     await create(t, ADA, 'Second')
     const [first] = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
 
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: first.id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: first.id,
+      focusDayStart: TODAY,
+    })
 
     const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
     expect(tasks.map((task) => task.title)).toEqual(['Second', 'First'])
@@ -492,7 +632,10 @@ describe('tasks.toggle', () => {
     const [adaTask] = await tasksOf(t)
 
     await expect(
-      t.withIdentity(BOB).mutation(api.tasks.toggle, { taskId: adaTask._id })
+      t.withIdentity(BOB).mutation(api.tasks.toggle, {
+        taskId: adaTask._id,
+        focusDayStart: TODAY,
+      })
     ).rejects.toThrow(/Task not found/)
 
     const bobTasks = await t.withIdentity(BOB).query(api.tasks.listMine, { dayStart: DAY })
@@ -507,10 +650,16 @@ describe('tasks.toggle', () => {
     const [active, side] = await tasksOf(t)
     await t.withIdentity(ADA).mutation(api.tasks.setActive, { taskId: active._id })
 
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: side._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: side._id,
+      focusDayStart: TODAY,
+    })
     expect((await t.withIdentity(ADA).query(api.tasks.getActive, {}))?.task.id).toBe(active._id)
 
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: active._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: active._id,
+      focusDayStart: TODAY,
+    })
     expect(await t.withIdentity(ADA).query(api.tasks.getActive, {})).toBeNull()
   })
 
@@ -521,8 +670,14 @@ describe('tasks.toggle', () => {
     const [task] = await tasksOf(t)
 
     await t.withIdentity(ADA).mutation(api.tasks.setActive, { taskId: task._id })
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
 
     expect(await t.withIdentity(ADA).query(api.tasks.getActive, {})).toBeNull()
   })
@@ -561,7 +716,10 @@ describe('tasks.rename', () => {
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Read a chapter')
     const [task] = await tasksOf(t)
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
 
     await t.withIdentity(ADA).mutation(api.tasks.rename, {
       taskId: task._id,
@@ -631,7 +789,10 @@ describe('tasks.remove', () => {
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Read a chapter')
     const [task] = await tasksOf(t)
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
 
     await t.withIdentity(ADA).mutation(api.tasks.remove, { taskId: task._id })
 
@@ -703,7 +864,10 @@ describe('tasks active pointer', () => {
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Done')
     const [task] = await tasksOf(t)
-    await t.withIdentity(ADA).mutation(api.tasks.toggle, { taskId: task._id })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: task._id,
+      focusDayStart: TODAY,
+    })
 
     await expect(
       t.withIdentity(ADA).mutation(api.tasks.setActive, { taskId: task._id })

@@ -19,3 +19,10 @@ export function blockSpanText(
   if (startMin == null || endMin == null) return null
   return `${formatClock(Math.round(startMin))} – ${formatClock(Math.round(endMin))}`
 }
+
+// A stored block wears its title; rows written before ST-31 have none, so they
+// fall back to the from – until range the lane already speaks.
+export function planBlockChipText(title: string | null | undefined, fallback: string): string {
+  const trimmed = title?.trim()
+  return trimmed ? trimmed : fallback
+}

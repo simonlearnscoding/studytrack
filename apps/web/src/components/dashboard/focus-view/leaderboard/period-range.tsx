@@ -1,5 +1,6 @@
 import {
   DASHBOARD_TIME_ZONE,
+  nextDayStart,
   nextMonthStart,
   nextWeekStart,
   previousDayStart,
@@ -11,13 +12,14 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { useDateStore } from '~/state/date.store'
+import type { LeaderboardPeriod } from '@studytrack/backend/convex/preferences/types'
 
-export type LeaderboardPeriod = 'week' | 'month'
+export type { LeaderboardPeriod }
 
-// The week/month range over the board. A week reads as the compact European
-// date range `05.10. - 11.10.`; a month reads as its name, `October`. The arrows
-// step the shared Focus day by the period the board is currently ranking on, so
-// the range and the rows move together.
+// The day/week/month range over the board. A Day reads as `05.10.`, a week as the
+// compact European range `05.10. - 11.10.`, a month as its name, `October`. The
+// arrows step the shared Focus day by the period the board is currently ranking
+// on, so the range and the rows move together.
 const rangeFormat = new Intl.DateTimeFormat('de-DE', {
   timeZone: DASHBOARD_TIME_ZONE,
   day: '2-digit',
@@ -38,14 +40,16 @@ export function PeriodRange({ period }: { period: LeaderboardPeriod }) {
   const { start, end } = periodBounds(dayStart, period)
 
   return (
-    <div className="flex min-w-0 items-center gap-1 pb-2">
+    <div className="flex min-w-0 items-center gap-1">
       {/* A fixed-width label slot keeps the arrows in the same spot for every
           period, whether the label reads `05.10. - 11.10.` or `October`. A
           long label truncates instead of pushing the arrows around. */}
       <span className="text-label w-28 shrink-0 truncate tracking-[0.18em]">
         {period === 'month'
           ? monthFormat.format(start)
-          : `${rangeFormat.format(start)} - ${rangeFormat.format(end)}`}
+          : period === 'day'
+            ? rangeFormat.format(start)
+            : `${rangeFormat.format(start)} - ${rangeFormat.format(end)}`}
       </span>
       <div className="flex shrink-0 items-center gap-1">
         <Button
@@ -75,6 +79,7 @@ export function PeriodRange({ period }: { period: LeaderboardPeriod }) {
 
 // The inclusive first and last Days of the period containing the Focus day.
 function periodBounds(dayStart: number, period: LeaderboardPeriod) {
+  if (period === 'day') return { start: dayStart, end: dayStart }
   if (period === 'week') {
     const weekStart = startOfWeek(dayStart, DASHBOARD_TIME_ZONE)
     return {
@@ -93,6 +98,11 @@ function periodBounds(dayStart: number, period: LeaderboardPeriod) {
 // day-of-month (month) whenever the target month allows.
 function stepFocusDay(dayStart: number, period: LeaderboardPeriod, direction: -1 | 1): number {
   if (period === 'month') return shiftMonth(dayStart, direction, DASHBOARD_TIME_ZONE)
+  if (period === 'day') {
+    return direction < 0
+      ? previousDayStart(dayStart, DASHBOARD_TIME_ZONE)
+      : nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
+  }
 
   const weekStart = startOfWeek(dayStart, DASHBOARD_TIME_ZONE)
   const offset = dayStart - weekStart

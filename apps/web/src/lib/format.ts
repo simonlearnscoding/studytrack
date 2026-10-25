@@ -1,6 +1,4 @@
-// Minutes as the boards read them: `6h 50m`, or `45m` under an hour.
+// Minutes as the boards read them: decimal hours, one place (`25.4h`).
 export function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  if (!hours) return `${minutes}m`
-  return `${hours}h ${String(minutes % 60).padStart(2, '0')}m`
+  return `${(minutes / 60).toFixed(1)}h`
 }

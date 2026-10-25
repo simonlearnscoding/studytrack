@@ -2,29 +2,45 @@ import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar } from '~/components/ui/avatar'
 import { formatMinutes } from '~/lib/format'
+import { useLeaderboardPeriodPreference } from '~/preferences/use-leaderboard-period'
 import { PeriodRange, type LeaderboardPeriod } from './period-range'
 import type { LeaderboardRowVM } from './use-leaderboard'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
-import { useMetric } from '~/hooks/use-metric-preference'
+import { useMetric } from '~/preferences/use-metric'
 
-const periods = ['week', 'month'] as const
+const periods = ['day', 'week', 'month'] as const
 type Period = LeaderboardPeriod
 const other = { focus: 'total', total: 'focus' } as Record<Metric, Metric>
 
-type MergedRow = { key: string; week?: LeaderboardRowVM; month?: LeaderboardRowVM; rank: number }
+type MergedRow = {
+  key: string
+  day?: LeaderboardRowVM
+  week?: LeaderboardRowVM
+  month?: LeaderboardRowVM
+  rank: number
+}
 
 /** The row's minutes for one period · metric pair — the number the rank sorts on.
- *  A member missing from a period (no study in that Week or Month) sorts last. */
-const rowFor = (row: MergedRow, period: Period) => (period === 'week' ? row.week : row.month)
+ *  A member missing from a period (no study in that Day, Week or Month) sorts last. */
+const rowFor = (row: MergedRow, period: Period) => row[period]
 const minutesFor = (row: MergedRow, period: Period, metric: Metric) =>
   rowFor(row, period)?.[metric] ?? -1
 
-/** One row per person: join the Week and Month lists on the member key, keeping
- *  anyone who appears in either. A member in the Month but not the focus Week (or
- *  the other way round) still gets a row, with a dash in the period they miss. */
-function mergeRows(weekRows: LeaderboardRowVM[], monthRows: LeaderboardRowVM[]): MergedRow[] {
+/** One row per person: join the Day, Week and Month lists on the member key,
+ *  keeping anyone who appears in any. A member missing from one period still gets
+ *  a row, with a dash in the periods they miss. */
+function mergeRows(
+  dayRows: LeaderboardRowVM[],
+  weekRows: LeaderboardRowVM[],
+  monthRows: LeaderboardRowVM[]
+): MergedRow[] {
   const byKey = new Map<string, MergedRow>()
-  for (const week of weekRows) byKey.set(week.key, { key: week.key, week, rank: 0 })
+  for (const day of dayRows) byKey.set(day.key, { key: day.key, day, rank: 0 })
+  for (const week of weekRows) {
+    const existing = byKey.get(week.key)
+    if (existing) existing.week = week
+    else byKey.set(week.key, { key: week.key, week, rank: 0 })
+  }
   for (const month of monthRows) {
     const existing = byKey.get(month.key)
     if (existing) existing.month = month
@@ -34,11 +50,13 @@ function mergeRows(weekRows: LeaderboardRowVM[], monthRows: LeaderboardRowVM[]):
 }
 
 export function Leaderboard({
+  dayRows,
   weekRows,
   monthRows,
   compact = false,
-  initial = 5,
+  initial = 10,
 }: {
+  dayRows: LeaderboardRowVM[]
   weekRows: LeaderboardRowVM[]
   monthRows: LeaderboardRowVM[]
   /** compact = slim row for the left rail */
@@ -50,10 +68,12 @@ export function Leaderboard({
   // numbers and the rank order here; the live surfaces follow it too. Defaults
   // to Deep focus.
   const metric = useMetric()
-  const [sort, setSort] = useState<Period>('week')
+  // The Period is a Preference too, so the board opens on the member's last
+  // choice across devices.
+  const [sort, setSort] = useLeaderboardPeriodPreference()
   const [expanded, setExpanded] = useState(false)
   // The column header picks the Period that leads the rank; the other breaks ties.
-  const rows = mergeRows(weekRows, monthRows)
+  const rows = mergeRows(dayRows, weekRows, monthRows)
     .sort(
       (a, b) =>
         minutesFor(b, sort, metric) - minutesFor(a, sort, metric) ||
@@ -67,15 +87,27 @@ export function Leaderboard({
   // shared by the header and body rows so the column buttons sit exactly over
   // the values they sort
   const grid = compact
-    ? 'grid-cols-[18px_24px_minmax(0,1fr)_52px_52px] gap-2 px-1 py-1.5'
-    : 'grid-cols-[20px_26px_minmax(90px,1fr)_56px_56px] gap-3 px-1.5 py-1.5'
+    ? 'grid-cols-[16px_22px_minmax(0,1fr)_46px_46px_46px] gap-1 px-1 py-1.5'
+    : 'grid-cols-[20px_26px_minmax(90px,1fr)_54px_54px_54px] gap-2 px-1.5 py-1.5'
 
   return (
     <section>
-      <PeriodRange period={sort} />
+      {compact && (
+        <div className="pb-2">
+          <PeriodRange period={sort} />
+        </div>
+      )}
       <div className={`grid items-center ${grid} border-b border-white/[0.06] pb-1.5`}>
-        <span className="col-span-2" />
-        <span aria-hidden />
+        {compact ? (
+          <>
+            <span className="col-span-2" />
+            <span aria-hidden />
+          </>
+        ) : (
+          <div className="col-span-3 min-w-0">
+            <PeriodRange period={sort} />
+          </div>
+        )}
         {periods.map((p) => (
           <button
             key={p}
@@ -100,8 +132,9 @@ export function Leaderboard({
         </div>
       ) : (
         visible.map((b) => {
-          // The Week is the lead row; a member the Week misses falls back to Month.
-          const lead = b.week ?? b.month
+          // The Week is the lead row; a member the Week misses falls back to Month,
+          // then Day (a focus day outside both would be a future/past edge case).
+          const lead = b.week ?? b.month ?? b.day
           if (!lead) return null
           return (
             <div
@@ -125,7 +158,7 @@ export function Leaderboard({
                 return (
                   <span
                     key={p}
-                    className={`text-right font-mono transition-colors ${compact ? 'text-sm' : 'text-base'} ${
+                    className={`text-right font-mono whitespace-nowrap transition-colors ${compact ? 'text-sm' : 'text-base'} ${
                       cell
                         ? sort === p
                           ? 'text-foreground/75'

@@ -1,4 +1,4 @@
-import { useMetricPreference } from '~/hooks/use-metric-preference'
+import { useMetricPreference } from '~/preferences/use-metric'
 
 // The per-surface metric switch lives in the room rail's header, beside "In the
 // room" — the one control every Standing / live work-session surface follows (ST-12

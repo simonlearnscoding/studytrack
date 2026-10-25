@@ -35,6 +35,7 @@ export function DayTimeline({
   window: axis,
   rows,
   nowLabel,
+  showNow,
   scrollerRef,
   isNightBandHeldOpen,
   onToggleBand,
@@ -48,6 +49,7 @@ export function DayTimeline({
   window: TimelineWindow
   rows: TimelineRowVM[]
   nowLabel: string
+  showNow: boolean
   scrollerRef: RefObject<HTMLDivElement | null>
   isNightBandHeldOpen: boolean
   onToggleBand: () => void
@@ -75,6 +77,7 @@ export function DayTimeline({
           surface={surface}
           row={yourRow}
           nowLabel={nowLabel}
+          showNow={showNow}
           scrollerRef={scrollerRef}
           onWorkSessionClick={onWorkSessionClick}
         />
@@ -89,6 +92,7 @@ export function DayTimeline({
             surface={surface}
             row={yourRow}
             nowLabel={nowLabel}
+            showNow={showNow}
             scrollerRef={scrollerRef}
             draftPlanBlock={draftPlanBlock}
             onPlanBlockDrag={onPlanBlockDrag}
@@ -100,6 +104,7 @@ export function DayTimeline({
           <TrackScroller
             surface={surface}
             rows={rows}
+            showNow={showNow}
             scrollerRef={scrollerRef}
             onWorkSessionClick={onWorkSessionClick}
           />

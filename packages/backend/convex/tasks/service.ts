@@ -116,15 +116,28 @@ export async function rescheduleTask(
   })
 }
 
-// Flip a task between Open and Done. Marking done stamps `completedAt` and clears
-// the active pointer when this was the active task; reopening clears `completedAt`
-// and never restores the pointer.
-export async function toggleTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
+// Flip a task between Open and Done. A live completion — the box ticked while the
+// member was viewing today — stamps `completedAt`; a retrospective one leaves it
+// absent, because when the work happened is unknown. Completing clears the active
+// pointer when this was the active task; reopening never restores it.
+export async function toggleTask(
+  ctx: MutationCtx,
+  taskId: Id<'task'>,
+  focusDayStart: number
+): Promise<void> {
   const user = await requireUser(ctx)
   const task = await requireOwnedTask(ctx, user, taskId)
+  if (startOfDay(focusDayStart, DASHBOARD_TIME_ZONE) !== focusDayStart) {
+    throw new Error('The Focus day must be a Day start.')
+  }
 
   const done = !task.done
-  await ctx.db.patch(taskId, { done, completedAt: done ? Date.now() : undefined })
+  // The browser knows which Day it is showing; the server owns the wall clock. A
+  // completion gets an instant only when those agree, so ticking a past Day's
+  // task never drops a dot on today (ADR-0010).
+  const completedAt =
+    done && focusDayStart === startOfDay(Date.now(), DASHBOARD_TIME_ZONE) ? Date.now() : undefined
+  await ctx.db.patch(taskId, { done, completedAt })
   if (done) await clearActiveIfMatches(ctx, user, taskId)
 }
 
@@ -170,6 +183,18 @@ export async function setActive(ctx: MutationCtx, taskId: Id<'task'>): Promise<v
 export async function clearActive(ctx: MutationCtx): Promise<void> {
   const user = await requireUser(ctx)
   await clearActivePointer(ctx, user._id)
+}
+
+// The member's Now: the first Open task of the given Day's queue. The caller
+// passes today's Day, so the header and dock stay on today even while the board
+// shows another Day. Null when signed out or when nothing is Open.
+export async function getNow(ctx: QueryCtx, dayStart: number): Promise<Task | null> {
+  const user = await getMe(ctx)
+  if (!user) return null
+
+  const tasks = await dayTasks(ctx, user._id, dayStart)
+  const now = tasks.find((task) => !task.done)
+  return now ? toTask(now) : null
 }
 
 // The caller's active task, or null when there is no pointer, the pointed task is

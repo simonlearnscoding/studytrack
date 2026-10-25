@@ -1,10 +1,12 @@
 import type { QueryCtx } from '../_generated/server'
+import { hasViewer } from '../auth/service'
 import { assertBotSecret } from '../bot/util'
 import { sumDailyTotals } from '../dailyTotals/service'
 import type { DailyTotalSum } from '../dailyTotals/types'
 import { groupTodaysMembers } from '../workSessions/service'
 import {
   DASHBOARD_TIME_ZONE,
+  nextDayStart,
   nextMonthStart,
   nextWeekStart,
   startOfDay,
@@ -38,44 +40,45 @@ export async function getBoardsForViewer(
   ctx: QueryCtx,
   args: GetBoardsForViewerArgs
 ): Promise<LeaderboardBoards> {
-  // DEV: matches workSessions.getTodaysActivitiesForDashboard — the dev deployment
-  // sets DEV_AUTH_BYPASS (packages/backend/.env.local) so /beta can be worked on
-  // signed-out. Prod never has it and keeps the identity gate.
-  if (process.env.DEV_AUTH_BYPASS !== '1') {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) return { today: [], week: [], month: [] }
-  }
+  if (!(await hasViewer(ctx))) return { today: [], day: [], week: [], month: [] }
   return await buildBoards(ctx, args)
 }
 
 // The shared computation behind both reads: today's live totals per member, plus
-// the Week and Month of the focus day built from past Daily totals merged with
-// today's. Auth is the caller's concern; this is pure I/O and ranking over the
-// focus day's windows.
+// the Day, Week and Month of the focus day built from past Daily totals merged
+// with today's. Auth is the caller's concern; this is pure I/O and ranking over
+// the focus day's windows.
 async function buildBoards(
   ctx: QueryCtx,
   args: GetBoardsForViewerArgs
 ): Promise<LeaderboardBoards> {
-  const dayStart = startOfDay(args.now, DASHBOARD_TIME_ZONE)
-  const weekStart = startOfWeek(args.focusDayStart, DASHBOARD_TIME_ZONE)
+  const todayStart = startOfDay(args.now, DASHBOARD_TIME_ZONE)
+  const focusStart = args.focusDayStart
+  const focusEnd = nextDayStart(focusStart, DASHBOARD_TIME_ZONE)
+  const weekStart = startOfWeek(focusStart, DASHBOARD_TIME_ZONE)
   const weekEnd = nextWeekStart(weekStart, DASHBOARD_TIME_ZONE)
-  const monthStart = startOfMonth(args.focusDayStart, DASHBOARD_TIME_ZONE)
+  const monthStart = startOfMonth(focusStart, DASHBOARD_TIME_ZONE)
   const monthEnd = nextMonthStart(monthStart, DASHBOARD_TIME_ZONE)
 
-  const members = await groupTodaysMembers(ctx, dayStart)
-  const todayTotals = todaysTotals(members, dayStart, args.now)
+  const members = await groupTodaysMembers(ctx, todayStart)
+  const todayTotals = todaysTotals(members, todayStart, args.now)
 
+  const dayTotals = mergeTotals(
+    await sumDailyTotals(ctx, focusStart, focusEnd),
+    liveIfContains(focusStart, focusEnd, todayStart, todayTotals)
+  )
   const weekTotals = mergeTotals(
     await sumDailyTotals(ctx, weekStart, weekEnd),
-    liveIfContains(weekStart, weekEnd, dayStart, todayTotals)
+    liveIfContains(weekStart, weekEnd, todayStart, todayTotals)
   )
   const monthTotals = mergeTotals(
     await sumDailyTotals(ctx, monthStart, monthEnd),
-    liveIfContains(monthStart, monthEnd, dayStart, todayTotals)
+    liveIfContains(monthStart, monthEnd, todayStart, todayTotals)
   )
 
   return {
     today: await resolveNames(ctx, rankTotals(todayTotals)),
+    day: await resolveNames(ctx, rankTotals(dayTotals)),
     week: await resolveNames(ctx, rankTotals(weekTotals)),
     month: await resolveNames(ctx, rankTotals(monthTotals)),
   }

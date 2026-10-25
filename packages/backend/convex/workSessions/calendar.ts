@@ -72,6 +72,39 @@ export function buildMonthGrid(args: {
   return cells
 }
 
+// The compact calendar's seven cells, Monday through Sunday. It uses the same
+// Day flags and heat buckets as the month grid so the two views never disagree.
+export function buildWeekGrid(args: {
+  weekStart: number
+  focusDayStart: number
+  todayDayStart: number
+  totals: CalendarDayTotal[]
+  metric: 'focus' | 'total'
+  timeZone: string
+}): MonthCell[] {
+  const { weekStart, focusDayStart, todayDayStart, totals, metric, timeZone } = args
+  const byDay = new Map(totals.map((total) => [total.dayStart, total]))
+
+  const cells: MonthCell[] = []
+  let dayStart = weekStart
+  for (let i = 0; i < 7; i++) {
+    const isFuture = dayStart > todayDayStart
+    const total = byDay.get(dayStart)
+    const ms = total ? (metric === 'focus' ? total.deepFocusMs : total.totalMs) : 0
+    cells.push({
+      dayStart,
+      dayOfMonth: dayOfMonth(dayStart, timeZone),
+      inMonth: true,
+      isFocus: dayStart === focusDayStart,
+      isToday: dayStart === todayDayStart,
+      isFuture,
+      bucket: isFuture ? 0 : bucketForMs(ms),
+    })
+    dayStart = nextDayStart(dayStart, timeZone)
+  }
+  return cells
+}
+
 // The card header: the Focus day's Month and year, e.g. `October 2026`.
 export function monthLabel(monthStart: number, timeZone: string): string {
   return new Intl.DateTimeFormat('en-US', {

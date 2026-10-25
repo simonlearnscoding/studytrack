@@ -1,8 +1,16 @@
-export function PlanBlockSpanLabel({ leftPx, label }: { leftPx: number; label: string }) {
+export function PlanBlockSpanLabel({
+  leftPx,
+  label,
+  maxWidthPx,
+}: {
+  leftPx: number
+  label: string
+  maxWidthPx?: number
+}) {
   return (
     <span
-      className="bg-primary-tint text-primary pointer-events-none absolute -top-4 z-[5] block w-max rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap"
-      style={{ left: leftPx }}
+      className="bg-primary-tint text-primary pointer-events-none absolute -top-4 z-[5] block max-w-48 truncate rounded-md px-1.5 py-px font-mono text-label leading-none whitespace-nowrap"
+      style={{ left: leftPx, maxWidth: maxWidthPx }}
     >
       {label}
     </span>

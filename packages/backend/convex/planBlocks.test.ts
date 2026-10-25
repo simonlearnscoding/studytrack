@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { api } from './_generated/api'
 import schema from './schema'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from './workSessions/util'
@@ -33,9 +33,13 @@ async function seedUser(t: Test, identity: { subject: string }, name: string) {
   })
 }
 
-function plan(identity: { subject: string }, over: { start?: number; end?: number } = {}) {
+function plan(
+  identity: { subject: string },
+  over: { title?: string; dayStart?: number; start?: number; end?: number } = {}
+) {
   return {
-    dayStart: DAY,
+    dayStart: over.dayStart ?? DAY,
+    title: over.title ?? 'Deep work',
     plannedStart: over.start ?? START,
     plannedEnd: over.end ?? END,
   }
@@ -66,7 +70,12 @@ describe('planBlocks.create', () => {
     await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
 
     const [row] = await rowsOf(t)
-    expect(row).toMatchObject({ dayStart: DAY, plannedStart: START, plannedEnd: END })
+    expect(row).toMatchObject({
+      dayStart: DAY,
+      title: 'Deep work',
+      plannedStart: START,
+      plannedEnd: END,
+    })
 
     const res = await t
       .withIdentity(ADA)
@@ -76,8 +85,38 @@ describe('planBlocks.create', () => {
       name: 'Ada',
       online: false,
       workSessions: [],
-      planBlocks: [{ id: row._id, startAt: START, endAt: END }],
+      planBlocks: [{ id: row._id, title: 'Deep work', startAt: START, endAt: END }],
     })
+  })
+
+  it('trims the title before storing it', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { title: '  Physics  ' }))
+
+    const [row] = await rowsOf(t)
+    expect(row.title).toBe('Physics')
+  })
+
+  it('refuses a plan without a title', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { title: '   ' }))
+    ).rejects.toThrow(/title/)
+    expect(await rowsOf(t)).toEqual([])
+  })
+
+  it('refuses a Day that is not a day start', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { dayStart: DAY + 1 }))
+    ).rejects.toThrow(/belongs to a Day/)
+    expect(await rowsOf(t)).toEqual([])
   })
 
   it('keeps several plans for one member', async () => {
@@ -170,7 +209,7 @@ describe('planBlocks.create', () => {
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({
       name: 'Bob',
-      planBlocks: [{ startAt: START, endAt: END }],
+      planBlocks: [{ title: 'Deep work', startAt: START, endAt: END }],
     })
   })
 })
@@ -178,6 +217,9 @@ describe('planBlocks.create', () => {
 describe('planBlocks.update', () => {
   beforeAll(() => {
     vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
     vi.setSystemTime(NOW)
   })
   afterAll(() => {
@@ -192,12 +234,49 @@ describe('planBlocks.update', () => {
 
     await t.withIdentity(ADA).mutation(api.planBlocks.update, {
       planBlockId: row._id,
+      title: 'Deep work',
       plannedStart: START + 30 * 60_000,
       plannedEnd: END,
     })
 
     const [after] = await rowsOf(t)
     expect(after).toMatchObject({ plannedStart: START + 30 * 60_000, plannedEnd: END })
+  })
+
+  it('renames a plan without moving its window', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.update, {
+      planBlockId: row._id,
+      title: '  Physics  ',
+      plannedStart: START,
+      plannedEnd: END,
+    })
+
+    const [after] = await rowsOf(t)
+    expect(after).toMatchObject({ title: 'Physics', plannedStart: START, plannedEnd: END })
+  })
+
+  it('refuses an empty title and writes nothing', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.update, {
+        planBlockId: row._id,
+        title: '   ',
+        plannedStart: START,
+        plannedEnd: END,
+      })
+    ).rejects.toThrow(/title/)
+
+    const [after] = await rowsOf(t)
+    expect(after).toMatchObject({ title: 'Deep work', plannedStart: START, plannedEnd: END })
   })
 
   it('refuses a resize that overlaps a neighbouring plan', async () => {
@@ -212,6 +291,7 @@ describe('planBlocks.update', () => {
     await expect(
       t.withIdentity(ADA).mutation(api.planBlocks.update, {
         planBlockId: first._id,
+        title: 'Deep work',
         plannedStart: START,
         plannedEnd: END + 30 * 60_000,
       })
@@ -228,6 +308,7 @@ describe('planBlocks.update', () => {
     await expect(
       t.withIdentity(BOB).mutation(api.planBlocks.update, {
         planBlockId: row._id,
+        title: 'Deep work',
         plannedStart: START,
         plannedEnd: END + H,
       })
@@ -243,10 +324,57 @@ describe('planBlocks.update', () => {
     await expect(
       t.withIdentity(ADA).mutation(api.planBlocks.update, {
         planBlockId: row._id,
+        title: 'Deep work',
         plannedStart: DAY + 11 * H,
         plannedEnd: END,
       })
     ).rejects.toThrow(/past/)
+  })
+
+  it('refuses a resize off the 15-minute grid', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.update, {
+        planBlockId: row._id,
+        title: 'Deep work',
+        plannedStart: START + 60_000,
+        plannedEnd: END,
+      })
+    ).rejects.toThrow(/15-minute/)
+  })
+
+  it('allows a rename after the plan starts but refuses a window change', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
+    const [row] = await rowsOf(t)
+
+    vi.setSystemTime(START + 30 * 60_000)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.update, {
+      planBlockId: row._id,
+      title: 'Physics',
+      plannedStart: START,
+      plannedEnd: END,
+    })
+    const [renamed] = await rowsOf(t)
+    expect(renamed).toMatchObject({ title: 'Physics', plannedStart: START, plannedEnd: END })
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.update, {
+        planBlockId: row._id,
+        title: 'Physics',
+        plannedStart: START,
+        plannedEnd: END + 15 * 60_000,
+      })
+    ).rejects.toThrow(/started/)
+
+    const [after] = await rowsOf(t)
+    expect(after).toMatchObject({ title: 'Physics', plannedStart: START, plannedEnd: END })
   })
 })
 
@@ -310,5 +438,37 @@ describe('planBlocks.listMine', () => {
 
     const mine = await t.withIdentity(ADA).query(api.planBlocks.listMine, { dayStart: DAY })
     expect(mine.map((entry) => entry.plannedStart)).toEqual([START, END])
+  })
+})
+
+describe('legacy plan blocks', () => {
+  it('renders a title-less row and lets its owner name it', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const planBlockId = await t.run(async (ctx) =>
+      ctx.db.insert('planBlock', {
+        userId,
+        dayStart: DAY,
+        plannedStart: START,
+        plannedEnd: END,
+      })
+    )
+
+    const before = await t
+      .withIdentity(ADA)
+      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY })
+    expect(before[0].planBlocks).toEqual([
+      { id: planBlockId, title: null, startAt: START, endAt: END },
+    ])
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.update, {
+      planBlockId,
+      title: 'Physics',
+      plannedStart: START,
+      plannedEnd: END,
+    })
+
+    const [row] = await rowsOf(t)
+    expect(row.title).toBe('Physics')
   })
 })

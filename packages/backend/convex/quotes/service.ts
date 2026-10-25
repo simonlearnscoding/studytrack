@@ -1,5 +1,6 @@
 import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
+import { hasViewer } from '../auth/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import type { DailyQuote, StoreArgs } from './types'
 
@@ -7,13 +8,7 @@ import type { DailyQuote, StoreArgs } from './types'
 // materialized — never the clock — so the read stays deterministic. Returns null
 // when unauthenticated or before the first fetch, like the other member reads.
 export async function readToday(ctx: QueryCtx): Promise<DailyQuote | null> {
-  // DEV: matches workSessions.getTodaysActivitiesForDashboard — the dev deployment
-  // sets DEV_AUTH_BYPASS (packages/backend/.env.local) so /beta can be worked on
-  // signed-out. Prod never has it and keeps the identity gate.
-  if (process.env.DEV_AUTH_BYPASS !== '1') {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) return null
-  }
+  if (!(await hasViewer(ctx))) return null
 
   const row = await ctx.db.query('dailyQuote').withIndex('by_dayStart').order('desc').first()
   return row ? { text: row.text, author: row.author } : null

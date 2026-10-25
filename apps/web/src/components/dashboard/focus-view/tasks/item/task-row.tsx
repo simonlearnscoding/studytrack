@@ -75,9 +75,9 @@ export function TaskRow({
             )}
           </p>
           {isNow && (
-            <span className="bg-primary-tint text-primary text-label flex w-max items-center gap-1 rounded px-1 py-0.5 font-mono">
-              <span className="bg-primary h-1 w-1 rounded-full" />
-              NOW
+            <span className="text-primary text-label flex items-center gap-1.5">
+              <span className="bg-primary size-1 rounded-full" aria-hidden />
+              Now
             </span>
           )}
         </div>

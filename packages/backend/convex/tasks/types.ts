@@ -13,7 +13,12 @@ export const createTaskArgs = v.object({
   plannedAt: v.number(),
   placement: v.optional(taskPlacement),
 })
-export const toggleTaskArgs = v.object({ taskId: v.id('task') })
+// The Focus day the member is looking at when they tick the box. The server
+// compares it with its own today: only then is the completion a live one.
+export const toggleTaskArgs = v.object({
+  taskId: v.id('task'),
+  focusDayStart: v.number(),
+})
 export const renameTaskArgs = v.object({ taskId: v.id('task'), title: v.string() })
 export const removeTaskArgs = v.object({ taskId: v.id('task') })
 export const reorderTasksArgs = v.object({

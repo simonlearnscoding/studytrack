@@ -28,7 +28,7 @@ function row(overrides: Partial<LeaderboardRow> = {}): LeaderboardRow {
 }
 
 function boards(overrides: Partial<LeaderboardBoards> = {}): LeaderboardBoards {
-  return { today: [], week: [], month: [], ...overrides }
+  return { today: [], day: [], week: [], month: [], ...overrides }
 }
 
 describe('buildLeaderboardEmbeds', () => {

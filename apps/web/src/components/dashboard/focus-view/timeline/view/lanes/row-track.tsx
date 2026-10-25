@@ -66,7 +66,7 @@ export function RowTrack({
         return (
           <div
             key={`plan-${i}`}
-            title={plan.missed ? 'Missed plan block' : 'Plan block'}
+            title={plan.title ?? (plan.missed ? 'Missed plan block' : 'Plan block')}
             className={`absolute top-0 bottom-0 border border-dashed ${
               plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
             }`}

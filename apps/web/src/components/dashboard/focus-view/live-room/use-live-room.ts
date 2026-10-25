@@ -36,7 +36,13 @@ export type LiveRoomPerson = {
 // reads; the caller supplies the clock for any durations it derives.
 export function useLiveRoom(): { inRoom: DashboardMember[] | undefined; count: number } {
   const dayStart = useDayStart()
-  const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, { dayStart })
+  // The room is always the live Day, so it passes the same `todayStart` the
+  // timeline does. With the Focus day on today the two subscriptions share one
+  // read; when the timeline views another Day, only that one is separate.
+  const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, {
+    dayStart,
+    todayStart: dayStart,
+  })
   const inRoom = members
     ?.filter((member) => member.online)
     .sort((a, b) => joinedAt(a) - joinedAt(b))

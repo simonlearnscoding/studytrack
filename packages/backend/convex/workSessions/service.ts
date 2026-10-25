@@ -6,6 +6,8 @@ import type {
   DashboardWorkSession,
   WorkSessionTaskSource,
 } from './types'
+import { hasViewer } from '../auth/service'
+import { topOpenTask } from '../tasks/util'
 import { attachTasksToWorkSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
@@ -34,50 +36,93 @@ export async function listRecent(ctx: QueryCtx) {
   return await ctx.db.query('workSessionPartial').order('desc').take(25)
 }
 
-// One card per member for the dashboard: their whole day's workSessions and partials,
+// One card per member for the dashboard: one Day's workSessions and partials,
 // grouped. Returns raw timestamps only — the client derives live durations and
 // totals against its own clock (see ./util). `dayStart` (epoch ms) is passed by
-// the caller because queries must not read the wall clock; it stays stable for
-// the whole day, so the subscription does not churn.
+// the caller because queries must not read the wall clock. `todayStart` lets the
+// caller say whether `dayStart` is the live Day: only then do still-running
+// sessions join the window, so a closed Day cannot borrow today's activity.
 export async function getTodaysActivitiesForDashboard(
   ctx: QueryCtx,
-  dayStart: number
+  dayStart: number,
+  todayStart: number = dayStart
 ): Promise<DashboardMember[]> {
-  // DEV: the dev deployment sets DEV_AUTH_BYPASS (packages/backend/.env.local,
-  // synced by `npx convex dev`) so /beta can be worked on signed-out. Prod never
-  // has it and keeps the identity gate.
-  if (process.env.DEV_AUTH_BYPASS !== '1') {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) return []
-  }
-  const members = await groupTodaysMembers(ctx, dayStart)
-  const withTasks = await attachDayTasks(ctx, members, dayStart)
-  const withPlanBlocks = await attachDayPlanBlocks(ctx, withTasks, dayStart)
-  return await attachActiveTasks(ctx, withPlanBlocks)
+  if (!(await hasViewer(ctx))) return []
+  const isToday = dayStart === todayStart
+  const members = await groupDayMembers(ctx, dayStart, isToday)
+  const withTasks = await attachDayTasks(ctx, members, dayStart, isToday)
+  return await attachDayPlanBlocks(ctx, withTasks, dayStart)
 }
 
-// The shared day-window read, without any auth: everyone who studied today (or is
-// still running), grouped workSession → member. Both the dashboard query above and the
-// bot leaderboard build on this; the caller decides who may read it.
+// The live "today" read the room rail and the leaderboard keep using.
 export async function groupTodaysMembers(
   ctx: QueryCtx,
   dayStart: number
 ): Promise<DashboardMember[]> {
-  // A partial belongs to today if it started today, or is still running — the
-  // latter may have started before midnight and is part of the live picture.
-  const [today, active] = await Promise.all([
+  return await groupDayMembers(ctx, dayStart, true)
+}
+
+// The shared day-window read, without any auth: everyone who studied during
+// [dayStart, dayEnd), grouped workSession → member. The upper bound is load
+// bearing: without it, asking for a past Day also returns every Day after it.
+// `includeRunning` adds sessions still running now — they may have started
+// before midnight and are part of the live picture, but they never belong to a
+// closed Day.
+export async function groupDayMembers(
+  ctx: QueryCtx,
+  dayStart: number,
+  includeRunning: boolean
+): Promise<DashboardMember[]> {
+  const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
+  const [dayPartials, runningPartials] = await Promise.all([
     ctx.db
       .query('workSessionPartial')
-      .withIndex('by_startedAt', (q) => q.gte('startedAt', dayStart))
+      .withIndex('by_startedAt', (q) => q.gte('startedAt', dayStart).lt('startedAt', dayEnd))
+      .take(MAX_TODAY_PARTIALS),
+    includeRunning
+      ? ctx.db
+          .query('workSessionPartial')
+          .withIndex('by_status', (q) => q.eq('status', 'active'))
+          .take(MAX_ACTIVE_PARTIALS)
+      : Promise.resolve<Doc<'workSessionPartial'>[]>([]),
+  ])
+
+  return await groupPartials(ctx, [...dayPartials, ...runningPartials])
+}
+
+// One member's live Day, for reads that only need the caller's own row (the
+// calendar's today cell). Same grouping rules as `groupDayMembers`, but scoped
+// by userId so it never scans or groups the whole room.
+export async function getMemberToday(
+  ctx: QueryCtx,
+  user: Doc<'users'>,
+  todayStart: number
+): Promise<DashboardMember | null> {
+  const dayEnd = nextDayStart(todayStart, DASHBOARD_TIME_ZONE)
+  const [dayPartials, runningPartials] = await Promise.all([
+    ctx.db
+      .query('workSessionPartial')
+      .withIndex('by_userId', (q) =>
+        q.eq('userId', user._id).gte('startedAt', todayStart).lt('startedAt', dayEnd)
+      )
       .take(MAX_TODAY_PARTIALS),
     ctx.db
       .query('workSessionPartial')
       .withIndex('by_status', (q) => q.eq('status', 'active'))
       .take(MAX_ACTIVE_PARTIALS),
   ])
+  const runningMine = runningPartials.filter((partial) => partial.userId === user._id)
+  return (await groupPartials(ctx, [...dayPartials, ...runningMine]))[0] ?? null
+}
 
+// Group a set of partials into member cards. Shared by the full-day read and the
+// single-member live read so the key and ordering rules cannot drift.
+async function groupPartials(
+  ctx: QueryCtx,
+  input: Doc<'workSessionPartial'>[]
+): Promise<DashboardMember[]> {
   const byId = new Map<Id<'workSessionPartial'>, Doc<'workSessionPartial'>>()
-  for (const partial of [...today, ...active]) byId.set(partial._id, partial)
+  for (const partial of input) byId.set(partial._id, partial)
   const partials = [...byId.values()]
 
   // Group partials under their workSession, then workSessions under their member.
@@ -184,7 +229,8 @@ function toDashboardPartial(partial: Doc<'workSessionPartial'>): DashboardPartia
 async function attachDayTasks(
   ctx: QueryCtx,
   members: DashboardMember[],
-  dayStart: number
+  dayStart: number,
+  isToday: boolean
 ): Promise<DashboardMember[]> {
   const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
 
@@ -212,9 +258,18 @@ async function attachDayTasks(
       const byId = new Map(planned.map((task) => [task._id, task]))
       for (const task of completed) byId.set(task._id, task)
       const sources: WorkSessionTaskSource[] = [...byId.values()].map(toWorkSessionTaskSource)
-      if (sources.length === 0) return member
 
-      return { ...member, workSessions: attachTasksToWorkSessions(member.workSessions, sources) }
+      // Now is today's top Open task, derived from the same plan the board reads,
+      // never a stored pointer (ADR-0011). A past or future Day has no Now.
+      const nowTask = isToday ? topOpenTask(planned) : null
+      const activeTask = nowTask ? { id: nowTask._id, title: nowTask.title } : null
+      if (sources.length === 0) return { ...member, activeTask }
+
+      return {
+        ...member,
+        activeTask,
+        workSessions: attachTasksToWorkSessions(member.workSessions, sources),
+      }
     })
   )
 }
@@ -259,7 +314,12 @@ async function attachDayPlanBlocks(
       byUser.set(key, member)
     }
 
-    member.planBlocks.push({ id: plan._id, startAt: plan.plannedStart, endAt: plan.plannedEnd })
+    member.planBlocks.push({
+      id: plan._id,
+      title: plan.title ?? null,
+      startAt: plan.plannedStart,
+      endAt: plan.plannedEnd,
+    })
   }
 
   for (const member of result) {
@@ -267,27 +327,6 @@ async function attachDayPlanBlocks(
   }
 
   return result
-}
-
-// Give every member their NOW task from the user-level pointer. Kept out of
-// groupTodaysMembers because the bot's leaderboard reads that helper and has no
-// use for the pointer.
-async function attachActiveTasks(
-  ctx: QueryCtx,
-  members: DashboardMember[]
-): Promise<DashboardMember[]> {
-  return await Promise.all(
-    members.map(async (member) => {
-      if (!member.userId) return member
-      const user = await ctx.db.get(member.userId)
-      if (!user?.activeTaskId) return member
-
-      const task = await ctx.db.get(user.activeTaskId)
-      if (!task || task.userId !== user._id) return member
-
-      return { ...member, activeTask: { id: task._id, title: task.title } }
-    })
-  )
 }
 
 function toWorkSessionTaskSource(task: Doc<'task'>): WorkSessionTaskSource {

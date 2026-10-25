@@ -19,11 +19,13 @@ import { useTrackPan } from './use-track-pan'
 export function TrackScroller({
   surface: { axis, bands, hidden, isNightBandHeldOpen, onToggleBand },
   rows,
+  showNow,
   scrollerRef,
   onWorkSessionClick,
 }: {
   surface: AxisSurface
   rows: TimelineRowVM[]
+  showNow: boolean
   scrollerRef: RefObject<HTMLDivElement | null>
   onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
@@ -66,7 +68,7 @@ export function TrackScroller({
         {/* now-line — every live bar ends here; the pinned bar above draws its
             own segment, so this one spans the rows only. z-[3]: above the rows
             (z-[2]), below the pinned bar so it never crosses it. */}
-        <NowLine left={axis.nowPx} className="top-0 bottom-1.5 z-[3]" />
+        {showNow && <NowLine left={axis.nowPx} className="top-0 bottom-1.5 z-[3]" />}
 
         {/* contract: tracks only; the name column is the pinned sibling. a
             shadcn Popover hangs off each bar (workSession details) in prod. */}

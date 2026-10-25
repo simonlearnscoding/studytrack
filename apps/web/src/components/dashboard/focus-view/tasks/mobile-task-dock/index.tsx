@@ -1,25 +1,40 @@
+import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
+import type { Task } from '@studytrack/backend/convex/tasks/types'
 import { useEffect, useState } from 'react'
+import { useMounted } from '~/hooks/use-mounted'
+import { useDateStore } from '~/state/date.store'
+import { focusDayLabel } from '../../focus-day'
 import type { DayTaskQueue } from '../task-types'
 import type { WorkSessionTracking } from '../../use-tracking-status'
 import { NowBar } from './now-bar'
 import { TaskSheet } from './task-sheet'
 
-// The mobile task dock: a sticky bottom bar that always shows what you're on,
-// with a sheet that expands to the whole list and the composer. The queue state
-// is owned by FocusView so the desktop pane and this dock share one source of
-// truth; the dock owns only whether its sheet is open.
+// The mobile task dock: a sticky bottom bar that always shows the member's Now,
+// with a sheet that expands to the viewed Day's whole list and the composer. The
+// queue state is owned by FocusView so the desktop pane and this dock share one
+// source of truth; the dock owns only whether its sheet is open.
 export function MobileTaskDock({
   queue,
+  nowTask,
+  onCompleteNow,
   tracking,
   roomCount,
 }: {
   queue: DayTaskQueue
+  nowTask: Task | null
+  onCompleteNow: () => void
   tracking: WorkSessionTracking
   roomCount: number
 }) {
   const [open, setOpen] = useState(false)
   const { state, actions } = queue
   const { isOnline, isManual, canStartManual, startManual, toggleManual } = tracking
+  // The sheet is the viewed Day's list, so its header names that Day. Gated
+  // behind mount for SSR parity.
+  const selectedDate = useDateStore((dateState) => dateState.selectedDate)
+  const mounted = useMounted()
+  const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
+  const dayLabel = mounted ? focusDayLabel(dayStart) : 'Today'
 
   // Lock the page behind the sheet and close it on Escape.
   useEffect(() => {
@@ -40,11 +55,11 @@ export function MobileTaskDock({
       <NowBar
         isOnline={isOnline}
         canStartManual={canStartManual}
-        now={state.now}
+        now={nowTask}
         roomCount={roomCount}
         onStart={startManual}
         onOpen={() => setOpen(true)}
-        onTick={() => state.now && actions.toggleTaskDone(state.now.id)}
+        onTick={onCompleteNow}
       />
       <TaskSheet
         open={open}
@@ -53,7 +68,8 @@ export function MobileTaskDock({
         loading={state.status === 'loading'}
         openTasks={state.openTasks}
         doneTasks={state.doneTasks}
-        nowId={state.now?.id ?? null}
+        nowId={state.isViewingToday ? (state.topOpen?.id ?? null) : null}
+        dayLabel={dayLabel}
         onClose={() => setOpen(false)}
         onAdd={actions.addTask}
         onTick={actions.toggleTaskDone}

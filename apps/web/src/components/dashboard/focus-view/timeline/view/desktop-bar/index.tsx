@@ -10,7 +10,7 @@ import { BandLayer } from '../axis/night-band'
 import { RowTrack, type PlanBlockOverride, type WorkSessionClick } from '../lanes/row-track'
 import type { AxisSurface } from '../../types'
 import { useMirrorScroll } from '../../hooks/use-mirror-scroll'
-import { blockSpanText, planBlockSpanText } from './plan-block-label-text'
+import { blockSpanText, planBlockChipText, planBlockSpanText } from './plan-block-label-text'
 import { CursorTimeLabel, PlanBlockSpanLabel } from './plan-block-labels'
 import { isPlannableSpan, usePlanBlockGestures } from './use-plan-block-gestures'
 import type { PlanBlockClick, PlanBlockDraft, PlanBlockDrag, PlanBlockUpdate } from './types'
@@ -50,6 +50,7 @@ export function PinnedDesktopBar({
   surface: { axis, bands, hidden, isNightBandHeldOpen, onToggleBand },
   row,
   nowLabel,
+  showNow,
   scrollerRef,
   draftPlanBlock,
   onPlanBlockDrag,
@@ -61,6 +62,7 @@ export function PinnedDesktopBar({
   surface: AxisSurface
   row?: TimelineRowVM
   nowLabel: string
+  showNow: boolean
   scrollerRef: RefObject<HTMLDivElement | null>
   // The window of the draft popover, kept drawn on the lane until the member
   // decides; null when no draft is open.
@@ -146,10 +148,13 @@ export function PinnedDesktopBar({
       : hoveredBlock
         ? { leftPx: hoveredBlock.startPx, widthPx: hoveredBlock.endPx - hoveredBlock.startPx }
         : null
-  const hoverLabel = hoveredGeometry
+  const hoverSpanText = hoveredGeometry
     ? blockSpanText(axis.segments, hoveredGeometry.leftPx, hoveredGeometry.widthPx)
     : null
+  const hoverLabel =
+    hoveredGeometry && hoverSpanText ? planBlockChipText(hoveredBlock?.title, hoverSpanText) : null
   const hoverLabelLeftPx = hoveredGeometry?.leftPx ?? 0
+  const hoverLabelMaxWidthPx = hoveredGeometry ? Math.max(48, hoveredGeometry.widthPx) : undefined
 
   // The time a click or drag at the pointer would start on: the same floor and
   // quarter-hour snap the planning gestures use. Nothing to read in the past,
@@ -202,10 +207,10 @@ export function PinnedDesktopBar({
         {/* the now-line through the whole bar, run 0.875rem past the bottom so
             it bridges the gap to the scroller's own line below and reads as one
             line from pill to the last row */}
-        <NowLine left={now} className="inset-y-0 -bottom-3.5" />
+        {showNow && <NowLine left={now} className="inset-y-0 -bottom-3.5" />}
         <div className="relative h-6">
           <HourLabels ticks={axis.ticks} widthPx={axis.widthPx} className="top-3" />
-          <NowPill label={nowLabel} left={now} className="-top-4 z-[7]" />
+          {showNow && <NowPill label={nowLabel} left={now} className="-top-4 z-[7]" />}
         </div>
         {/* your lane — the taller hero track, and the drag-to-plan surface.
             Your name, live dot and tail live in the pinned name cell, not here;
@@ -271,7 +276,13 @@ export function PinnedDesktopBar({
                 </>
               )}
               {editLabel && <PlanBlockSpanLabel leftPx={editLabelLeftPx} label={editLabel} />}
-              {hoverLabel && <PlanBlockSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
+              {hoverLabel && (
+                <PlanBlockSpanLabel
+                  leftPx={hoverLabelLeftPx}
+                  label={hoverLabel}
+                  maxWidthPx={hoverLabelMaxWidthPx}
+                />
+              )}
               {cursorLabel && <CursorTimeLabel leftPx={cursorLabelLeftPx} label={cursorLabel} />}
             </div>
           </div>

@@ -25,6 +25,7 @@ function px(minute: number): number {
 function plan(id: string, startMin: number, endMin: number): TimelinePlanBlockWallVM {
   return {
     id: id as Id<'planBlock'>,
+    title: null,
     startPx: px(startMin),
     endPx: px(endMin),
   }

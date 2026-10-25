@@ -66,19 +66,23 @@ export type TimelineBarVM = {
 export type TimelineDotVM = { leftPx: number; title: string }
 
 // A planBlock drawn on the lane. `missed` marks a window that has passed without
-// any voice evidence. A planBlock can be cut by a collapsed night band, so it is
-// emitted as one piece per visible segment.
+// any voice evidence. `title` names the block and is public (ADR-0007); it is
+// null for rows written before ST-31. A planBlock can be cut by a collapsed
+// night band, so it is emitted as one piece per visible segment.
 export type TimelinePlanBlockVM = {
   id: Id<'planBlock'>
+  title: string | null
   leftPx: number
   widthPx: number
   missed: boolean
 }
 
 // A planBlock's visible window on the axis, used by the drag gesture as a wall:
-// a new planBlock may not start inside it or be dragged across it.
+// a new planBlock may not start inside it or be dragged across it. `title` rides
+// along so a gesture can send it back unchanged on the update mutation.
 export type TimelinePlanBlockWallVM = {
   id: Id<'planBlock'>
+  title: string | null
   startPx: number
   endPx: number
 }

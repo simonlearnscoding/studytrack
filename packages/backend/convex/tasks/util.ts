@@ -32,6 +32,13 @@ export function byQueueOrder(a: Doc<'task'>, b: Doc<'task'>): number {
   return byPosition(a, b)
 }
 
+// The member's Now: the first Open task of a Day's queue. Derived, never stored —
+// the read sides (header, dock, room) all ask for the same Day, so they cannot
+// disagree about it.
+export function topOpenTask(tasks: Doc<'task'>[]): Doc<'task'> | null {
+  return [...tasks].sort(byQueueOrder).find((task) => !task.done) ?? null
+}
+
 // Where a new Open task lands in a Day already in queue order. `now` goes to the
 // very top (the first Open task is Now), `next` right after the current Now, and
 // `end` at the bottom. An empty Day accepts every placement at index 0.

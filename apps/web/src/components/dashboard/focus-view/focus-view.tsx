@@ -10,11 +10,13 @@
  */
 
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
+import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
 import { useSyncClerkUser } from '~/hooks/use-sync-clerk-user'
 import { useDateStore } from '~/state/date.store'
 import { Leaderboard } from './leaderboard/leaderboard'
 import { DayHeading } from './day-heading'
+import { focusDayLabel } from './focus-day'
 import { Hero } from './hero'
 import { MobileTaskDock } from './tasks/mobile-task-dock'
 import { MonthCalendar } from './calendar/month-calendar'
@@ -23,6 +25,7 @@ import { TaskPane } from './tasks/task-pane'
 import { TimelineSection } from './timeline/timeline-section'
 import { useLeaderboard } from './leaderboard/use-leaderboard'
 import { useDayTaskQueue } from './tasks/hooks/use-day-task-queue'
+import { useNowTask } from './tasks/hooks/use-now-task'
 import { useMonthCalendar } from './calendar/use-month-calendar'
 import { useLiveRoom } from './live-room/use-live-room'
 import { useTrackingStatus } from './use-tracking-status'
@@ -34,16 +37,19 @@ export function FocusView() {
   // also reads it so a past Day knows it can offer "schedule for today".
   const now = useNow(60_000)
   const selectedDate = useDateStore((state) => state.selectedDate)
+  const mounted = useMounted()
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
+  const dayLabel = !mounted ? 'Today' : focusDayLabel(dayStart)
   const tracking = useTrackingStatus()
-  // The queue is the one source of truth for the Now task — the first open task
-  // of the Day; the desktop pane, the mobile dock and the hero all read it.
+  // Two scopes on purpose: the queue is the Day being viewed (list, add, drag),
+  // while Now is today's top Open task and never follows the calendar.
   const taskQueue = useDayTaskQueue(dayStart, now)
+  const todayNow = useNowTask(now)
   const workSessionElapsedMs =
     tracking.startedAt === null ? 0 : Math.max(0, now - tracking.startedAt)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useLiveRoom()
-  const { weekRows, monthRows } = useLeaderboard(now)
+  const { dayRows, weekRows, monthRows } = useLeaderboard(now)
   const calendar = useMonthCalendar(now)
   // below xl it sits full-width in the main column; xl+ keeps it in the rail
   const monthCalendar = <MonthCalendar calendar={calendar} />
@@ -57,7 +63,7 @@ export function FocusView() {
           <PresenceRail members={inRoom} />
           {/* medium screens: consistency tucks into the left rail, behind a divider */}
           <div className="hidden border-t border-white/[0.06] pt-5 lg:block xl:hidden">
-            <Leaderboard weekRows={weekRows} monthRows={monthRows} compact />
+            <Leaderboard dayRows={dayRows} weekRows={weekRows} monthRows={monthRows} compact />
           </div>
         </div>
 
@@ -71,35 +77,38 @@ export function FocusView() {
             onStartManual={tracking.startManual}
             onStopManual={tracking.stopManual}
             elapsedMs={workSessionElapsedMs}
-            nowTask={taskQueue.state.now ?? null}
-            onToggleNowTask={() => {
-              const nowTask = taskQueue.state.now
-              if (nowTask) taskQueue.actions.toggleTaskDone(nowTask.id)
-            }}
+            nowTask={todayNow.task}
+            onToggleNowTask={todayNow.complete}
           />
           <DayHeading now={now} />
-          <TimelineSection />
+          <TimelineSection dayStart={dayStart} />
           <div className="flex flex-col gap-6">
             <div className="lg:hidden">{monthCalendar}</div>
             <div className="lg:hidden xl:block">
-              <Leaderboard weekRows={weekRows} monthRows={monthRows} />
+              <Leaderboard dayRows={dayRows} weekRows={weekRows} monthRows={monthRows} />
             </div>
           </div>
           {/* the personal rail is desktop-only — on mobile the dock owns it */}
         </main>
 
-        <aside className="flex min-h-0 flex-col gap-4 max-lg:hidden lg:overflow-y-auto">
+        <aside className="flex min-h-0 flex-col gap-4 max-lg:hidden lg:overflow-hidden">
           {/* calendar and tasks share one bubble: calendar on top, tasks below,
               separated by a hairline rather than a gap between cards */}
           <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
             <MonthCalendar calendar={calendar} isEmbedded />
             <div className="border-t" />
-            <TaskPane queue={taskQueue} isEmbedded />
+            <TaskPane queue={taskQueue} dayLabel={dayLabel} isEmbedded />
           </div>
         </aside>
       </div>
 
-      <MobileTaskDock queue={taskQueue} tracking={tracking} roomCount={roomCount} />
+      <MobileTaskDock
+        queue={taskQueue}
+        nowTask={todayNow.task}
+        onCompleteNow={todayNow.complete}
+        tracking={tracking}
+        roomCount={roomCount}
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { useMutation, useQuery } from 'convex/react'
+import { optimisticPreference } from './optimistic-preference'
 
 /**
  * The member's remembered metric Preference, read live from Convex. A member who
@@ -18,18 +19,9 @@ export function useMetric(): Metric {
  */
 export function useMetricPreference(): [Metric, (metric: Metric) => void] {
   const metric = useMetric()
-  const save = useMutation(api.preferences.setMetric).withOptimisticUpdate((localStore, args) => {
-    const cachedPreference = localStore.getQuery(api.preferences.mine, {})
-    if (cachedPreference === undefined) return
-    localStore.setQuery(
-      api.preferences.mine,
-      {},
-      {
-        ...cachedPreference,
-        metric: args.metric,
-      }
-    )
-  })
+  const save = useMutation(api.preferences.setMetric).withOptimisticUpdate((localStore, args) =>
+    optimisticPreference(localStore, 'metric', args.metric)
+  )
 
   function choose(next: Metric) {
     save({ metric: next }).catch(() => {

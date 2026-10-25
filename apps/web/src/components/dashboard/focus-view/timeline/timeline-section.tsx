@@ -6,6 +6,7 @@ import {
   toMinute,
   toTimelineRows,
 } from '@studytrack/backend/convex/timeline/util'
+import { DAY_MINUTES } from '@studytrack/backend/convex/timeline/types'
 import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
 import { useMutation } from 'convex/react'
 import { useRef, useState } from 'react'
@@ -19,9 +20,13 @@ import { useAutoExpansion } from './hooks/use-night-band-auto-expansion'
 import { useElementWidth } from '~/hooks/use-element-width'
 import { useExpansionPreference } from './hooks/use-night-band-preference'
 import { useTimeline } from './hooks/use-timeline'
-import { TimelinePopupContent, type TimelinePopupData } from './timeline-popup'
+import {
+  TimelinePopupContent,
+  type PlanBlockFormValues,
+  type TimelinePopupData,
+} from './timeline-popup'
 import { TimelineSkeleton } from './timeline-skeleton'
-import { useMetric } from '~/hooks/use-metric-preference'
+import { useMetric } from '~/preferences/use-metric'
 
 // The width the track assumes before it has measured itself — the fixed-scale
 // core (18h × 32px/h) from the expansion spec. Server and first paint agree.
@@ -35,19 +40,25 @@ const FALLBACK_TRACK_PX = 576
 // skeleton until `ready`, so there is no render-narrow-then-widen jump. The
 // server renders the hidden state too, so hydration still matches. `ready` also
 // waits for the live read, so the lanes never flash in empty.
-export function TimelineSection() {
-  const { members, now, dayStart, me } = useTimeline()
+export function TimelineSection({ dayStart }: { dayStart: number }) {
+  const { members, now, me, isToday, isPast } = useTimeline(dayStart)
   // The lane tails follow the site-wide metric switch; lanes and their order
   // (sorted by Total) never change with it (ST-12).
   const metric = useMetric()
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const availablePx = useElementWidth(scrollerRef, FALLBACK_TRACK_PX)
-  const nowMin = toMinute(now, dayStart)
+  // Only today has a moving clock. A closed Day opens at midday and a future Day
+  // at midnight — positions for scrolling and expansion, never a "now" line.
+  const viewNowMin = isToday ? toMinute(now, dayStart) : isPast ? DAY_MINUTES / 2 : 0
   const [popup, setPopup] = useState<{ data: TimelinePopupData; x: number; y: number } | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [manual, toggleBand] = useExpansionPreference()
-  const auto = useAutoExpansion(nowMin)
+  // Future days have no clock (minute 0), but they must not auto-open the night
+  // band either, so the expansion seed stays at midday for every non-today Day.
+  const auto = useAutoExpansion(isToday ? viewNowMin : DAY_MINUTES / 2)
   const createPlanBlock = useMutation(api.planBlocks.create)
   const updatePlanBlock = useMutation(api.planBlocks.update)
   const removePlanBlock = useMutation(api.planBlocks.remove)
@@ -59,7 +70,7 @@ export function TimelineSection() {
 
   // Pure derivations — no manual memoization; the React Compiler handles it.
   const expansion = mergeExpansion(manual, auto)
-  const axis = resolveWindow({ nowMin, availablePx, expansion })
+  const axis = resolveWindow({ nowMin: viewNowMin, availablePx, expansion })
   const rows = toTimelineRows(members ?? [], {
     now,
     dayStart,
@@ -88,6 +99,7 @@ export function TimelineSection() {
       data: {
         kind: 'planBlock',
         planBlockId: click.planBlockId,
+        title: plan?.title ?? null,
         member: owner?.name ?? owner?.discordId ?? null,
         startAt,
         endAt,
@@ -101,6 +113,8 @@ export function TimelineSection() {
     setPopup(null)
     setCreateError(null)
     setIsCreating(false)
+    setUpdateError(null)
+    setIsUpdating(false)
   }
 
   // Both planning gestures (a drag draws the span, a double-click asks for two
@@ -119,17 +133,39 @@ export function TimelineSection() {
     })
   }
 
-  const createDraftPlanBlock = () => {
+  const createDraftPlanBlock = (values: PlanBlockFormValues) => {
     if (popup?.data.kind !== 'draft') return
-    const { startAt, endAt } = popup.data
     setIsCreating(true)
     setCreateError(null)
-    void createPlanBlock({ dayStart, plannedStart: startAt, plannedEnd: endAt })
+    void createPlanBlock({
+      dayStart,
+      title: values.title,
+      plannedStart: dayStart + values.startMin * 60_000,
+      plannedEnd: dayStart + values.endMin * 60_000,
+    })
       .then(closePopup)
       .catch((error) => {
         console.error('[studytrack] plan create failed', error)
-        setCreateError(planBlockCreateMessage(error))
+        setCreateError(planBlockWriteMessage(error, 'Could not create the plan.'))
         setIsCreating(false)
+      })
+  }
+
+  const updatePopupPlanBlock = (values: PlanBlockFormValues) => {
+    if (popup?.data.kind !== 'planBlock') return
+    setIsUpdating(true)
+    setUpdateError(null)
+    void updatePlanBlock({
+      planBlockId: popup.data.planBlockId,
+      title: values.title,
+      plannedStart: dayStart + values.startMin * 60_000,
+      plannedEnd: dayStart + values.endMin * 60_000,
+    })
+      .then(closePopup)
+      .catch((error) => {
+        console.error('[studytrack] plan update failed', error)
+        setUpdateError(planBlockWriteMessage(error, 'Could not update the plan.'))
+        setIsUpdating(false)
       })
   }
 
@@ -174,22 +210,28 @@ export function TimelineSection() {
         <DayTimeline
           window={axis}
           rows={rows}
-          nowLabel={`now · ${formatClock(nowMin)}`}
+          nowLabel={`now · ${formatClock(viewNowMin)}`}
+          showNow={isToday}
           scrollerRef={scrollerRef}
           isNightBandHeldOpen={auto.morning}
           onToggleBand={toggleBand}
           draftPlanBlock={draftPlanBlock}
-          onPlanBlockDrag={openPlanBlockDraft}
-          onPlanBlockDoubleClick={openPlanBlockDraft}
+          onPlanBlockDrag={isPast ? undefined : openPlanBlockDraft}
+          onPlanBlockDoubleClick={isPast ? undefined : openPlanBlockDraft}
           onPlanBlockClick={openPlanBlock}
           onWorkSessionClick={openWorkSession}
-          onPlanBlockUpdate={(update) => {
-            void updatePlanBlock({
-              planBlockId: update.planBlockId,
-              plannedStart: dayStart + update.startMin * 60_000,
-              plannedEnd: dayStart + update.endMin * 60_000,
-            }).catch((error) => console.error('[studytrack] plan update failed', error))
-          }}
+          onPlanBlockUpdate={
+            isPast
+              ? undefined
+              : (update) => {
+                  void updatePlanBlock({
+                    planBlockId: update.planBlockId,
+                    ...(update.title == null ? {} : { title: update.title }),
+                    plannedStart: dayStart + update.startMin * 60_000,
+                    plannedEnd: dayStart + update.endMin * 60_000,
+                  }).catch((error) => console.error('[studytrack] plan update failed', error))
+                }
+          }
         />
       </div>
       {!ready && <TimelineSkeleton className="absolute inset-0" />}
@@ -220,9 +262,12 @@ export function TimelineSection() {
               now={now}
               onRemove={popup.data.kind === 'planBlock' ? removePopupPlanBlock : undefined}
               onCreate={popup.data.kind === 'draft' ? createDraftPlanBlock : undefined}
+              onUpdate={popup.data.kind === 'planBlock' ? updatePopupPlanBlock : undefined}
               onCancel={popup.data.kind === 'draft' ? closePopup : undefined}
               isCreating={popup.data.kind === 'draft' && isCreating}
+              isUpdating={popup.data.kind === 'planBlock' && isUpdating}
               createError={popup.data.kind === 'draft' ? createError : null}
+              updateError={popup.data.kind === 'planBlock' ? updateError : null}
             />
           )}
         </PopoverContent>
@@ -250,11 +295,16 @@ function planBlockMissed(
   )
 }
 
-// The two refusals a draft can still hit after the popover opened: the clock
-// crossed the start, or a live read brought in an overlapping plan.
-function planBlockCreateMessage(error: unknown): string {
+// The refusals a write can still hit after the popover opened: the clock crossed
+// the start, a live read brought in an overlapping plan, or the block started
+// while the fields were open. Mirrors the backend's messages without leaking them.
+function planBlockWriteMessage(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : ''
   if (message.includes('overlaps')) return 'That time is already planned.'
   if (message.includes('past')) return 'That time is in the past.'
-  return 'Could not create the plan.'
+  if (message.includes('started')) return 'This plan has started; only its title can change.'
+  if (message.includes('title')) return 'Give the plan a title.'
+  if (message.includes('15-minute')) return 'Times sit on 15-minute marks.'
+  if (message.includes('inside its Day')) return 'Keep the plan inside its day.'
+  return fallback
 }

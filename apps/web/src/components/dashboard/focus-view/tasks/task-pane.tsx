@@ -21,7 +21,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { useDoneFold } from './hooks/use-done-fold'
+import { useDoneFold } from '~/preferences/use-done-fold'
 import { handleComposerKeyDown, useTaskComposerHotkey } from './hooks/use-task-composer-hotkey'
 import { DoneTaskItem, TaskItem } from './item/task-item'
 import { taskPaneCollisionDetection } from './dnd/task-pane-collision'
@@ -38,9 +38,11 @@ const screenReaderInstructions = {
 
 export function TaskPane({
   queue,
+  dayLabel,
   isEmbedded = false,
 }: {
   queue: DayTaskQueue
+  dayLabel: string
   isEmbedded?: boolean
 }) {
   const { state, actions } = queue
@@ -49,6 +51,8 @@ export function TaskPane({
   const [isDoneFolded, setDoneFolded] = useDoneFold()
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef)
+
+  const openTaskCount = state.openTasks.length
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -116,22 +120,41 @@ export function TaskPane({
     <section
       className={`flex min-h-0 flex-1 flex-col p-4 max-lg:p-3.5 ${isEmbedded ? '' : 'bg-card rounded-xl border'}`}
     >
+      <div className="min-w-0 px-1 pb-3">
+        <h2 className="truncate text-base font-semibold tracking-tight text-foreground">
+          {dayLabel}
+        </h2>
+        {state.status === 'ready' ? (
+          <p className="text-caption mt-0.5">
+            {openTaskCount} {openTaskCount === 1 ? 'task' : 'tasks'} planned
+          </p>
+        ) : null}
+      </div>
+
       {/* composer */}
-      <form onSubmit={submit} className="mb-3 flex gap-2">
+      <form
+        onSubmit={submit}
+        className="mb-4 flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.035] p-1.5 transition-colors duration-150 hover:border-white/[0.16] focus-within:border-primary/50 focus-within:bg-white/[0.055]"
+      >
         <div className="relative min-w-0 flex-1">
           <Input
             ref={inputRef}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
-            placeholder=" "
+            placeholder="Add a task…"
             aria-label="New task"
-            className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04] text-sm"
+            className="peer h-9 border-0 bg-transparent pr-20 pl-2 text-sm placeholder:text-hint focus-visible:ring-0 dark:bg-transparent"
           />
           <TaskComposerHint />
         </div>
-        <Button type="submit" size="icon" className="h-9 w-9 shrink-0 rounded-lg">
-          <Plus className="h-4 w-4" />
+        <Button
+          type="submit"
+          size="icon"
+          aria-label="Create task"
+          className="size-9 shrink-0 rounded-lg"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
         </Button>
       </form>
 
@@ -154,12 +177,12 @@ export function TaskPane({
           ) : (
             <>
               <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                <ul>
+                <ul className="space-y-0.5">
                   {state.openTasks.map((task) => (
                     <TaskItem
                       key={task.id}
                       task={task}
-                      isNow={task.id === state.now?.id}
+                      isNow={state.isViewingToday && task.id === state.topOpen?.id}
                       onTick={() => actions.toggleTaskDone(task.id)}
                       onRename={(title) => actions.renameTask(task.id, title)}
                       onRemove={() => actions.removeTask(task.id)}
@@ -199,7 +222,12 @@ export function TaskPane({
         {draggingId !== null && state.canScheduleForToday ? <ScheduleForTodayRail /> : null}
 
         <DragOverlay>
-          {dragging ? <TaskOverlay task={dragging} isNow={dragging.id === state.now?.id} /> : null}
+          {dragging ? (
+            <TaskOverlay
+              task={dragging}
+              isNow={state.isViewingToday && dragging.id === state.topOpen?.id}
+            />
+          ) : null}
         </DragOverlay>
       </DndContext>
     </section>

@@ -47,10 +47,13 @@ export type DashboardWorkSession = {
   tasks: DashboardWorkSessionTask[]
 }
 
-// A member's planned workSession for the Day: a future block on their lane.
-// Public like tasks (ADR-0007), and not a WorkSession — no voice evidence.
+// A member's planned workSession for the Day: a name and a future window on
+// their lane. Public like tasks (ADR-0007), and not a WorkSession — no voice
+// evidence. `title` is null on rows written before ST-31; the lane falls back to
+// the time range for those.
 export type DashboardPlanBlock = {
   id: Id<'planBlock'>
+  title: string | null
   startAt: number
   endAt: number
 }

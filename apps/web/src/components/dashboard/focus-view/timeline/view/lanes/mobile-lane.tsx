@@ -14,11 +14,13 @@ export function PinnedMobileLane({
   surface: { axis, bands, hidden, isNightBandHeldOpen, onToggleBand },
   row,
   nowLabel,
+  showNow,
   scrollerRef,
   onWorkSessionClick,
 }: { surface: AxisSurface } & {
   row: TimelineRowVM
   nowLabel: string
+  showNow: boolean
   scrollerRef: RefObject<HTMLDivElement | null>
   onWorkSessionClick?: (click: WorkSessionClick) => void
 }) {
@@ -48,10 +50,10 @@ export function PinnedMobileLane({
             />
             {/* the now-line through the whole lane — full height so the pill
                 (opaque) just paints over its top, seam-free */}
-            <NowLine left={now} className="top-0 bottom-0 z-[2]" />
+            {showNow && <NowLine left={now} className="top-0 bottom-0 z-[2]" />}
             <div className="relative h-[30px]">
               <HourLabels ticks={axis.ticks} widthPx={axis.widthPx} className="bottom-0" />
-              <NowPill label={nowLabel} left={now} className="top-0 z-[3]" />
+              {showNow && <NowPill label={nowLabel} left={now} className="top-0 z-[3]" />}
             </div>
             <div className="flex h-9 items-center">
               <RowTrack row={row} onWorkSessionClick={onWorkSessionClick} />

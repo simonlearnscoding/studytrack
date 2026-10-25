@@ -136,7 +136,7 @@ describe('leaderboard.getBoards', () => {
   it('returns three empty boards when nobody studied', async () => {
     const t = makeTest()
     const boards = await t.query(api.leaderboard.getBoards, queryArgs())
-    expect(boards).toEqual({ today: [], week: [], month: [] })
+    expect(boards).toEqual({ today: [], day: [], week: [], month: [] })
   })
 
   it('adds today live time to the Week and Month of a focus day in the current week', async () => {
@@ -256,6 +256,31 @@ describe('leaderboard.getBoards', () => {
     expect(boards.today[0]).toMatchObject({ deepFocusMs: 30 * M })
   })
 
+  it('builds the Day board from the focus day alone', async () => {
+    const t = makeTest()
+    await addUser(t, 'ada', 'Ada')
+    // Tue 9 June: the focus day itself.
+    const focusDay = Date.UTC(2026, 5, 8, 22, 0, 0)
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: focusDay,
+      deepFocusMs: 40 * M,
+      totalMs: 1 * H,
+    })
+    // Wed 10 June: in the focus day's Week, but not its Day.
+    await addPastDay(t, {
+      discordId: 'ada',
+      dayStart: Date.UTC(2026, 5, 9, 22, 0, 0),
+      deepFocusMs: 20 * M,
+      totalMs: 20 * M,
+    })
+
+    const boards = await t.query(api.leaderboard.getBoards, queryArgs({ focusDayStart: focusDay }))
+
+    expect(boards.day[0]).toMatchObject({ name: 'Ada', deepFocusMs: 40 * M, totalMs: 1 * H })
+    expect(boards.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 60 * M, totalMs: 80 * M })
+  })
+
   it('makes the Week equal Today on a Monday', async () => {
     const t = makeTest()
     await addUser(t, 'ada', 'Ada')
@@ -278,6 +303,7 @@ describe('leaderboard.getBoards', () => {
 
     expect(boards.today).toHaveLength(1)
     expect(boards.week).toEqual(boards.today)
+    expect(boards.day).toEqual(boards.today)
     expect(boards.today[0]).toMatchObject({ deepFocusMs: 30 * M })
   })
 
@@ -365,7 +391,7 @@ describe('leaderboard.getBoardsForViewer', () => {
     })
 
     const boards = await t.query(api.leaderboard.getBoardsForViewer, viewerArgs())
-    expect(boards).toEqual({ today: [], week: [], month: [] })
+    expect(boards).toEqual({ today: [], day: [], week: [], month: [] })
   })
 
   it('returns the same three boards as the bot for a signed-in member', async () => {

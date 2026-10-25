@@ -10,6 +10,7 @@ export type PlanBlockDrag = PlanBlockDraft & { x: number; y: number }
 
 export type PlanBlockUpdate = {
   planBlockId: TimelinePlanBlockWallVM['id']
+  title: TimelinePlanBlockWallVM['title']
   startMin: number
   endMin: number
 }

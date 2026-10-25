@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 import { studyMode } from './bot/types'
-import { metric } from './preferences/types'
+import { leaderboardPeriod, metric } from './preferences/types'
 
 export default defineSchema({
   // A person. Created by the bot from the Discord id when first seen; the Clerk
@@ -23,11 +23,13 @@ export default defineSchema({
   // write; a missing row means the defaults in preferences/types. Each setting is
   // its own column with its own mutation, so changing one can never clear
   // another. `metric` is the site-wide Focus / Total switch (see GLOSSARY);
-  // `isDoneFolded` puts the Done group away in every Day.
+  // `isDoneFolded` puts the Done group away in every Day; `leaderboardPeriod` is
+  // the Day / Week / Month the board leads with.
   preference: defineTable({
     userId: v.id('users'),
     metric,
     isDoneFolded: v.optional(v.boolean()),
+    leaderboardPeriod: v.optional(leaderboardPeriod),
   }).index('by_userId', ['userId']),
 
   // A study stint: from joining a channel until leaving voice. Partials hang off
@@ -109,12 +111,15 @@ export default defineSchema({
   // once, so each drag inserts a row instead of replacing one; planBlocks for the
   // same member and Day may touch but never overlap. `dayStart` is the
   // Europe/Zurich Day the planBlock belongs to; `plannedStart` and `plannedEnd`
-  // are the instants the block covers.
+  // are the instants the block covers. `title` is the member's name for the
+  // block and is public (ADR-0007); it is optional only for rows written before
+  // ST-31, which fall back to their time range on the lane.
   planBlock: defineTable({
     userId: v.id('users'),
     dayStart: v.number(),
     plannedStart: v.number(),
     plannedEnd: v.number(),
+    title: v.optional(v.string()),
   })
     .index('by_userId_dayStart', ['userId', 'dayStart'])
     .index('by_dayStart', ['dayStart']),

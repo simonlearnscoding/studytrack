@@ -1,13 +1,17 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getMe } from '../users/service'
-import type { Metric, Preference } from './types'
+import type { LeaderboardPeriod, Metric, Preference } from './types'
 
-const DEFAULT_PREFERENCE: Preference = { metric: 'focus', isDoneFolded: false }
+const DEFAULT_PREFERENCE: Preference = {
+  metric: 'focus',
+  isDoneFolded: false,
+  leaderboardPeriod: 'week',
+}
 
 // The caller's display Preferences. A member who has never chosen — or a
-// signed-out reader — gets the defaults, so the dashboard always has a metric
-// and the Done group starts expanded.
+// signed-out reader — gets the defaults, so the dashboard always has a metric,
+// the Done group starts expanded and the leaderboard leads with the Week.
 export async function getMine(ctx: QueryCtx): Promise<Preference> {
   const user = await getMe(ctx)
   if (!user) return DEFAULT_PREFERENCE
@@ -15,6 +19,7 @@ export async function getMine(ctx: QueryCtx): Promise<Preference> {
   return {
     metric: stored?.metric ?? DEFAULT_PREFERENCE.metric,
     isDoneFolded: stored?.isDoneFolded ?? DEFAULT_PREFERENCE.isDoneFolded,
+    leaderboardPeriod: stored?.leaderboardPeriod ?? DEFAULT_PREFERENCE.leaderboardPeriod,
   }
 }
 
@@ -25,6 +30,23 @@ export async function setMetric(ctx: MutationCtx, metric: Metric): Promise<void>
   const stored = await find(ctx, user._id)
   if (stored) await ctx.db.patch(stored._id, { metric })
   else await ctx.db.insert('preference', { userId: user._id, metric })
+}
+
+// Change which Period the leaderboard leads with. Patches only this column, so
+// the metric and the fold state survive.
+export async function setLeaderboardPeriod(
+  ctx: MutationCtx,
+  period: LeaderboardPeriod
+): Promise<void> {
+  const user = await requireUser(ctx)
+  const stored = await find(ctx, user._id)
+  if (stored) await ctx.db.patch(stored._id, { leaderboardPeriod: period })
+  else
+    await ctx.db.insert('preference', {
+      userId: user._id,
+      metric: 'focus',
+      leaderboardPeriod: period,
+    })
 }
 
 // Fold or unfold the Done group for every Day. Patches only this column, so the

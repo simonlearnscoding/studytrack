@@ -3,6 +3,7 @@ import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/work
 import type { Task, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
 import { useCachedTasks } from './use-cached-tasks'
+import { logTaskError } from './log-task-error'
 import type { DayTaskQueue, QueueTask, TaskId } from '../task-types'
 
 const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
@@ -19,8 +20,9 @@ const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
  *
  * The Day is injected rather than read from the date store: `dayStart` is the
  * queue's scope, and `clockNow` only answers whether that Day is in the past.
- * The task you are on needs no pointer — Now is always the first open task in
- * the queue, so a stored active task can never change what the screen shows.
+ * Its top Open task is just the top of that Day's list — it is Now only when the
+ * Day is today. Now itself is a separate today-only read (useNowTask), so
+ * browsing history never changes it.
  */
 export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueue {
   const todayStart = startOfDay(clockNow, DASHBOARD_TIME_ZONE)
@@ -64,12 +66,10 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   // it, instead of flashing the loading skeleton.
   const visibleTasks = useCachedTasks(dayStart, remoteTasks)
 
-  // Now is the topmost open task of the Day. Nothing is stored: completing or
-  // reordering the queue moves the marker by itself.
   const tasks = visibleTasks?.map(toQueueTask) ?? []
   const openTasks = tasks.filter((task) => !task.done)
   const doneTasks = tasks.filter((task) => task.done)
-  const now = openTasks[0]
+  const topOpen = openTasks[0]
 
   const addTask = (title: string, placement: TaskPlacement = 'end') => {
     void create({ title, plannedAt: dayStart, placement }).catch(logTaskError)
@@ -84,7 +84,9 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   }
 
   const toggleTaskDone = (id: TaskId) => {
-    void toggleTask({ taskId: id }).catch(logTaskError)
+    // The viewed Day, not "today": the backend decides whether this completion
+    // happened live, and only a live one earns an instant (ADR-0010).
+    void toggleTask({ taskId: id, focusDayStart: dayStart }).catch(logTaskError)
   }
 
   const reorderTasks = (orderedTaskIds: TaskId[]) => {
@@ -100,8 +102,9 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       status: visibleTasks === undefined ? 'loading' : 'ready',
       openTasks,
       doneTasks,
-      now,
+      topOpen,
       canScheduleForToday,
+      isViewingToday: dayStart === todayStart,
     },
     actions: {
       addTask,
@@ -119,8 +122,4 @@ function toQueueTask(task: Task): QueueTask {
     ...task,
     doneAt: task.completedAt === null ? null : DONE_AT_FORMAT.format(new Date(task.completedAt)),
   }
-}
-
-function logTaskError(error: unknown) {
-  console.error('[studytrack] task change failed', error)
 }

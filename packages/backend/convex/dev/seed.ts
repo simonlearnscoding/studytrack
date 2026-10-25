@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+import { isDevBypass } from '../auth/service'
 import type { MutationCtx } from '../_generated/server'
 import { internalMutation } from '../_generated/server'
 
@@ -115,7 +116,7 @@ export const clear = internalMutation({
 })
 
 function assertDev() {
-  if (process.env.DEV_AUTH_BYPASS !== '1') {
+  if (!isDevBypass()) {
     throw new Error('dev/seed: refusing to run without DEV_AUTH_BYPASS=1')
   }
 }

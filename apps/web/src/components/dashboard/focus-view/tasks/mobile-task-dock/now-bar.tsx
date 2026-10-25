@@ -1,15 +1,15 @@
+import type { Task } from '@studytrack/backend/convex/tasks/types'
 import { ListChecks, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
 import { LiveDot } from '~/components/ui/live-dot'
-import type { DockTask } from './types'
 
 // The sticky bottom bar — mobile only, centred, floating over the page.
 //
-// This bar is the read surface for the Now task: the topmost open task, with a
-// checkbox to complete it. With nothing queued it says so. The list opens the
-// sheet.
+// This bar is the read surface for the Now task: today's top Open task, with a
+// checkbox to complete it. It never follows the Day the sheet is showing. With
+// nothing queued it says so. The sheet is opened from here.
 export function NowBar({
   isOnline,
   canStartManual,
@@ -21,7 +21,7 @@ export function NowBar({
 }: {
   isOnline: boolean
   canStartManual: boolean
-  now?: DockTask
+  now: Task | null
   roomCount: number
   onStart: () => void
   onOpen: () => void
@@ -52,9 +52,12 @@ export function NowBar({
             </button>
             {now && (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center">
+                {/* Controlled, so a tick never outlives its task: an uncontrolled
+                    box keeps its check when Now moves on to the next task, which
+                    made the bar disagree with the list. */}
                 <Checkbox
-                  defaultChecked={false}
-                  onClick={() => onTick()}
+                  checked={false}
+                  onCheckedChange={() => onTick()}
                   aria-label="Complete task"
                 />
               </div>

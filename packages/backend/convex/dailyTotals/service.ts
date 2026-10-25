@@ -2,7 +2,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { isDeepFocus, todaysTotals } from '../leaderboard/util'
-import { groupTodaysMembers } from '../workSessions/service'
+import { getMemberToday } from '../workSessions/service'
 import {
   DASHBOARD_TIME_ZONE,
   nextDayStart,
@@ -191,8 +191,9 @@ export async function getCalendar(
     }))
 
   if (todayStart >= fromDayStart && todayStart < toDayStart) {
-    const members = await groupTodaysMembers(ctx, todayStart)
-    const mine = members.find((member) => member.discordId === memberKey)
+    // Only the caller's own row is needed, so read their Day rather than
+    // grouping every member just to pick one card out.
+    const mine = await getMemberToday(ctx, user, todayStart)
     const live = mine ? todaysTotals([mine], todayStart, now)[0] : null
     if (live && (live.deepFocusMs > 0 || live.totalMs > 0)) {
       days.push({ dayStart: todayStart, deepFocusMs: live.deepFocusMs, totalMs: live.totalMs })

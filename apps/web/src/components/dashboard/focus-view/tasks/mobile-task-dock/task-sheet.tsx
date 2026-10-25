@@ -5,7 +5,7 @@ import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-c
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
 import { Input } from '~/components/ui/input'
-import { useDoneFold } from '../hooks/use-done-fold'
+import { useDoneFold } from '~/preferences/use-done-fold'
 import { handleComposerKeyDown, useTaskComposerHotkey } from '../hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
 import { TaskAction } from '../task-action'
@@ -24,6 +24,7 @@ export function TaskSheet({
   openTasks,
   doneTasks,
   nowId,
+  dayLabel,
   onClose,
   onAdd,
   onTick,
@@ -38,6 +39,7 @@ export function TaskSheet({
   openTasks: DockTask[]
   doneTasks: DockTask[]
   nowId: TaskId | null
+  dayLabel: string
   onClose: () => void
   onAdd: (title: string, placement: TaskPlacement) => void
   onTick: (id: TaskId) => void
@@ -86,8 +88,9 @@ export function TaskSheet({
       >
         <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-white/15" />
 
-        <div className="flex items-center gap-2 px-4 pt-2.5 pb-2">
+        <div className="flex items-center justify-between gap-2 px-4 pt-2.5 pb-2">
           <h2 className="text-label">Tasks</h2>
+          <span className="text-caption text-subtle-foreground">{dayLabel}</span>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2">
@@ -151,10 +154,10 @@ export function TaskSheet({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
-                placeholder=" "
+                placeholder="Add a task…"
                 aria-label="New task"
                 maxLength={80}
-                className="peer h-9 rounded-lg border-white/[0.08] bg-white/[0.04]"
+                className="peer h-9 rounded-lg border-white/[0.1] bg-white/[0.06] pr-20 placeholder:text-hint"
               />
               <TaskComposerHint />
             </div>

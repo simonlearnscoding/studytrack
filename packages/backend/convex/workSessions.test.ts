@@ -188,6 +188,85 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
     expect(res[0].workSessions[0].partials[0].startedAt).toBe(startedAt)
   })
 
+  it('bounds a closed Day to its own window', async () => {
+    const t = convexTest(schema, modules)
+    const nextDay = DAY_START + 24 * H
+    await t.run(async (ctx) => {
+      for (const [discordId, startedAt] of [
+        ['before', DAY_START - 2 * H],
+        ['selected', DAY_START + 9 * H],
+        ['after', nextDay + 9 * H],
+      ] as const) {
+        const workSessionId = await ctx.db.insert('workSession', {
+          discordId,
+          guildId: 'guild-1',
+          status: 'ended',
+          startedAt,
+          endedAt: startedAt + H,
+        })
+        await ctx.db.insert('workSessionPartial', {
+          workSessionId,
+          discordId,
+          guildId: 'guild-1',
+          channelId: 'chan-a',
+          mode: 'voice',
+          status: 'ended',
+          startedAt,
+          endedAt: startedAt + H,
+          durationMs: 1 * H,
+        })
+      }
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, {
+        dayStart: DAY_START,
+        todayStart: nextDay,
+      })
+
+    expect(res.map((member) => member.discordId)).toEqual(['selected'])
+  })
+
+  it('leaves a running Session out of a closed Day', async () => {
+    const t = convexTest(schema, modules)
+    const startedAt = NOW - 30 * M
+    await t.run(async (ctx) => {
+      const workSessionId = await ctx.db.insert('workSession', {
+        discordId: 'discord-1',
+        guildId: 'guild-1',
+        status: 'active',
+        startedAt,
+      })
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
+        discordId: 'discord-1',
+        guildId: 'guild-1',
+        channelId: 'chan-a',
+        mode: 'voice',
+        status: 'active',
+        startedAt,
+      })
+    })
+
+    const closed = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, {
+        dayStart: DAY_START - 24 * H,
+        todayStart: DAY_START,
+      })
+    expect(closed).toEqual([])
+
+    const live = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, {
+        dayStart: DAY_START,
+        todayStart: DAY_START,
+      })
+    expect(live).toHaveLength(1)
+    expect(live[0].online).toBe(true)
+  })
+
   it('groups several workSessions into one member card', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
@@ -590,7 +669,7 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
     ])
   })
 
-  it("carries the member's active task for the room rail", async () => {
+  it("carries the member's Now — today's top Open task — for the room rail", async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', {
@@ -598,13 +677,27 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
         name: 'Ada',
         createdAt: NOW,
       })
-      const taskId = await ctx.db.insert('task', {
+      await ctx.db.insert('task', {
         userId,
-        title: 'Read a chapter',
+        title: 'Done first',
+        done: true,
+        plannedAt: DAY_START,
+        position: 0,
+      })
+      await ctx.db.insert('task', {
+        userId,
+        title: 'Second',
         done: false,
         plannedAt: DAY_START,
+        position: 2,
       })
-      await ctx.db.patch(userId, { activeTaskId: taskId, activeSince: NOW - 5 * M })
+      await ctx.db.insert('task', {
+        userId,
+        title: 'First',
+        done: false,
+        plannedAt: DAY_START,
+        position: 1,
+      })
       const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,
@@ -628,10 +721,10 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
       .withIdentity({ subject: 'clerk-1' })
       .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
 
-    expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'Read a chapter' })
+    expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'First' })
   })
 
-  it('leaves the active task null when the pointer is stale', async () => {
+  it('leaves Now null when the Day has no Open tasks', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert('users', {
@@ -639,14 +732,13 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
         name: 'Ada',
         createdAt: NOW,
       })
-      const taskId = await ctx.db.insert('task', {
+      await ctx.db.insert('task', {
         userId,
-        title: 'Gone soon',
-        done: false,
+        title: 'All done',
+        done: true,
         plannedAt: DAY_START,
+        position: 0,
       })
-      await ctx.db.patch(userId, { activeTaskId: taskId, activeSince: NOW - 5 * M })
-      await ctx.db.delete(taskId)
       const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
         userId,

@@ -234,6 +234,7 @@ export function usePlanBlockGestures({
 
   const onMoveUp = (event: ReactPointerEvent<HTMLSpanElement>) => {
     if (edit?.kind !== 'move') return
+    const title = edit.blocks.find((block) => block.id === edit.planBlockId)?.title ?? null
     if (edit.moved) {
       setPending({
         planBlockId: edit.planBlockId,
@@ -242,6 +243,7 @@ export function usePlanBlockGestures({
       })
       onPlanBlockUpdate?.({
         planBlockId: edit.planBlockId,
+        title,
         startMin: edit.span.startMin,
         endMin: edit.span.endMin,
       })
@@ -249,6 +251,7 @@ export function usePlanBlockGestures({
       // A press-and-release under the drag threshold is a click, not a move.
       onPlanBlockClick?.({
         planBlockId: edit.planBlockId,
+        title,
         startMin: edit.span.startMin,
         endMin: edit.span.endMin,
         x: event.clientX,
@@ -313,6 +316,7 @@ export function usePlanBlockGestures({
       })
       onPlanBlockUpdate?.({
         planBlockId: edit.planBlockId,
+        title: block?.title ?? null,
         startMin: edit.span.startMin,
         endMin: edit.span.endMin,
       })

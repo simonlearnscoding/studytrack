@@ -1,5 +1,6 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
+import { optimisticPreference } from './optimistic-preference'
 
 /**
  * The member's remembered Done-group fold state, read live from Convex. Global
@@ -13,19 +14,8 @@ import { useMutation, useQuery } from 'convex/react'
  */
 export function useDoneFold(): [boolean | undefined, (folded: boolean) => void] {
   const preference = useQuery(api.preferences.mine)
-  const save = useMutation(api.preferences.setDoneFolded).withOptimisticUpdate(
-    (localStore, args) => {
-      const cachedPreference = localStore.getQuery(api.preferences.mine, {})
-      if (cachedPreference === undefined) return
-      localStore.setQuery(
-        api.preferences.mine,
-        {},
-        {
-          ...cachedPreference,
-          isDoneFolded: args.folded,
-        }
-      )
-    }
+  const save = useMutation(api.preferences.setDoneFolded).withOptimisticUpdate((localStore, args) =>
+    optimisticPreference(localStore, 'isDoneFolded', args.folded)
   )
 
   function setFolded(folded: boolean) {

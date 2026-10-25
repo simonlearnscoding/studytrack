@@ -20,8 +20,11 @@ before changing it; treat anything under "Open" as undecided.
 - **Planning is not doing.** A task can be planned for one block and completed
   in a different tracked session.
 - **Completion may have no known instant.** `done: true` must not invent a
-  timeline dot. Store *when the box was pressed* separately from *when the work
-  happened*, which may be unknown.
+  timeline dot. Store _when the box was pressed_ separately from _when the work
+  happened_, which may be unknown.
+- **A completion instant is live-only (2026-10-24, ADR-0010).** The box gets an
+  instant only when it is ticked while the member is viewing today. Ticking any
+  other Day marks the task Done with no instant; `recordedAt` is not stored yet.
 - **Evidence stays distinct.** Planned blocks, tracked intervals and timed
   completions are different facts and must not share a visual grammar.
 - **Keep the UI simple over a richer model.** Default interactions fast;
@@ -30,10 +33,12 @@ before changing it; treat anything under "Open" as undecided.
 
 ## Current code, verified 2026-10-24
 
-- `task.toggleTask` **always stamps `completedAt = Date.now()`**
-  (`packages/backend/convex/tasks/service.ts:127`), including retrospective
-  completion. The timeline then binds that instant to whichever `workSession`
-  contains it (`workSessions/util.ts:47`). This is the historical-dot bug.
+- **Fixed 2026-10-24 (ADR-0010):** `task.toggleTask` now takes the Focus day and
+  stamps `completedAt` only when it equals the server's today
+  (`packages/backend/convex/tasks/service.ts`). It used to always stamp
+  `Date.now()`, so a retrospective completion put a dot on today; the timeline
+  binds that instant to whichever `workSession` contains it
+  (`workSessions/util.ts`).
 - `planBlock` is a future window with no title and **no link to tasks**
   (`schema.ts:113`). A task can be planned for a **Day**, not for a plan block.
 - `task.plannedWorkSessionId` targets a real **`workSession`**, not a
@@ -52,12 +57,13 @@ before changing it; treat anything under "Open" as undecided.
 
 ## Ordered next slices
 
-1. **Historical completion must not create a today dot.** Completing a task
-   while viewing a past day (or bulk-completing in retrospect) must leave
-   `completedAt` absent, or record `recordedAt` without a completion instant.
-   A live completion in today's workflow may still get `now`. Do not key the
-   rule on `plannedAt === today` alone. Needs tests around open/toggle/reopen,
-   today vs past day, bulk, and a task finished inside a tracked session.
+1. **DONE 2026-10-24 — Historical completion must not create a today dot.**
+   `toggle` takes the Focus day; `completedAt` is absent unless the view is
+   today (ADR-0010). Tests cover today vs past vs future, the plan-vs-view key,
+   reopen, and a bad Focus day. `recordedAt` was deliberately not added: nothing
+   reads it yet. Still open from the original note: bulk completion (no bulk
+   toggle exists) and a task finished inside a tracked session (its completion
+   now behaves like any other live one).
 2. **Desktop Stop tracking.** The backend mutation exists
    (`tracking.stopManual`); the desktop hero only renders the running clock.
    Show a discoverable Stop while a manual session is active.
@@ -69,7 +75,7 @@ before changing it; treat anything under "Open" as undecided.
    audit before any migration: who reads plans, tasks, completions and totals,
    and which queries justify which indexes.
 5. **Explicit tracking source + lifecycle invariants.** `source: 'manual' |
-   'discord'` with legacy fallback; validate `active ⇒ no endedAt`,
+'discord'` with legacy fallback; validate `active ⇒ no endedAt`,
    `ended ⇒ endedAt > startedAt`, and close child partials with the parent.
    Also audit `workSessionPartial.durationMs` (derivable?) and midnight overlap.
 
@@ -92,7 +98,10 @@ planBlock            userId, dayStart, plannedStart, plannedEnd, optional title
 
 ## Open decisions (answer one at a time)
 
-1. **Now**: global active task, per-Day topmost open task, or suggestion?
+1. **Now** (resolved 2026-10-25, ADR-0011): today's top Open task, derived on
+   every read and never following the viewed Day. The header, mobile bar and
+   room all read it; a past Day's list has no Now. The stored active-task
+   pointer is unused and can be deleted.
 2. **Bulk completion today**: no timed dots by default? What override?
 3. **Completed-during-plan**: completion inside the planned interval, or
    explicit work-session attribution? What about unknown completion time?

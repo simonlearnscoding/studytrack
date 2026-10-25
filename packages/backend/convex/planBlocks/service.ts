@@ -33,31 +33,53 @@ export function planFloor(dayStart: number, now: number): number {
 export async function createPlanBlock(
   ctx: MutationCtx,
   dayStart: number,
+  title: string,
   plannedStart: number,
   plannedEnd: number
 ): Promise<void> {
   const user = await requireUser(ctx)
+  const planTitle = requireTitle(title)
   assertValidWindow(dayStart, plannedStart, plannedEnd)
   await assertNoOverlap(ctx, user._id, dayStart, plannedStart, plannedEnd)
 
-  await ctx.db.insert('planBlock', { userId: user._id, dayStart, plannedStart, plannedEnd })
+  await ctx.db.insert('planBlock', {
+    userId: user._id,
+    dayStart,
+    title: planTitle,
+    plannedStart,
+    plannedEnd,
+  })
 }
 
-// Move one edge of an owned planBlock. The window keeps the stored Day; only the
-// two instants change, so a planBlock can never be dragged onto another Day.
+// Rename an owned planBlock and, while it has not started, move its window. The
+// window keeps the stored Day; only the two instants change, so a planBlock can
+// never be dragged onto another Day. Once the block has started only the title
+// may change — a window edit is refused even when it would pass the other rules.
 export async function updatePlanBlock(
   ctx: MutationCtx,
   planBlockId: Id<'planBlock'>,
+  title: string | undefined,
   plannedStart: number,
   plannedEnd: number
 ): Promise<void> {
   const user = await requireUser(ctx)
   const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
+  const planTitle = title === undefined ? undefined : requireTitle(title)
+  const windowChanged = plannedStart !== plan.plannedStart || plannedEnd !== plan.plannedEnd
 
-  assertValidWindow(plan.dayStart, plannedStart, plannedEnd)
-  await assertNoOverlap(ctx, user._id, plan.dayStart, plannedStart, plannedEnd, plan._id)
+  if (windowChanged) {
+    if (Date.now() >= plan.plannedStart) {
+      throw new Error('A plan block that has started cannot change its window.')
+    }
+    assertValidWindow(plan.dayStart, plannedStart, plannedEnd)
+    await assertNoOverlap(ctx, user._id, plan.dayStart, plannedStart, plannedEnd, plan._id)
+  }
 
-  await ctx.db.patch(plan._id, { plannedStart, plannedEnd })
+  await ctx.db.patch(plan._id, {
+    ...(planTitle === undefined ? {} : { title: planTitle }),
+    plannedStart,
+    plannedEnd,
+  })
 }
 
 // Delete an owned planBlock. Missing and someone else's rows share the same error.
@@ -117,6 +139,13 @@ async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
   const user = await getMe(ctx)
   if (!user) throw new Error('Not authenticated')
   return user
+}
+
+// A planBlock always has a name: whitespace is not a title.
+function requireTitle(title: string): string {
+  const trimmed = title.trim()
+  if (!trimmed) throw new Error('A plan block needs a title.')
+  return trimmed
 }
 
 // Same error for missing or someone else's planBlock: never leak that it exists.

@@ -3,18 +3,23 @@ import type { Id } from '../_generated/dataModel'
 
 // One planBlock's whole window, supplied by the caller. `dayStart` is the
 // Europe/Zurich Day the planBlock belongs to; the two instants must sit inside it
-// and on the 15-minute grid the drag snaps to.
+// and on the 15-minute grid the drag snaps to. `title` is the member's name for
+// the block, trimmed by the service.
 export const createPlanBlockArgs = v.object({
   dayStart: v.number(),
+  title: v.string(),
   plannedStart: v.number(),
   plannedEnd: v.number(),
 })
 export type CreatePlanBlockArgs = Infer<typeof createPlanBlockArgs>
 
-// Resize one edge of an existing planBlock. The Day comes from the stored row,
-// never from the caller, so a planBlock cannot be moved across Days.
+// Rename one of the caller's planBlocks and, while it has not started, move its
+// window. The Day comes from the stored row, never from the caller, so a
+// planBlock cannot be moved across Days. A supplied title must be non-empty; a
+// drag on a legacy row may omit it to keep the row title-less.
 export const updatePlanBlockArgs = v.object({
   planBlockId: v.id('planBlock'),
+  title: v.optional(v.string()),
   plannedStart: v.number(),
   plannedEnd: v.number(),
 })
@@ -27,11 +32,12 @@ export const removePlanBlockArgs = v.object({ planBlockId: v.id('planBlock') })
 export type RemovePlanBlockArgs = Infer<typeof removePlanBlockArgs>
 
 // The owner's view of a planBlock. Not a workSession: there is no voice evidence
-// and no partials, only the window the member pencilled in.
+// and no partials, only the window and name the member pencilled in.
 export type PlanBlock = {
   id: Id<'planBlock'>
   userId: Id<'users'>
   dayStart: number
+  title: string | null
   plannedStart: number
   plannedEnd: number
 }

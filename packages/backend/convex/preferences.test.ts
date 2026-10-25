@@ -13,6 +13,7 @@ describe('preferences.mine', () => {
     expect(await t.query(api.preferences.mine, {})).toEqual({
       metric: 'focus',
       isDoneFolded: false,
+      leaderboardPeriod: 'week',
     })
   })
 
@@ -25,6 +26,7 @@ describe('preferences.mine', () => {
     expect(await t.withIdentity({ subject: 'clerk-1' }).query(api.preferences.mine, {})).toEqual({
       metric: 'focus',
       isDoneFolded: false,
+      leaderboardPeriod: 'week',
     })
   })
 
@@ -41,6 +43,7 @@ describe('preferences.mine', () => {
     expect(await t.withIdentity({ subject: 'clerk-1' }).query(api.preferences.mine, {})).toEqual({
       metric: 'total',
       isDoneFolded: false,
+      leaderboardPeriod: 'week',
     })
   })
 
@@ -57,6 +60,7 @@ describe('preferences.mine', () => {
     expect(await t.withIdentity({ subject: 'clerk-1' }).query(api.preferences.mine, {})).toEqual({
       metric: 'total',
       isDoneFolded: false,
+      leaderboardPeriod: 'week',
     })
   })
 })
@@ -99,6 +103,7 @@ describe('preferences.setDoneFolded', () => {
     expect(await asMember.query(api.preferences.mine, {})).toEqual({
       metric: 'focus',
       isDoneFolded: true,
+      leaderboardPeriod: 'week',
     })
 
     await asMember.mutation(api.preferences.setDoneFolded, { folded: false })
@@ -106,6 +111,7 @@ describe('preferences.setDoneFolded', () => {
     expect(await asMember.query(api.preferences.mine, {})).toEqual({
       metric: 'focus',
       isDoneFolded: false,
+      leaderboardPeriod: 'week',
     })
   })
 
@@ -122,6 +128,7 @@ describe('preferences.setDoneFolded', () => {
     expect(await asMember.query(api.preferences.mine, {})).toEqual({
       metric: 'total',
       isDoneFolded: true,
+      leaderboardPeriod: 'week',
     })
 
     await asMember.mutation(api.preferences.setMetric, { metric: 'focus' })
@@ -129,6 +136,7 @@ describe('preferences.setDoneFolded', () => {
     expect(await asMember.query(api.preferences.mine, {})).toEqual({
       metric: 'focus',
       isDoneFolded: true,
+      leaderboardPeriod: 'week',
     })
   })
 
@@ -153,5 +161,49 @@ describe('preferences.setDoneFolded', () => {
     await expect(t.mutation(api.preferences.setDoneFolded, { folded: true })).rejects.toThrow(
       'Not authenticated'
     )
+  })
+})
+
+describe('preferences.setLeaderboardPeriod', () => {
+  it('persists the chosen Period', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('users', { clerkUserId: 'clerk-1', createdAt: Date.now() })
+    })
+
+    const asMember = t.withIdentity({ subject: 'clerk-1' })
+    await asMember.mutation(api.preferences.setLeaderboardPeriod, { period: 'day' })
+
+    expect(await asMember.query(api.preferences.mine, {})).toEqual({
+      metric: 'focus',
+      isDoneFolded: false,
+      leaderboardPeriod: 'day',
+    })
+  })
+
+  it('leaves the metric and the fold state alone', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('users', { clerkUserId: 'clerk-1', createdAt: Date.now() })
+    })
+
+    const asMember = t.withIdentity({ subject: 'clerk-1' })
+    await asMember.mutation(api.preferences.setMetric, { metric: 'total' })
+    await asMember.mutation(api.preferences.setDoneFolded, { folded: true })
+    await asMember.mutation(api.preferences.setLeaderboardPeriod, { period: 'month' })
+
+    expect(await asMember.query(api.preferences.mine, {})).toEqual({
+      metric: 'total',
+      isDoneFolded: true,
+      leaderboardPeriod: 'month',
+    })
+  })
+
+  it('rejects a write when signed out', async () => {
+    const t = convexTest(schema, modules)
+
+    await expect(
+      t.mutation(api.preferences.setLeaderboardPeriod, { period: 'day' })
+    ).rejects.toThrow('Not authenticated')
   })
 })

@@ -3,6 +3,7 @@ import {
   clearActive as clearActiveTask,
   createTask,
   getActive as readActive,
+  getNow as readNow,
   listMine as readMine,
   removeTask,
   renameTask,
@@ -31,6 +32,11 @@ export const listMine = query({
   handler: async (ctx, args) => readMine(ctx, args.dayStart),
 })
 
+export const getNow = query({
+  args: listMineArgs.fields,
+  handler: async (ctx, args) => readNow(ctx, args.dayStart),
+})
+
 export const create = mutation({
   args: createTaskArgs.fields,
   handler: async (ctx, args) => {
@@ -41,7 +47,7 @@ export const create = mutation({
 export const toggle = mutation({
   args: toggleTaskArgs.fields,
   handler: async (ctx, args) => {
-    await toggleTask(ctx, args.taskId)
+    await toggleTask(ctx, args.taskId, args.focusDayStart)
   },
 })
 

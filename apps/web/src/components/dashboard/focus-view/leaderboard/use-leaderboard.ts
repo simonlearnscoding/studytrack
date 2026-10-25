@@ -18,11 +18,12 @@ export type LeaderboardRowVM = {
   you: boolean
 }
 
-// The live board read: the Week and Month of the focus day, keyed on the selected
-// date. The caller supplies a once-a-minute `now` so the current period's live
-// minutes update without refetching every second; every other argument is stable,
-// so Convex can reuse the read across identical focus days.
+// The live board read: the Day, Week and Month of the focus day, keyed on the
+// selected date. The caller supplies a once-a-minute `now` so the current period's
+// live minutes update without refetching every second; every other argument is
+// stable, so Convex can reuse the read across identical focus days.
 export function useLeaderboard(now: number): {
+  dayRows: LeaderboardRowVM[]
   weekRows: LeaderboardRowVM[]
   monthRows: LeaderboardRowVM[]
 } {
@@ -37,6 +38,7 @@ export function useLeaderboard(now: number): {
   const meKey = me ? (me.discordId ?? String(me._id)) : null
 
   return {
+    dayRows: toRows(boards?.day ?? [], meKey),
     weekRows: toRows(boards?.week ?? [], meKey),
     monthRows: toRows(boards?.month ?? [], meKey),
   }

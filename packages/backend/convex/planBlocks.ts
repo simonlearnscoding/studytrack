@@ -21,16 +21,16 @@ export const listMine = query({
 export const create = mutation({
   args: createPlanBlockArgs.fields,
   handler: async (ctx, args) => {
-    await createPlanBlock(ctx, args.dayStart, args.plannedStart, args.plannedEnd)
+    await createPlanBlock(ctx, args.dayStart, args.title, args.plannedStart, args.plannedEnd)
   },
 })
 
-// One write path for both gestures: moving the body and dragging an edge both
-// replace the planBlock's two endpoints.
+// One write path for both a rename and the planning gestures: moving the body
+// and dragging an edge both replace the planBlock's two endpoints.
 export const update = mutation({
   args: updatePlanBlockArgs.fields,
   handler: async (ctx, args) => {
-    await updatePlanBlock(ctx, args.planBlockId, args.plannedStart, args.plannedEnd)
+    await updatePlanBlock(ctx, args.planBlockId, args.title, args.plannedStart, args.plannedEnd)
   },
 })
 

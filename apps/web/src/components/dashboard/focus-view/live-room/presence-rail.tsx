@@ -1,5 +1,5 @@
 import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
-import { useMetric } from '~/hooks/use-metric-preference'
+import { useMetric } from '~/preferences/use-metric'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
 import { cn } from '~/lib/utils'

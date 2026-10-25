@@ -1,5 +1,6 @@
 import { internalAction, internalMutation, mutation, query } from './_generated/server'
 import { internal } from './_generated/api'
+import { hasViewer } from './auth/service'
 import {
   ensureToday as runEnsureToday,
   readToday,
@@ -23,12 +24,7 @@ export const today = query({
 export const ensure = mutation({
   args: {},
   handler: async (ctx) => {
-    // DEV: honor the signed-out bypass the reads use, so a developer on the local
-    // deployment can fill the header too. Prod keeps the identity gate.
-    if (process.env.DEV_AUTH_BYPASS !== '1') {
-      const identity = await ctx.auth.getUserIdentity()
-      if (!identity) return
-    }
+    if (!(await hasViewer(ctx))) return
     await runEnsureToday(ctx)
   },
 })

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as auth_service from "../auth/service.js";
 import type * as bot from "../bot.js";
 import type * as bot_service from "../bot/service.js";
 import type * as bot_types from "../bot/types.js";
@@ -65,6 +66,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "auth/service": typeof auth_service;
   bot: typeof bot;
   "bot/service": typeof bot_service;
   "bot/types": typeof bot_types;

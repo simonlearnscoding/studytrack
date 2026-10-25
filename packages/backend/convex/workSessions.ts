@@ -20,10 +20,12 @@ export const listRecent = query({
 
 // One card per member for the dashboard. `dayStart` (epoch ms, the start of the
 // shared calendar day) is supplied by the caller because queries must not read
-// the wall clock. See `workSessions/util` for `startOfDay` and `DASHBOARD_TIME_ZONE`.
+// the wall clock. `todayStart` is the start of the live Day; when it differs from
+// `dayStart`, the read stays inside that one Day and leaves running Sessions out.
+// See `workSessions/util` for `startOfDay` and `DASHBOARD_TIME_ZONE`.
 export const getTodaysActivitiesForDashboard = query({
-  args: { dayStart: v.number() },
-  handler: async (ctx, args) => getTodaysActivities(ctx, args.dayStart),
+  args: { dayStart: v.number(), todayStart: v.optional(v.number()) },
+  handler: async (ctx, args) => getTodaysActivities(ctx, args.dayStart, args.todayStart),
 })
 
 export const closeStale = internalMutation({

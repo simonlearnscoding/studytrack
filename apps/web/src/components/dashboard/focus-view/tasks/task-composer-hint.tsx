@@ -28,9 +28,9 @@ function EnterKeycap({ className }: { className?: string }) {
   )
 }
 
-// Sits over an empty composer input as a rich placeholder. Uses the `peer`
-// input's `:placeholder-shown` to stay out of the way once the user types, and
-// fades while focused so the caret is never covered.
+// Sits at the end of an empty composer input as its shortcut hint. Uses the
+// `peer` input's `:placeholder-shown` to stay out of the way once the user types,
+// and fades while focused so the caret is never covered.
 export function TaskComposerHint({ className }: { className?: string }) {
   const [modifier] = formatForDisplay(NEW_TASK_HOTKEY, { parts: true })
 
@@ -38,14 +38,13 @@ export function TaskComposerHint({ className }: { className?: string }) {
     <span
       aria-hidden
       className={cn(
-        'pointer-events-none absolute inset-y-0 left-3 hidden items-center gap-1 peer-placeholder-shown:flex peer-focus:opacity-0',
+        'pointer-events-none absolute inset-y-0 right-3 hidden items-center gap-1 peer-placeholder-shown:flex peer-focus:opacity-0',
         className
       )}
     >
       <Keycap>{modifier}</Keycap>
       <span className="text-caption font-medium">+</span>
       <EnterKeycap />
-      <span className="text-caption ml-1 font-medium">Add a task</span>
     </span>
   )
 }

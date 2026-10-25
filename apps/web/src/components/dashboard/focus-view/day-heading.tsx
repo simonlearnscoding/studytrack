@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { useMounted } from '~/hooks/use-mounted'
 import { useDateStore } from '~/state/date.store'
+import { isFocusDayToday } from './focus-day'
 
 // The Focus day's date and its stepper, directly above the day lanes. The date
 // used to live in the site header; it belongs with the day it describes. The
@@ -33,8 +34,7 @@ export function DayHeading({ now }: { now: number }) {
   // mount to keep the server HTML and the first client paint identical.
   const mounted = useMounted()
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
-  //TODO: replace with minor util fn
-  const isToday = !mounted || dayStart === startOfDay(now, DASHBOARD_TIME_ZONE)
+  const isToday = !mounted || isFocusDayToday(dayStart, now)
 
   return (
     <div className="flex min-w-0 items-center gap-2">

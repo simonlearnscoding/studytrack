@@ -17,6 +17,13 @@ is an intention, not evidence: it has no voice partials and never becomes a
 workSession. Several may sit on one Day as long as they touch at most at an edge.
 _Avoid_: Plan, planned session, calendar entry
 
+**Plan assignment**:
+A Task's placement inside one planBlock. A Task has at most one assignment to a
+planBlock that has not ended; assignments to planBlocks that have ended stay as
+the record of what was intended. Whether an assignment is upcoming, live or past
+is read from its planBlock's window, never stored on the assignment.
+_Avoid_: Planned task, task link, plan item
+
 **Partial**:
 A stretch of time during which one member's voice state in a study channel is
 constant. It opens when the member is in a channel and ends the moment that
@@ -96,9 +103,21 @@ A task not yet done. Counted in a member's "open" number.
 _Avoid_: Pending, incomplete, active
 
 **Done**:
-A task the member has marked complete, carrying the instant it was completed.
-Un-marking returns it to Open. Counted in "done today".
+A task the member has marked complete. Its completion may carry the instant it
+was finished, or no instant at all — the board never invents one. Un-marking
+returns it to Open. Counted in "done today".
 _Avoid_: Completed, finished, closed
+
+**Completion**:
+The fact of a task being Done. It has a known instant only when the box was ticked
+while the member was viewing today; a task finished in retrospect is Done with no
+instant.
+_Avoid_: Check, tick, finish
+
+**Completed at**:
+The instant the work was finished, stored only when it is known. Distinct from the
+Day the task was planned for and from the moment the box was pressed.
+_Avoid_: Done time, finish time
 
 **Task queue**:
 A member's ordered list of Tasks for one Day. The order is stored, so it survives
@@ -106,8 +125,10 @@ a reload; completing a Task may move Now without rewriting the list.
 _Avoid_: Todo list, backlog
 
 **Now**:
-The first Open Task in the queue — what the member is on. Derived from position,
-never stored, so completing or reordering the queue moves it by itself.
+The first Open Task of **today's** queue — what the member is on. Derived from
+the queue, never stored, and never read from the Day being viewed: browsing
+history changes the list, not Now. The header, the mobile bar and the room all
+show it; a past Day's list has no Now.
 _Avoid_: Active task, current item
 
 ## Visibility

@@ -15,9 +15,12 @@ export type LeaderboardRow = {
 // look up names for the ranked top ten only.
 export type LeaderboardTotal = LeaderboardRow & { userId: Id<'users'> | null }
 
-// The three lists the bot shows in one message.
+// The four lists the service builds. `today` is the live Day (the bot's first
+// board); `day` is the focus day, which equals Today when the board is on Today
+// and a pure daily sum for any other day.
 export type LeaderboardBoards = {
   today: LeaderboardRow[]
+  day: LeaderboardRow[]
   week: LeaderboardRow[]
   month: LeaderboardRow[]
 }
