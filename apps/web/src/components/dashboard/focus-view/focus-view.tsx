@@ -59,7 +59,7 @@ export function FocusView() {
 
   return (
     <div className="flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:flex-col lg:gap-0">
-      <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(340px,360px)] xl:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_400px]">
+      <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(380px,400px)] xl:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_480px]">
         <div
           className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto lg:py-8 lg:pl-6 ${tracking.isOnline ? 'max-lg:order-2' : 'max-lg:order-1'}`}
         >
