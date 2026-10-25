@@ -7,7 +7,8 @@ import type {
   WorkSessionTaskSource,
 } from './types'
 import { hasViewer } from '../auth/service'
-import { topOpenTask } from '../tasks/util'
+import { taskPlansForDay } from '../tasks/service'
+import { pickNowTask } from '../tasks/util'
 import { attachTasksToWorkSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
@@ -45,12 +46,13 @@ export async function listRecent(ctx: QueryCtx) {
 export async function getTodaysActivitiesForDashboard(
   ctx: QueryCtx,
   dayStart: number,
-  todayStart: number = dayStart
+  todayStart: number = dayStart,
+  now: number = todayStart
 ): Promise<DashboardMember[]> {
   if (!(await hasViewer(ctx))) return []
   const isToday = dayStart === todayStart
   const members = await groupDayMembers(ctx, dayStart, isToday)
-  const withTasks = await attachDayTasks(ctx, members, dayStart, isToday)
+  const withTasks = await attachDayTasks(ctx, members, dayStart, isToday, now)
   return await attachDayPlanBlocks(ctx, withTasks, dayStart)
 }
 
@@ -230,7 +232,8 @@ async function attachDayTasks(
   ctx: QueryCtx,
   members: DashboardMember[],
   dayStart: number,
-  isToday: boolean
+  isToday: boolean,
+  now: number
 ): Promise<DashboardMember[]> {
   const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
 
@@ -239,7 +242,7 @@ async function attachDayTasks(
       const userId = member.userId
       if (!userId) return member
 
-      const [planned, completed] = await Promise.all([
+      const [planned, completed, plans] = await Promise.all([
         ctx.db
           .query('task')
           .withIndex('by_userId_plannedAt', (q) => q.eq('userId', userId).eq('plannedAt', dayStart))
@@ -252,6 +255,7 @@ async function attachDayTasks(
           )
           .order('desc')
           .take(MAX_TASKS_PER_MEMBER),
+        taskPlansForDay(ctx, userId, dayStart),
       ])
 
       // A task planned and finished today arrives from both reads; keep one row.
@@ -259,9 +263,11 @@ async function attachDayTasks(
       for (const task of completed) byId.set(task._id, task)
       const sources: WorkSessionTaskSource[] = [...byId.values()].map(toWorkSessionTaskSource)
 
-      // Now is today's top Open task, derived from the same plan the board reads,
-      // never a stored pointer (ADR-0011). A past or future Day has no Now.
-      const nowTask = isToday ? topOpenTask(planned) : null
+      // Now is the live plan's first Open task, else the unscheduled queue, then
+      // the earliest upcoming plan (ST-35). Derived from the same tasks and
+      // assignments the board reads, never a stored pointer; a past or future
+      // Day has no Now.
+      const nowTask = isToday ? pickNowTask(planned, plans, now) : null
       const activeTask = nowTask ? { id: nowTask._id, title: nowTask.title } : null
       if (sources.length === 0) return { ...member, activeTask }
 

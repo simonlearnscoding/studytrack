@@ -42,10 +42,14 @@ export const planBlockDetailArgs = v.object({ planBlockId: v.id('planBlock') })
 
 // Attach an owned, Open task to an owned block. Picking a task that sits on
 // another Day moves it to the block's Day; the write enforces the
-// one-unended-assignment rule and refuses an ended block.
+// one-unended-assignment rule and refuses an ended block. `orderedTaskIds` is the
+// task pane's drop position: when supplied, the assignment and the Day's new
+// queue order land in one transaction, so a failed reorder cannot leave a task
+// assigned but in the wrong place.
 export const planTaskArgs = v.object({
   planBlockId: v.id('planBlock'),
   taskId: v.id('task'),
+  orderedTaskIds: v.optional(v.array(v.id('task'))),
 })
 export type PlanTaskArgs = Infer<typeof planTaskArgs>
 

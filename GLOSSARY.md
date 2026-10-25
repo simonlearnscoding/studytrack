@@ -123,14 +123,19 @@ _Avoid_: Done time, finish time
 
 **Task queue**:
 A member's ordered list of Tasks for one Day. The order is stored, so it survives
-a reload; completing a Task may move Now without rewriting the list.
+a reload; completing a Task may move Now without rewriting the list. The task
+pane splits the one order into sections — a live plan, the unassigned queue,
+upcoming plans, then Done — but a section is a view, not a second list.
 _Avoid_: Todo list, backlog
 
 **Now**:
-The first Open Task of **today's** queue — what the member is on. Derived from
-the queue, never stored, and never read from the Day being viewed: browsing
-history changes the list, not Now. The header, the mobile bar and the room all
-show it; a past Day's list has no Now.
+The first Open Task of **today's** live plan block; if no plan is live, the first
+Open Task with no active plan; if none, the first Open Task of the earliest
+upcoming plan. Derived from today's queue, never stored, and never read from the
+Day being viewed: browsing history changes the list, not Now. Reordering the live
+group changes it; entering a plan window changes it automatically. The header,
+the mobile bar, the room and the task pane all show it; a past Day's list has no
+Now.
 _Avoid_: Active task, current item
 
 ## Visibility
@@ -210,9 +215,11 @@ _Avoid_: Setting, option, config
 
 **Task group**:
 A named slice of the task queue shown under its own heading, with a count and a
-caret that folds it away — the Done tasks today, planBlock groups later.
-Membership is derived from the queue, never stored as a second list, and folding
-changes only what is shown.
+caret that folds it away — the Done tasks, and each not-ended planBlock with a
+`done/total` progress count. Membership is derived from the queue, never stored
+as a second list; sorting inside a group permutes that group's tasks among the
+queue slots they already occupy. A group disappears when its planBlock ends, and
+folding changes only what is shown.
 _Avoid_: Section, bucket, category
 
 **Focus view**:

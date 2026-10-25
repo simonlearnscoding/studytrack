@@ -1,5 +1,5 @@
 import type { Doc, Id } from '../_generated/dataModel'
-import type { Task, TaskPlacement } from './types'
+import type { Task, TaskPlacement, TaskPlan } from './types'
 
 // The up-next suggestion, derived from an oldest-first Day list. It is the first
 // Open task below the active row, or the first Open task when nothing is active.
@@ -32,11 +32,54 @@ export function byQueueOrder(a: Doc<'task'>, b: Doc<'task'>): number {
   return byPosition(a, b)
 }
 
-// The member's Now: the first Open task of a Day's queue. Derived, never stored —
-// the read sides (header, dock, room) all ask for the same Day, so they cannot
-// disagree about it.
-export function topOpenTask(tasks: Doc<'task'>[]): Doc<'task'> | null {
-  return [...tasks].sort(byQueueOrder).find((task) => !task.done) ?? null
+// The window a task's current plan contributes to Now. `TaskPlan` carries the
+// title too, but Now only needs the block's identity and bounds.
+export type TaskPlanWindow = Pick<TaskPlan, 'planBlockId' | 'plannedStart' | 'plannedEnd'>
+
+// Now under plan groups (ST-35, ADR-0014): the live plan leads, then the
+// unscheduled queue, then the earliest upcoming plan. "Unscheduled" includes a
+// task whose latest plan has already ended: that block is the record, not a live
+// group. Every branch reads the same queue order, so reordering inside the live
+// group changes what the member is on.
+export function pickNowTask(
+  tasks: Doc<'task'>[],
+  plans: Map<Id<'task'>, TaskPlanWindow>,
+  now: number
+): Doc<'task'> | null {
+  const open = tasks.filter((task) => !task.done)
+  const planOf = (task: Doc<'task'>) => plans.get(task._id)
+
+  const live = open
+    .filter((task) => {
+      const plan = planOf(task)
+      return plan !== undefined && plan.plannedStart <= now && plan.plannedEnd > now
+    })
+    .sort((a, b) => {
+      const planA = planOf(a)!
+      const planB = planOf(b)!
+      return planA.plannedStart - planB.plannedStart || byPosition(a, b)
+    })
+  if (live.length > 0) return live[0]
+
+  const unassigned = open
+    .filter((task) => {
+      const plan = planOf(task)
+      return plan === undefined || plan.plannedEnd <= now
+    })
+    .sort(byPosition)
+  if (unassigned.length > 0) return unassigned[0]
+
+  const upcoming = open
+    .filter((task) => {
+      const plan = planOf(task)
+      return plan !== undefined && plan.plannedStart > now
+    })
+    .sort((a, b) => {
+      const planA = planOf(a)!
+      const planB = planOf(b)!
+      return planA.plannedStart - planB.plannedStart || byPosition(a, b)
+    })
+  return upcoming[0] ?? null
 }
 
 // Where a new Open task lands in a Day already in queue order. `now` goes to the

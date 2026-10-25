@@ -46,6 +46,9 @@ export function useTimeline(dayStart: number): TimelineData {
   const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, {
     dayStart,
     todayStart,
+    // Now only needs minute precision; the rounded argument also keeps the
+    // query subscribed to one result per minute instead of one per second.
+    now: Math.floor(now / 60_000) * 60_000,
   })
   const me = useQuery(api.users.me)
   const ready = members !== undefined && me !== undefined

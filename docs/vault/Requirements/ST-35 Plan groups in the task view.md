@@ -61,3 +61,19 @@ Read ST-30 (the Done group pattern), ADR-0010 and ADR-0012.
 - [ ] The mobile sheet remains flat with a plan chip.
 - [ ] Keyboard and screen-reader drags announce the target group; the existing
       schedule-for-today rail still works.
+
+## Decisions (2026-10-25)
+
+- **Sections:** live plan group → the unassigned queue (no heading) → upcoming
+  plan groups by start → Done. A group exists only while `plannedEnd > now`, so a
+  past Day shows no plan groups at all. See ADR-0014.
+- **Sortable groups:** sorting inside a group permutes that group's tasks among the
+  queue slots they already occupy; no per-group order is stored. A cross-section
+  drop writes the assignment and the new queue order in one mutation.
+- **Done and the count:** a Done task stays in Done. A plan heading shows
+  `done/total`; its body lists only Open rows.
+- **Now:** the live plan's first Open task, else the unassigned queue's first, else
+  the earliest upcoming plan's first. The backend takes the caller's clock so the
+  pane, hero and room agree (ADR-0011 amended by ADR-0014).
+- **Kept out:** per-group `...` menus, coloured accent stripes, and an
+  "Add a task to this session" row.

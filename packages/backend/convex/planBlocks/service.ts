@@ -1,7 +1,7 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
-import { createTaskForDay, moveTaskToDay } from '../tasks/service'
+import { createTaskForDay, moveTaskToDay, reorderTasks } from '../tasks/service'
 import { byQueueOrder } from '../tasks/util'
 import { getMe } from '../users/service'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../workSessions/util'
@@ -139,7 +139,8 @@ export async function updatePlanBlock(
 export async function assignTask(
   ctx: MutationCtx,
   planBlockId: Id<'planBlock'>,
-  taskId: Id<'task'>
+  taskId: Id<'task'>,
+  orderedTaskIds?: Id<'task'>[]
 ): Promise<void> {
   const user = await requireUser(ctx)
   const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
@@ -154,19 +155,24 @@ export async function assignTask(
   }
 
   const existing = await taskAssignments(ctx, taskId)
-  if (existing.some((assignment) => assignment.planBlockId === planBlockId)) return
+  const isAlreadyAssigned = existing.some((assignment) => assignment.planBlockId === planBlockId)
+  if (!isAlreadyAssigned) {
+    for (const assignment of existing) {
+      const block = await ctx.db.get(assignment.planBlockId)
+      if (!block || block.plannedEnd > now) await ctx.db.delete(assignment._id)
+    }
 
-  for (const assignment of existing) {
-    const block = await ctx.db.get(assignment.planBlockId)
-    if (!block || block.plannedEnd > now) await ctx.db.delete(assignment._id)
+    await ctx.db.insert('planAssignment', {
+      userId: user._id,
+      taskId,
+      planBlockId,
+      dayStart: plan.dayStart,
+    })
   }
 
-  await ctx.db.insert('planAssignment', {
-    userId: user._id,
-    taskId,
-    planBlockId,
-    dayStart: plan.dayStart,
-  })
+  if (orderedTaskIds !== undefined) {
+    await reorderTasks(ctx, plan.dayStart, orderedTaskIds)
+  }
 }
 
 // The stored popover's create-and-attach: one mutation writes the Task and its
@@ -190,7 +196,8 @@ export async function assignNewTask(
 export async function unassignTask(
   ctx: MutationCtx,
   planBlockId: Id<'planBlock'>,
-  taskId: Id<'task'>
+  taskId: Id<'task'>,
+  orderedTaskIds?: Id<'task'>[]
 ): Promise<void> {
   const user = await requireUser(ctx)
   const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
@@ -202,6 +209,10 @@ export async function unassignTask(
   const assignments = await taskAssignments(ctx, taskId)
   const assignment = assignments.find((row) => row.planBlockId === planBlockId)
   if (assignment) await ctx.db.delete(assignment._id)
+
+  if (orderedTaskIds !== undefined) {
+    await reorderTasks(ctx, plan.dayStart, orderedTaskIds)
+  }
 }
 
 // Delete an owned planBlock that has not started, dropping its assignments. The

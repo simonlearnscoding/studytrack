@@ -68,7 +68,7 @@ export function MobileTaskDock({
         loading={state.status === 'loading'}
         openTasks={state.openTasks}
         doneTasks={state.doneTasks}
-        nowId={state.isViewingToday ? (state.topOpen?.id ?? null) : null}
+        nowId={state.isViewingToday ? (nowTask?.id ?? null) : null}
         dayLabel={dayLabel}
         onClose={() => setOpen(false)}
         onAdd={actions.addTask}

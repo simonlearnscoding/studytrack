@@ -34,14 +34,14 @@ export const getWithTasks = query({
 export const assign = mutation({
   args: planTaskArgs.fields,
   handler: async (ctx, args) => {
-    await assignTask(ctx, args.planBlockId, args.taskId)
+    await assignTask(ctx, args.planBlockId, args.taskId, args.orderedTaskIds)
   },
 })
 
 export const unassign = mutation({
   args: planTaskArgs.fields,
   handler: async (ctx, args) => {
-    await unassignTask(ctx, args.planBlockId, args.taskId)
+    await unassignTask(ctx, args.planBlockId, args.taskId, args.orderedTaskIds)
   },
 })
 

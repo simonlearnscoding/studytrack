@@ -9,12 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Plus } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
@@ -22,63 +17,84 @@ import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-c
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { useDoneFold } from '~/preferences/use-done-fold'
+import { MainQueueSection } from './main-queue-section'
+import { PlanGroupSection } from './plan-group-section'
 import { handleComposerKeyDown, useTaskComposerHotkey } from './hooks/use-task-composer-hotkey'
-import { DoneTaskItem, TaskItem } from './item/task-item'
+import { DoneTaskItem } from './item/task-item'
 import { taskPaneCollisionDetection } from './dnd/task-pane-collision'
+import { dropActionFor, dropTargetOf } from './task-pane-dnd'
 import { TaskGroup } from './task-group'
 import { TaskOverlay } from './task-overlay'
 import { ScheduleForTodayRail } from './dnd/schedule-for-today-rail'
-import { SCHEDULE_FOR_TODAY_DROP_ID } from './dnd/task-pane-collision'
 import type { DayTaskQueue, TaskId } from './task-types'
 
 const screenReaderInstructions = {
   draggable:
-    'Press space or enter to lift the task. Use the arrow keys to move it. Press space or enter to drop, or escape to cancel.',
+    'Press space or enter to lift the task. Use the arrow keys to move it. Drop on a plan group to plan it, or on the main queue to unplan it. Press space or enter to drop, or escape to cancel.',
 }
 
 export function TaskPane({
   queue,
   dayLabel,
+  nowTaskId,
   isEmbedded = false,
 }: {
   queue: DayTaskQueue
   dayLabel: string
+  nowTaskId: TaskId | null
   isEmbedded?: boolean
 }) {
   const { state, actions } = queue
   const [title, setTitle] = useState('')
   const [draggingId, setDraggingId] = useState<TaskId | null>(null)
+  const [foldedPlanGroups, setFoldedPlanGroups] = useState<Set<string>>(new Set())
   const [isDoneFolded, setDoneFolded] = useDoneFold()
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef)
 
   const openTaskCount = state.openTasks.length
+  const livePlanGroup = state.livePlanGroup
+  const planGroups = [...(livePlanGroup ? [livePlanGroup] : []), ...state.upcomingPlanGroups]
+  const draggingTask = state.openTasks.find((task) => task.id === draggingId)
+  const isDraggingPlanTask = draggingTask?.plan != null
+
+  const isDoneExpanded = !isDoneFolded
+  const isDoneResolved = isDoneFolded !== undefined
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // Only Open tasks are sortable; Done rows are records and render outside the
-  // list. The reorder payload therefore carries only Open ids, and the server
-  // appends the Done ids in their current order.
-  const ids = state.openTasks.map((task) => task.id)
-  const dragging = state.openTasks.find((task) => task.id === draggingId)
-  const isDoneExpanded = !isDoneFolded
-  const isDoneResolved = isDoneFolded !== undefined
-
   const titleOf = (id: string | number) =>
     state.openTasks.find((task) => task.id === id)?.title ?? 'task'
-  const positionOf = (id: string | number) => ids.indexOf(id as TaskId) + 1
-  // NOTE: this should probably be in a hook
+  const groupOf = (planBlockId: string) =>
+    planGroups.find((group) => group.planBlockId === planBlockId)
+  const mainPositionOf = (id: string | number) =>
+    state.unassignedTasks.findIndex((task) => task.id === id) + 1
+
   const announcements: Announcements = {
     onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
-    onDragOver: ({ active, over }) =>
-      over
-        ? over.id === SCHEDULE_FOR_TODAY_DROP_ID
-          ? `Schedule ${titleOf(active.id)} for today.`
-          : `${titleOf(active.id)} moved to position ${positionOf(over.id)} of ${ids.length}.`
-        : undefined,
+    onDragOver: ({ active, over }) => {
+      const target = dropTargetOf(over)
+      if (!target) return undefined
+
+      const taskTitle = titleOf(active.id)
+      const activeTask = state.openTasks.find((task) => task.id === active.id)
+      const isPlanSource = activeTask?.plan != null
+
+      if (target.kind === 'schedule') return `Schedule ${taskTitle} for today.`
+      if (target.kind === 'main') {
+        if (isPlanSource || target.container) return `Move ${taskTitle} to the main queue.`
+        return `${taskTitle} moved to position ${mainPositionOf(over!.id)} of ${state.unassignedTasks.length}.`
+      }
+
+      const group = groupOf(target.planBlockId)
+      const groupLabel = group?.label ?? 'the plan'
+      if (target.container) return `Move ${taskTitle} to ${groupLabel}.`
+      const index = group?.openTasks.findIndex((task) => task.id === over!.id) ?? -1
+      return `${taskTitle} moved to position ${index + 1} of ${group?.openTasks.length ?? 0} in ${groupLabel}.`
+    },
     onDragEnd: ({ active }) => `Dropped ${titleOf(active.id)}.`,
     onDragCancel: ({ active }) =>
       `Reordering cancelled. ${titleOf(active.id)} returned to its place.`,
@@ -90,18 +106,30 @@ export function TaskPane({
 
   const endDrag = ({ active, over }: DragEndEvent) => {
     setDraggingId(null)
-    if (!over) return
-    if (over.id === SCHEDULE_FOR_TODAY_DROP_ID) {
-      actions.scheduleTaskForToday(active.id as TaskId)
-      return
+    const activeTask = state.openTasks.find((task) => task.id === active.id)
+    if (!activeTask) return
+
+    const action = dropActionFor(activeTask, over, state)
+    if (!action) return
+
+    if (action.kind === 'schedule') {
+      actions.scheduleTaskForToday(activeTask.id)
+    } else if (action.kind === 'reorder') {
+      actions.reorderTasks(action.orderedTaskIds)
+    } else if (action.kind === 'assign') {
+      actions.assignTaskToPlan(activeTask.id, action.planBlockId, action.orderedTaskIds)
+    } else {
+      actions.unassignTaskFromPlan(activeTask.id, action.planBlockId, action.orderedTaskIds)
     }
-    if (active.id === over.id) return
+  }
 
-    const from = ids.indexOf(active.id as TaskId)
-    const to = ids.indexOf(over.id as TaskId)
-    if (from < 0 || to < 0) return
-
-    actions.reorderTasks(arrayMove(ids, from, to))
+  const togglePlanGroup = (planBlockId: string) => {
+    setFoldedPlanGroups((current) => {
+      const next = new Set(current)
+      if (next.has(planBlockId)) next.delete(planBlockId)
+      else next.add(planBlockId)
+      return next
+    })
   }
 
   const add = (placement: TaskPlacement) => {
@@ -115,6 +143,9 @@ export function TaskPane({
     event.preventDefault()
     add('end')
   }
+
+  const hasGroups = livePlanGroup !== null || state.upcomingPlanGroups.length > 0
+  const isEmpty = state.openTasks.length === 0 && state.doneTasks.length === 0 && !hasGroups
 
   return (
     <section
@@ -170,26 +201,42 @@ export function TaskPane({
         <div className="min-h-0 flex-1 overflow-y-auto max-lg:overflow-visible">
           {state.status === 'loading' ? (
             <div className="skeleton h-16 rounded-lg" />
-          ) : state.openTasks.length === 0 && state.doneTasks.length === 0 ? (
+          ) : isEmpty ? (
             <p className="text-caption px-3 py-6 text-center">
               No tasks planned for this day — add one above.
             </p>
           ) : (
-            <>
-              <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                <ul className="space-y-0.5">
-                  {state.openTasks.map((task) => (
-                    <TaskItem
-                      key={task.id}
-                      task={task}
-                      isNow={state.isViewingToday && task.id === state.topOpen?.id}
-                      onTick={() => actions.toggleTaskDone(task.id)}
-                      onRename={(title) => actions.renameTask(task.id, title)}
-                      onRemove={() => actions.removeTask(task.id)}
-                    />
-                  ))}
-                </ul>
-              </SortableContext>
+            <div className="space-y-3">
+              {livePlanGroup ? (
+                <PlanGroupSection
+                  group={livePlanGroup}
+                  isExpanded={!foldedPlanGroups.has(livePlanGroup.planBlockId)}
+                  onToggle={() => togglePlanGroup(livePlanGroup.planBlockId)}
+                  nowTaskId={nowTaskId}
+                  isViewingToday={state.isViewingToday}
+                  actions={actions}
+                />
+              ) : null}
+
+              <MainQueueSection
+                tasks={state.unassignedTasks}
+                nowTaskId={nowTaskId}
+                isViewingToday={state.isViewingToday}
+                isDraggingPlanTask={isDraggingPlanTask}
+                actions={actions}
+              />
+
+              {state.upcomingPlanGroups.map((group) => (
+                <PlanGroupSection
+                  key={group.planBlockId}
+                  group={group}
+                  isExpanded={!foldedPlanGroups.has(group.planBlockId)}
+                  onToggle={() => togglePlanGroup(group.planBlockId)}
+                  nowTaskId={nowTaskId}
+                  isViewingToday={state.isViewingToday}
+                  actions={actions}
+                />
+              ))}
 
               {state.doneTasks.length > 0 ? (
                 <TaskGroup
@@ -204,7 +251,7 @@ export function TaskPane({
                         key={task.id}
                         task={task}
                         onTick={() => actions.toggleTaskDone(task.id)}
-                        onRename={(title) => actions.renameTask(task.id, title)}
+                        onRename={(nextTitle) => actions.renameTask(task.id, nextTitle)}
                         onRemove={() => actions.removeTask(task.id)}
                       />
                     ))
@@ -215,17 +262,17 @@ export function TaskPane({
                   )}
                 </TaskGroup>
               ) : null}
-            </>
+            </div>
           )}
         </div>
 
         {draggingId !== null && state.canScheduleForToday ? <ScheduleForTodayRail /> : null}
 
         <DragOverlay>
-          {dragging ? (
+          {draggingTask ? (
             <TaskOverlay
-              task={dragging}
-              isNow={state.isViewingToday && dragging.id === state.topOpen?.id}
+              task={draggingTask}
+              isNow={state.isViewingToday && draggingTask.id === nowTaskId}
             />
           ) : null}
         </DragOverlay>

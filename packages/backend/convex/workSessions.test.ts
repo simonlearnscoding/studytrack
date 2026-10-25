@@ -562,9 +562,77 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, {
+        dayStart: DAY_START,
+        now: NOW,
+      })
 
     expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'First' })
+  })
+
+  it('leads the room Now with a live plan', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', {
+        discordId: 'discord-1',
+        name: 'Ada',
+        createdAt: NOW,
+      })
+      await ctx.db.insert('task', {
+        userId,
+        title: 'Unscheduled',
+        done: false,
+        plannedAt: DAY_START,
+        position: 0,
+      })
+      const liveTaskId = await ctx.db.insert('task', {
+        userId,
+        title: 'Live plan',
+        done: false,
+        plannedAt: DAY_START,
+        position: 1,
+      })
+      const planBlockId = await ctx.db.insert('planBlock', {
+        userId,
+        dayStart: DAY_START,
+        title: 'Deep work',
+        plannedStart: NOW - 30 * M,
+        plannedEnd: NOW + 30 * M,
+      })
+      await ctx.db.insert('planAssignment', {
+        userId,
+        taskId: liveTaskId,
+        planBlockId,
+        dayStart: DAY_START,
+      })
+      const workSessionId = await ctx.db.insert('workSession', {
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+      await ctx.db.insert('workSessionPartial', {
+        workSessionId,
+        discordId: 'discord-1',
+        userId,
+        guildId: 'guild-1',
+        channelId: 'chan-a',
+        mode: 'camera',
+        status: 'active',
+        startedAt: NOW - 30 * M,
+      })
+    })
+
+    const res = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, {
+        dayStart: DAY_START,
+        todayStart: DAY_START,
+        now: NOW,
+      })
+
+    expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'Live plan' })
   })
 
   it('leaves Now null when the Day has no Open tasks', async () => {
@@ -603,7 +671,10 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
 
     const res = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.workSessions.getTodaysActivitiesForDashboard, { dayStart: DAY_START })
+      .query(api.workSessions.getTodaysActivitiesForDashboard, {
+        dayStart: DAY_START,
+        now: NOW,
+      })
 
     expect(res[0].activeTask).toBeNull()
   })

@@ -1,3 +1,7 @@
+> **Amended by ADR-0014 (ST-35):** Now leads with a live plan block, then the
+> unscheduled queue, then the earliest upcoming plan. The derived, never-stored
+> rule stands; only the order Now is picked from changed.
+
 # Now is today's top task, not the viewed Day's
 
 The center header used the viewed Day's queue, so browsing yesterday changed

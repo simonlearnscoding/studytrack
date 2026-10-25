@@ -1,3 +1,4 @@
+import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState } from 'react'
@@ -11,18 +12,31 @@ type TaskItemProps = {
   onTick: () => void
   onRename: (title: string) => void
   onRemove: () => void
+  showPlanChip?: boolean
 }
+
+type TaskDragData = { source: 'main' } | { source: 'plan'; planBlockId: Id<'planBlock'> }
 
 // One Open row in the sortable list. Only Open tasks join it; Done rows use
 // DoneTaskItem below, because history cannot be dragged.
-export function TaskItem({ task, isNow, onTick, onRename, onRemove }: TaskItemProps) {
+export function TaskItem({
+  task,
+  isNow,
+  onTick,
+  onRename,
+  onRemove,
+  showPlanChip,
+  data,
+}: TaskItemProps & { data: TaskDragData }) {
   const editor = useTaskEditing(task, onRename)
   const { editing } = editor
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: task.id,
-    disabled: editing,
-  })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
+    useSortable({
+      id: task.id,
+      disabled: editing,
+      data,
+    })
 
   return (
     <li
@@ -38,11 +52,19 @@ export function TaskItem({ task, isNow, onTick, onRename, onRemove }: TaskItemPr
         isNow
           ? 'bg-primary/[0.045] hover:bg-primary/[0.07] before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary'
           : 'hover:bg-white/[0.035]',
-        'focus-visible:ring-2 focus-visible:ring-primary/20'
+        'focus-visible:ring-2 focus-visible:ring-primary/20',
+        isOver && !isDragging && 'bg-primary/[0.045] ring-1 ring-primary/20'
       )}
       {...(editing ? {} : listeners)}
     >
-      <TaskRow task={task} isNow={isNow} {...editor} onTick={onTick} onRemove={onRemove} />
+      <TaskRow
+        task={task}
+        isNow={isNow}
+        showPlanChip={showPlanChip}
+        {...editor}
+        onTick={onTick}
+        onRemove={onRemove}
+      />
     </li>
   )
 }
@@ -50,12 +72,18 @@ export function TaskItem({ task, isNow, onTick, onRename, onRemove }: TaskItemPr
 // A Done row: a plain list item at either fold state. No drag listeners, no
 // keyboard lift, no grab cursor and no sortable announcement — only the record
 // and its actions.
-export function DoneTaskItem({ task, onTick, onRename, onRemove }: TaskItemProps) {
+export function DoneTaskItem({ task, onTick, onRename, onRemove, showPlanChip }: TaskItemProps) {
   const editor = useTaskEditing(task, onRename)
 
   return (
     <li className="group relative flex items-center gap-2 rounded-lg px-2.5 py-3 transition-colors hover:bg-white/[0.035]">
-      <TaskRow task={task} {...editor} onTick={onTick} onRemove={onRemove} />
+      <TaskRow
+        task={task}
+        showPlanChip={showPlanChip}
+        {...editor}
+        onTick={onTick}
+        onRemove={onRemove}
+      />
     </li>
   )
 }

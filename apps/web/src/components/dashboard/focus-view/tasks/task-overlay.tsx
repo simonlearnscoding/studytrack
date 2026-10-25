@@ -18,6 +18,7 @@ export function TaskOverlay({ task, isNow }: { task: QueueTask; isNow?: boolean 
         onTick={noop}
         onRemove={noop}
         overlay
+        showPlanChip={!task.plan}
       />
     </div>
   )

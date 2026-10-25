@@ -16,6 +16,7 @@ export function TaskRow({
   onTick,
   onRemove,
   overlay = false,
+  showPlanChip = true,
 }: {
   task: QueueTask
   isNow?: boolean
@@ -28,6 +29,7 @@ export function TaskRow({
   onTick: () => void
   onRemove: () => void
   overlay?: boolean
+  showPlanChip?: boolean
 }) {
   return (
     <>
@@ -74,7 +76,7 @@ export function TaskRow({
               </span>
             )}
           </p>
-          {(isNow || task.planLabel) && (
+          {(isNow || (showPlanChip && task.planLabel)) && (
             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
               {isNow && (
                 <span className="text-primary text-label flex items-center gap-1.5">
@@ -82,7 +84,7 @@ export function TaskRow({
                   Now
                 </span>
               )}
-              {task.planLabel && (
+              {showPlanChip && task.planLabel && (
                 <span className="text-subtle-foreground flex min-w-0 items-center gap-1 text-caption">
                   <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
                   <span className="truncate">{task.planLabel}</span>

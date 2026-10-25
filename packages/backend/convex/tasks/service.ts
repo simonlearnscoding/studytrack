@@ -4,7 +4,7 @@ import { getClockNow } from '../devClock/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import { getMe } from '../users/service'
 import type { ActiveTask, DayTask, Task, TaskPlacement, TaskPlan } from './types'
-import { byQueueOrder, insertionIndex, planOrder } from './util'
+import { byQueueOrder, insertionIndex, pickNowTask, planOrder } from './util'
 
 const MAX_TASKS = 200
 const MAX_PLANS = 200
@@ -23,7 +23,7 @@ export async function listMine(ctx: QueryCtx, dayStart: number): Promise<DayTask
   if (!user) return []
 
   const tasks = await dayTasks(ctx, user._id, dayStart)
-  const plans = await currentPlans(ctx, user._id, dayStart)
+  const plans = await taskPlansForDay(ctx, user._id, dayStart)
   return tasks.map((task) => ({ ...toTask(task), plan: plans.get(task._id) ?? null }))
 }
 
@@ -245,16 +245,25 @@ export async function clearActive(ctx: MutationCtx): Promise<void> {
   await clearActivePointer(ctx, user._id)
 }
 
-// The member's Now: the first Open task of the given Day's queue. The caller
-// passes today's Day, so the header and dock stay on today even while the board
-// shows another Day. Null when signed out or when nothing is Open.
-export async function getNow(ctx: QueryCtx, dayStart: number): Promise<Task | null> {
+// The member's Now: the live plan's first Open task, else the first Open
+// unscheduled task, else the earliest upcoming plan's first Open task (ST-35).
+// The caller passes today's Day and its own clock, so the same derived value
+// reaches the header, dock and room. Null when signed out or when nothing is
+// Open.
+export async function getNow(
+  ctx: QueryCtx,
+  dayStart: number,
+  now: number = dayStart
+): Promise<Task | null> {
   const user = await getMe(ctx)
   if (!user) return null
 
-  const tasks = await dayTasks(ctx, user._id, dayStart)
-  const now = tasks.find((task) => !task.done)
-  return now ? toTask(now) : null
+  const [tasks, plans] = await Promise.all([
+    dayTasks(ctx, user._id, dayStart),
+    taskPlansForDay(ctx, user._id, dayStart),
+  ])
+  const nowTask = pickNowTask(tasks, plans, now)
+  return nowTask ? toTask(nowTask) : null
 }
 
 // The caller's active task, or null when there is no pointer, the pointed task is
@@ -288,8 +297,9 @@ async function dayTasks(
 // The newest assignment per task for the Day. A task can only gain a newer one
 // after its previous block ended, so the newest row is the task's current plan;
 // the ticking view checks the window to decide whether it is still current. Two
-// reads cover the whole Day — never one query per row.
-async function currentPlans(
+// reads cover the whole Day — never one query per row. Shared with the dashboard
+// reads so Now and the row chip cannot disagree about which block is current.
+export async function taskPlansForDay(
   ctx: QueryCtx,
   userId: Id<'users'>,
   dayStart: number

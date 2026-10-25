@@ -111,7 +111,12 @@ export function FocusView() {
         <aside className="bg-sidebar flex min-h-0 flex-col overflow-hidden border-l border-border max-lg:hidden">
           <MonthCalendar calendar={calendar} isEmbedded />
           <div className="border-t" />
-          <TaskPane queue={taskQueue} dayLabel={dayLabel} isEmbedded />
+          <TaskPane
+            queue={taskQueue}
+            dayLabel={dayLabel}
+            nowTaskId={todayNow.task?.id ?? null}
+            isEmbedded
+          />
         </aside>
       </div>
 

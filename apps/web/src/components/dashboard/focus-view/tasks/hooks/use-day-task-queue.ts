@@ -1,11 +1,14 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
-import { formatClock, toMinute } from '@studytrack/backend/convex/timeline/util'
+import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
+import type { DayTask, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
-import type { DayTask, TaskPlacement, TaskPlan } from '@studytrack/backend/convex/tasks/types'
 import { useMutation, useQuery } from 'convex/react'
+import { buildPlanSections, planBlocksFromTasks, planWindowLabel } from '../plan-groups'
 import { useCachedTasks } from './use-cached-tasks'
 import { logTaskError } from './log-task-error'
+import { optimisticTaskOrder, optimisticTaskPlan } from './optimistic-tasks'
 import type { DayTaskQueue, QueueTask, TaskId } from '../task-types'
+import type { TaskPlan } from '@studytrack/backend/convex/tasks/types'
 
 const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
   timeZone: DASHBOARD_TIME_ZONE,
@@ -20,10 +23,9 @@ const DONE_AT_FORMAT = new Intl.DateTimeFormat('en-GB', {
  * list survives a reload.
  *
  * The Day is injected rather than read from the date store: `dayStart` is the
- * queue's scope, and `clockNow` only answers whether that Day is in the past.
- * Its top Open task is just the top of that Day's list — it is Now only when the
- * Day is today. Now itself is a separate today-only read (useNowTask), so
- * browsing history never changes it.
+ * queue's scope, and `clockNow` tells a live plan from an upcoming one and
+ * whether that Day is in the past. The desktop pane splits the one queue order
+ * into sections; the mobile sheet keeps the flat list.
  */
 export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueue {
   const todayStart = startOfDay(clockNow, DASHBOARD_TIME_ZONE)
@@ -31,6 +33,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   const canScheduleForToday = dayStart < todayStart
 
   const remoteTasks = useQuery(api.tasks.listMine, { dayStart })
+  const remotePlanBlocks = useQuery(api.planBlocks.listMine, { dayStart })
   const create = useMutation(api.tasks.create)
   const toggleTask = useMutation(api.tasks.toggle)
   const renameStoredTask = useMutation(api.tasks.rename)
@@ -38,26 +41,27 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   const rescheduleStoredTask = useMutation(api.tasks.reschedule)
   const reorderStoredTasks = useMutation(api.tasks.reorder).withOptimisticUpdate(
     (localStore, args) => {
-      const { dayStart: day, orderedTaskIds } = args
-      // `localStore` is Convex's client-side optimistic store: its queries and
-      // mutations are applied to the cache immediately, then reconciled with the
-      // server result. `getQuery` reads what that Day currently renders.
-      const currentTasks = localStore.getQuery(api.tasks.listMine, { dayStart: day })
-      if (currentTasks === undefined) return
-
-      const tasksById = new Map(currentTasks.map((task) => [task.id, task]))
-      const orderedIds = new Set(orderedTaskIds)
-      const orderedTasks = orderedTaskIds.flatMap((id) => {
-        const task = tasksById.get(id)
-        return task ? [task] : []
-      })
-      // Tasks the caller's order did not mention keep their relative order at the
-      // end, so a partial reorder never drops a task from the list.
-      const unlistedTasks = currentTasks.filter((task) => !orderedIds.has(task.id))
-      localStore.setQuery(api.tasks.listMine, { dayStart: day }, [
-        ...orderedTasks,
-        ...unlistedTasks,
-      ])
+      optimisticTaskOrder(localStore, args.dayStart, args.orderedTaskIds)
+    }
+  )
+  const assignStoredTask = useMutation(api.planBlocks.assign).withOptimisticUpdate(
+    (localStore, args) => {
+      const block = remotePlanBlocks?.find((entry) => entry._id === args.planBlockId)
+      if (block) {
+        optimisticTaskPlan(localStore, dayStart, args.taskId, {
+          planBlockId: block._id,
+          title: block.title ?? null,
+          plannedStart: block.plannedStart,
+          plannedEnd: block.plannedEnd,
+        })
+      }
+      if (args.orderedTaskIds) optimisticTaskOrder(localStore, dayStart, args.orderedTaskIds)
+    }
+  )
+  const unassignStoredTask = useMutation(api.planBlocks.unassign).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticTaskPlan(localStore, dayStart, args.taskId, null)
+      if (args.orderedTaskIds) optimisticTaskOrder(localStore, dayStart, args.orderedTaskIds)
     }
   )
 
@@ -70,7 +74,13 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   const tasks = visibleTasks?.map((task) => toQueueTask(task, dayStart, clockNow)) ?? []
   const openTasks = tasks.filter((task) => !task.done)
   const doneTasks = tasks.filter((task) => task.done)
-  const topOpen = openTasks[0]
+  const sections = buildPlanSections(
+    openTasks,
+    doneTasks,
+    remotePlanBlocks ?? planBlocksFromTasks(tasks),
+    clockNow,
+    dayStart
+  )
 
   const addTask = (title: string, placement: TaskPlacement = 'end') => {
     void create({ title, plannedAt: dayStart, placement }).catch(logTaskError)
@@ -94,6 +104,22 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
     void reorderStoredTasks({ dayStart, orderedTaskIds }).catch(logTaskError)
   }
 
+  const assignTaskToPlan = (
+    id: TaskId,
+    planBlockId: Id<'planBlock'>,
+    orderedTaskIds: TaskId[]
+  ) => {
+    void assignStoredTask({ planBlockId, taskId: id, orderedTaskIds }).catch(logTaskError)
+  }
+
+  const unassignTaskFromPlan = (
+    id: TaskId,
+    planBlockId: Id<'planBlock'>,
+    orderedTaskIds: TaskId[]
+  ) => {
+    void unassignStoredTask({ planBlockId, taskId: id, orderedTaskIds }).catch(logTaskError)
+  }
+
   const scheduleTaskForToday = (id: TaskId) => {
     void rescheduleStoredTask({ taskId: id, plannedAt: todayStart }).catch(logTaskError)
   }
@@ -103,7 +129,9 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       status: visibleTasks === undefined ? 'loading' : 'ready',
       openTasks,
       doneTasks,
-      topOpen,
+      unassignedTasks: sections.unassignedTasks,
+      livePlanGroup: sections.livePlanGroup,
+      upcomingPlanGroups: sections.upcomingPlanGroups,
       canScheduleForToday,
       isViewingToday: dayStart === todayStart,
     },
@@ -113,6 +141,8 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       removeTask,
       toggleTaskDone,
       reorderTasks,
+      assignTaskToPlan,
+      unassignTaskFromPlan,
       scheduleTaskForToday,
     },
   }
@@ -132,7 +162,5 @@ function toQueueTask(task: DayTask, dayStart: number, clockNow: number): QueueTa
 }
 
 function planChipLabel(plan: TaskPlan, dayStart: number): string {
-  const start = formatClock(toMinute(plan.plannedStart, dayStart))
-  const end = formatClock(toMinute(plan.plannedEnd, dayStart))
-  return `${plan.title ?? 'Plan'} · ${start}–${end}`
+  return `${plan.title ?? 'Plan'} · ${planWindowLabel(plan.plannedStart, plan.plannedEnd, dayStart)}`
 }

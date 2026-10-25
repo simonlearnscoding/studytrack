@@ -117,7 +117,7 @@ describe('tasks.getNow', () => {
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Read a chapter')
 
-    expect(await t.query(api.tasks.getNow, { dayStart: DAY })).toBeNull()
+    expect(await t.query(api.tasks.getNow, { dayStart: DAY, now: Date.now() })).toBeNull()
   })
 
   it('returns the first Open task in queue order and advances as tasks are done', async () => {
@@ -131,7 +131,7 @@ describe('tasks.getNow', () => {
       orderedTaskIds: [top.id, second.id],
     })
 
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY }))?.title).toBe(
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() }))?.title).toBe(
       'Top'
     )
 
@@ -139,7 +139,7 @@ describe('tasks.getNow', () => {
       taskId: top.id,
       focusDayStart: TODAY,
     })
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY }))?.title).toBe(
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() }))?.title).toBe(
       'Second'
     )
 
@@ -147,7 +147,7 @@ describe('tasks.getNow', () => {
       taskId: second.id,
       focusDayStart: TODAY,
     })
-    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY })).toBeNull()
+    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() })).toBeNull()
   })
 
   it('is scoped to the Day it is asked for', async () => {
@@ -156,13 +156,13 @@ describe('tasks.getNow', () => {
     await create(t, ADA, 'Today', DAY)
     await create(t, ADA, 'Tomorrow', TOMORROW)
 
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY }))?.title).toBe(
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() }))?.title).toBe(
       'Today'
     )
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: TOMORROW }))?.title).toBe(
+    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: TOMORROW, now: Date.now() }))?.title).toBe(
       'Tomorrow'
     )
-    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: YESTERDAY })).toBeNull()
+    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: YESTERDAY, now: Date.now() })).toBeNull()
   })
 })
 

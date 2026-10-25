@@ -312,6 +312,48 @@ describe('planBlocks.assign', () => {
     const detail = await t.withIdentity(ADA).query(api.planBlocks.getWithTasks, { planBlockId })
     expect(detail?.tasks.map((task) => task.id)).toEqual([taskId])
   })
+
+  it('assigns and reorders in one write', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const first = await seedTask(t, userId, { title: 'First' })
+    const second = await seedTask(t, userId, { title: 'Second' })
+    const third = await seedTask(t, userId, { title: 'Third' })
+    await t.run(async (ctx) => {
+      await ctx.db.patch(first, { position: 0 })
+      await ctx.db.patch(second, { position: 1 })
+      await ctx.db.patch(third, { position: 2 })
+    })
+    const planBlockId = await seedPlan(t, userId)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.assign, {
+      planBlockId,
+      taskId: third,
+      orderedTaskIds: [third, first, second],
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['Third', 'First', 'Second'])
+    expect(tasks[0].plan?.planBlockId).toBe(planBlockId)
+  })
+
+  it('rolls the assignment back when the supplied order is invalid', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const taskId = await seedTask(t, userId)
+    const otherDayTask = await seedTask(t, userId, { plannedAt: DAY + 24 * H })
+    const planBlockId = await seedPlan(t, userId)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.assign, {
+        planBlockId,
+        taskId,
+        orderedTaskIds: [taskId, otherDayTask],
+      })
+    ).rejects.toThrow(/Task not found/)
+
+    expect(await assignmentsOf(t)).toEqual([])
+  })
 })
 
 describe('planBlocks.create with tasks', () => {
@@ -490,6 +532,50 @@ describe('planBlocks.unassign', () => {
 
     expect(await assignmentsOf(t)).toHaveLength(1)
   })
+
+  it('unassigns and reorders in one write', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const first = await seedTask(t, userId, { title: 'First' })
+    const second = await seedTask(t, userId, { title: 'Second' })
+    const third = await seedTask(t, userId, { title: 'Third' })
+    await t.run(async (ctx) => {
+      await ctx.db.patch(first, { position: 0 })
+      await ctx.db.patch(second, { position: 1 })
+      await ctx.db.patch(third, { position: 2 })
+    })
+    const planBlockId = await seedPlan(t, userId)
+    await seedAssignment(t, userId, third, planBlockId)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.unassign, {
+      planBlockId,
+      taskId: third,
+      orderedTaskIds: [first, second, third],
+    })
+
+    const tasks = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(tasks.map((task) => task.title)).toEqual(['First', 'Second', 'Third'])
+    expect(tasks[2].plan).toBeNull()
+  })
+
+  it('rolls the unassignment back when the supplied order is invalid', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const taskId = await seedTask(t, userId)
+    const otherDayTask = await seedTask(t, userId, { plannedAt: DAY + 24 * H })
+    const planBlockId = await seedPlan(t, userId)
+    await seedAssignment(t, userId, taskId, planBlockId)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.unassign, {
+        planBlockId,
+        taskId,
+        orderedTaskIds: [taskId, otherDayTask],
+      })
+    ).rejects.toThrow(/Task not found/)
+
+    expect(await assignmentsOf(t)).toHaveLength(1)
+  })
 })
 
 describe('planBlocks.getWithTasks', () => {
@@ -646,5 +732,107 @@ describe('plan assignment lifecycle', () => {
       plannedStart: UPCOMING_START,
       plannedEnd: UPCOMING_END,
     })
+  })
+})
+
+describe('tasks.getNow with plan groups', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('leads with the live plan, then the unscheduled queue, then the next plan', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const unscheduled = await seedTask(t, userId, { title: 'Unscheduled' })
+    const live = await seedTask(t, userId, { title: 'Live' })
+    const upcoming = await seedTask(t, userId, { title: 'Upcoming' })
+    await t.run(async (ctx) => {
+      await ctx.db.patch(unscheduled, { position: 0 })
+      await ctx.db.patch(live, { position: 1 })
+      await ctx.db.patch(upcoming, { position: 2 })
+    })
+    const liveBlock = await seedPlan(t, userId, {
+      plannedStart: NOW - H,
+      plannedEnd: NOW + H,
+    })
+    const upcomingBlock = await seedPlan(t, userId, {
+      plannedStart: UPCOMING_START,
+      plannedEnd: UPCOMING_END,
+    })
+    await seedAssignment(t, userId, live, liveBlock)
+    await seedAssignment(t, userId, upcoming, upcomingBlock)
+
+    expect(
+      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
+    ).toBe('Live')
+
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: live,
+      focusDayStart: DAY,
+    })
+    expect(
+      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
+    ).toBe('Unscheduled')
+  })
+
+  it('uses the live plan queue order', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const second = await seedTask(t, userId, { title: 'Second' })
+    const first = await seedTask(t, userId, { title: 'First' })
+    await t.run(async (ctx) => {
+      await ctx.db.patch(second, { position: 1 })
+      await ctx.db.patch(first, { position: 0 })
+    })
+    const liveBlock = await seedPlan(t, userId, {
+      plannedStart: NOW - H,
+      plannedEnd: NOW + H,
+    })
+    await seedAssignment(t, userId, second, liveBlock)
+    await seedAssignment(t, userId, first, liveBlock)
+
+    expect(
+      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
+    ).toBe('First')
+  })
+
+  it('falls to the earliest upcoming plan when nothing is live or unscheduled', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const later = await seedTask(t, userId, { title: 'Later' })
+    const soon = await seedTask(t, userId, { title: 'Soon' })
+    const laterBlock = await seedPlan(t, userId, {
+      plannedStart: LATER_START,
+      plannedEnd: LATER_END,
+    })
+    const soonBlock = await seedPlan(t, userId, {
+      plannedStart: UPCOMING_START,
+      plannedEnd: UPCOMING_END,
+    })
+    await seedAssignment(t, userId, later, laterBlock)
+    await seedAssignment(t, userId, soon, soonBlock)
+
+    expect(
+      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
+    ).toBe('Soon')
+  })
+
+  it('treats a task whose plan ended as unscheduled', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const endedTask = await seedTask(t, userId, { title: 'Ended plan' })
+    const endedBlock = await seedPlan(t, userId, {
+      plannedStart: ENDED_START,
+      plannedEnd: ENDED_END,
+    })
+    await seedAssignment(t, userId, endedTask, endedBlock)
+
+    expect(
+      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
+    ).toBe('Ended plan')
   })
 })

@@ -14,7 +14,10 @@ export type NowTask = {
 
 export function useNowTask(now: number): NowTask {
   const todayStart = startOfDay(now, DASHBOARD_TIME_ZONE)
-  const task = useQuery(api.tasks.getNow, { dayStart: todayStart }) ?? null
+  // Minute precision matches the room's read and keeps the subscription stable
+  // between ticks; Now never changes on a second boundary.
+  const nowMinute = Math.floor(now / 60_000) * 60_000
+  const task = useQuery(api.tasks.getNow, { dayStart: todayStart, now: nowMinute }) ?? null
   const toggle = useMutation(api.tasks.toggle)
 
   const complete = () => {
