@@ -101,7 +101,11 @@ export default defineSchema({
   })
     .index('by_userId', ['userId'])
     .index('by_userId_plannedAt', ['userId', 'plannedAt'])
-    .index('by_userId_completedAt', ['userId', 'completedAt']),
+    .index('by_userId_completedAt', ['userId', 'completedAt'])
+    .searchIndex('search_title', {
+      searchField: 'title',
+      filterFields: ['userId', 'done'],
+    }),
 
   // A member's planBlock: a future window on their own lane, not a workSession
   // (no voice evidence, no partials). A member may have several planBlocks at
@@ -123,11 +127,11 @@ export default defineSchema({
 
   // A Task's placement inside one planBlock (ADR-0012). One row per Task and
   // block; `userId` and `dayStart` are the block's, denormalised so a Day read is
-  // one indexed query. The block's Day never moves (ST-31), and an assignment is
-  // only written while the Task and block share that Day. A Task has at most one
-  // assignment to a block that has not ended; rows for ended blocks stay as the
-  // record. No position and no state: order belongs to the task queue, state to
-  // the block's window.
+  // one indexed query. The block's Day never moves (ST-31); attaching a Task that
+  // sits on another Day moves the Task to the block's Day first. A Task has at
+  // most one assignment to a block that has not ended; rows for ended blocks stay
+  // as the record. No position and no state: order belongs to the task queue,
+  // state to the block's window.
   planAssignment: defineTable({
     userId: v.id('users'),
     taskId: v.id('task'),

@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server'
 import {
+  assignNewTask,
   assignTask,
   createPlanBlock,
   getWithTasks as readPlanBlockWithTasks,
@@ -9,6 +10,7 @@ import {
   updatePlanBlock,
 } from './planBlocks/service'
 import {
+  assignNewTaskArgs,
   createPlanBlockArgs,
   listMyPlanBlocksArgs,
   planBlockDetailArgs,
@@ -43,10 +45,26 @@ export const unassign = mutation({
   },
 })
 
+// Create-and-attach: a new Task on the block's Day plus its assignment, one write.
+export const assignNew = mutation({
+  args: assignNewTaskArgs.fields,
+  handler: async (ctx, args) => {
+    await assignNewTask(ctx, args.planBlockId, args.title)
+  },
+})
+
 export const create = mutation({
   args: createPlanBlockArgs.fields,
   handler: async (ctx, args) => {
-    await createPlanBlock(ctx, args.dayStart, args.title, args.plannedStart, args.plannedEnd)
+    await createPlanBlock(
+      ctx,
+      args.dayStart,
+      args.title,
+      args.plannedStart,
+      args.plannedEnd,
+      args.taskIds ?? [],
+      args.newTaskTitles ?? []
+    )
   },
 })
 

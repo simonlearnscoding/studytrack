@@ -7,7 +7,7 @@ import { Button } from '~/components/ui/button'
 import { PlanBlockFields } from './plan-block-fields'
 import { planBlockFormError, type PlanBlockFormValues } from './plan-block-form'
 import { PlanTaskList } from './plan-task-list'
-import { PlanTaskPicker } from './plan-task-picker'
+import { PlanTaskSearch } from './plan-task-search'
 import type { StoredPlanBlockPopupData } from './types'
 import { PopupWindow } from './window-line'
 
@@ -26,6 +26,7 @@ export function StoredPlanPopup({
   onRemove,
   onAssignTask,
   onUnassignTask,
+  onCreateTask,
   isUpdating,
   updateError,
   taskError,
@@ -39,6 +40,7 @@ export function StoredPlanPopup({
   onRemove?: () => void
   onAssignTask: (taskId: PlanBlockTask['id']) => void
   onUnassignTask: (taskId: PlanBlockTask['id']) => void
+  onCreateTask: (title: string) => void
   isUpdating: boolean
   updateError?: string | null
   taskError?: string | null
@@ -136,19 +138,16 @@ export function StoredPlanPopup({
             canEdit={canEditTasks}
             onUnassign={onUnassignTask}
           />
-          {canEditTasks &&
-            (dayTasks === undefined ? (
-              <div className="mt-3 border-t border-white/6 pt-2.5">
-                <div className="skeleton h-8 rounded-lg" />
-              </div>
-            ) : (
-              <PlanTaskPicker
-                tasks={dayTasks}
-                assignedTaskIds={assignedTaskIds}
-                now={now}
-                onAssign={onAssignTask}
-              />
-            ))}
+          {canEditTasks && (
+            <PlanTaskSearch
+              dayTasks={dayTasks}
+              dayStart={dayStart}
+              excludedTaskIds={assignedTaskIds}
+              reservedTitles={tasks.map((task) => task.title)}
+              onPick={(task) => onAssignTask(task.id)}
+              onCreate={onCreateTask}
+            />
+          )}
         </>
       )}
 

@@ -955,3 +955,56 @@ describe('tasks active pointer', () => {
     expect(await t.withIdentity(ADA).query(api.tasks.getActive, {})).toBeNull()
   })
 })
+
+describe('tasks.search', () => {
+  it('returns nothing when unauthenticated or the query is blank', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Read a chapter')
+
+    expect(await t.query(api.tasks.search, { query: 'read' })).toEqual([])
+    expect(await t.withIdentity(ADA).query(api.tasks.search, { query: '   ' })).toEqual([])
+  })
+
+  it("finds the caller's Open Tasks across Days and hides Done ones", async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await create(t, ADA, 'Read a chapter')
+    await create(t, ADA, 'Read tomorrow', TOMORROW)
+    await create(t, ADA, 'Read yesterday', YESTERDAY)
+    await create(t, ADA, 'Write notes')
+    const [done] = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    await t.withIdentity(ADA).mutation(api.tasks.toggle, {
+      taskId: done.id,
+      focusDayStart: DAY,
+    })
+
+    const results = await t.withIdentity(ADA).query(api.tasks.search, { query: 'read' })
+    expect(results.map((task) => task.title).sort()).toEqual(['Read tomorrow', 'Read yesterday'])
+  })
+
+  it("never returns another member's tasks", async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    await seedUser(t, BOB, 'Bob')
+    await create(t, BOB, 'Bob reading')
+
+    expect(await t.withIdentity(ADA).query(api.tasks.search, { query: 'bob' })).toEqual([])
+    const bob = await t.withIdentity(BOB).query(api.tasks.search, { query: 'bob' })
+    expect(bob.map((task) => task.title)).toEqual(['Bob reading'])
+  })
+
+  it('is bounded by the requested limit and the service cap', async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    for (let i = 0; i < 12; i++) await create(t, ADA, `Book ${i}`)
+
+    const small = await t.withIdentity(ADA).query(api.tasks.search, { query: 'book', limit: 3 })
+    expect(small).toHaveLength(3)
+    const capped = await t.withIdentity(ADA).query(api.tasks.search, {
+      query: 'book',
+      limit: 500,
+    })
+    expect(capped).toHaveLength(12)
+  })
+})

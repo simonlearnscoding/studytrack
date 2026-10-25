@@ -9,6 +9,8 @@ import { byQueueOrder, insertionIndex, planOrder } from './util'
 const MAX_TASKS = 200
 const MAX_PLANS = 200
 const MAX_ASSIGNMENTS_PER_TASK = 200
+const MAX_SEARCH_RESULTS = 20
+const DEFAULT_SEARCH_RESULTS = 8
 
 // The caller's tasks **planned for one Day**, in manual order. A task with no
 // explicit position (written before the field existed) falls back to creation
@@ -25,6 +27,28 @@ export async function listMine(ctx: QueryCtx, dayStart: number): Promise<DayTask
   return tasks.map((task) => ({ ...toTask(task), plan: plans.get(task._id) ?? null }))
 }
 
+// The caller's Open Tasks matching a title search, across every Day. Backed by
+// the task table's search index, so it is ranked and bounded; a blank query
+// returns nothing (the popover shows the block Day's queue before typing).
+export async function searchOpenTasks(
+  ctx: QueryCtx,
+  query: string,
+  limit = DEFAULT_SEARCH_RESULTS
+): Promise<Task[]> {
+  const user = await getMe(ctx)
+  const term = query.trim()
+  if (!user || !term) return []
+
+  const bound = Math.min(Math.max(limit, 1), MAX_SEARCH_RESULTS)
+  const tasks = await ctx.db
+    .query('task')
+    .withSearchIndex('search_title', (q) =>
+      q.search('title', term).eq('userId', user._id).eq('done', false)
+    )
+    .take(bound)
+  return tasks.map(toTask)
+}
+
 // Add a task planned for the Day the caller is viewing. `end` (the default)
 // appends it; `now` puts it on top so it becomes Now; `next` puts it right after
 // the current Now. Rejects an empty title.
@@ -35,6 +59,18 @@ export async function createTask(
   placement: TaskPlacement = 'end'
 ): Promise<void> {
   const user = await requireUser(ctx)
+  await createTaskForDay(ctx, user, title, plannedAt, placement)
+}
+
+// The insert shared by the task composer and the plan popover's create-and-
+// attach. The Day and title rules live here so both writers agree.
+export async function createTaskForDay(
+  ctx: MutationCtx,
+  user: Doc<'users'>,
+  title: string,
+  plannedAt: number,
+  placement: TaskPlacement = 'end'
+): Promise<Id<'task'>> {
   const trimmed = title.trim()
   if (!trimmed) throw new Error('A task needs a title.')
   if (startOfDay(plannedAt, DASHBOARD_TIME_ZONE) !== plannedAt) {
@@ -44,14 +80,13 @@ export async function createTask(
   const existing = await dayTasks(ctx, user._id, plannedAt)
   if (placement === 'end') {
     const next = nextPosition(existing)
-    await ctx.db.insert('task', {
+    return await ctx.db.insert('task', {
       userId: user._id,
       title: trimmed,
       done: false,
       plannedAt,
       ...(next === null ? {} : { position: next }),
     })
-    return
   }
 
   const index = insertionIndex(existing, placement)
@@ -63,7 +98,7 @@ export async function createTask(
   for (let i = 0; i < index; i++) {
     if (existing[i].position !== i) await ctx.db.patch(existing[i]._id, { position: i })
   }
-  await ctx.db.insert('task', {
+  return await ctx.db.insert('task', {
     userId: user._id,
     title: trimmed,
     done: false,
@@ -96,9 +131,9 @@ export async function reorderTasks(
 }
 
 // Move one owned task to another Day, at the bottom of that Day's queue. A live
-// plan cannot follow it: the block belongs to the old Day, and an assignment only
-// exists while task and block share a Day. Assignments to blocks that have ended
-// stay as the record. Both Days' live queries update by themselves.
+// plan cannot follow it: the block belongs to the old Day, so the unended
+// assignment is dropped. Assignments to blocks that have ended stay as the
+// record. Both Days' live queries update by themselves.
 export async function rescheduleTask(
   ctx: MutationCtx,
   taskId: Id<'task'>,
@@ -110,10 +145,22 @@ export async function rescheduleTask(
   }
 
   const task = await requireOwnedTask(ctx, user, taskId)
+  await moveTaskToDay(ctx, user, task, plannedAt)
+}
+
+// The move shared by the task row's reschedule and the plan picker's cross-Day
+// pick: the task lands at the bottom of the target Day, and only ended-block
+// assignments survive as the record of what was intended.
+export async function moveTaskToDay(
+  ctx: MutationCtx,
+  user: Doc<'users'>,
+  task: Doc<'task'>,
+  plannedAt: number
+): Promise<void> {
   if (task.plannedAt === plannedAt) return
 
   const now = await getClockNow(ctx)
-  await dropUnendedAssignments(ctx, taskId, now)
+  await dropUnendedAssignments(ctx, task._id, now)
 
   const target = await dayTasks(ctx, user._id, plannedAt)
   const position = await appendPosition(ctx, target)

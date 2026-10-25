@@ -9,6 +9,7 @@ import {
   renameTask,
   reorderTasks,
   rescheduleTask,
+  searchOpenTasks,
   setActive as setActiveTask,
   toggleTask,
 } from './tasks/service'
@@ -20,6 +21,7 @@ import {
   renameTaskArgs,
   reorderTasksArgs,
   rescheduleTaskArgs,
+  searchTasksArgs,
   setActiveTaskArgs,
   toggleTaskArgs,
 } from './tasks/types'
@@ -35,6 +37,12 @@ export const listMine = query({
 export const getNow = query({
   args: listMineArgs.fields,
   handler: async (ctx, args) => readNow(ctx, args.dayStart),
+})
+
+// The plan popover's title search over the caller's Open Tasks, across Days.
+export const search = query({
+  args: searchTasksArgs.fields,
+  handler: async (ctx, args) => searchOpenTasks(ctx, args.query, args.limit),
 })
 
 export const create = mutation({

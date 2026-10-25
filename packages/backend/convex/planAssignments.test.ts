@@ -191,15 +191,51 @@ describe('planBlocks.assign', () => {
     ).rejects.toThrow(/open/)
   })
 
-  it('refuses a task planned for another Day', async () => {
+  it('moves a task planned for another Day onto the block Day', async () => {
     const t = makeTest()
     const userId = await seedUser(t, ADA, 'Ada')
-    const taskId = await seedTask(t, userId, { plannedAt: DAY - 24 * H })
+    const previousDay = DAY - 24 * H
+    const taskId = await seedTask(t, userId, { plannedAt: previousDay })
     const planBlockId = await seedPlan(t, userId)
 
-    await expect(
-      t.withIdentity(ADA).mutation(api.planBlocks.assign, { planBlockId, taskId })
-    ).rejects.toThrow(/its Day/)
+    await t.withIdentity(ADA).mutation(api.planBlocks.assign, { planBlockId, taskId })
+
+    const blockDay = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(blockDay.map((task) => task.id)).toEqual([taskId])
+    const oldDay = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: previousDay })
+    expect(oldDay).toEqual([])
+  })
+
+  it('drops an unended plan on the old Day when the task moves', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const nextDay = DAY + 24 * H
+    const taskId = await seedTask(t, userId, { plannedAt: nextDay })
+    const oldPlan = await t.run(async (ctx) => {
+      const planBlockId = await ctx.db.insert('planBlock', {
+        userId,
+        dayStart: nextDay,
+        title: 'Old plan',
+        plannedStart: nextDay + 10 * H,
+        plannedEnd: nextDay + 11 * H,
+      })
+      await ctx.db.insert('planAssignment', {
+        userId,
+        taskId,
+        planBlockId,
+        dayStart: nextDay,
+      })
+      return planBlockId
+    })
+    const planBlockId = await seedPlan(t, userId)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.assign, { planBlockId, taskId })
+
+    const oldDetail = await t.withIdentity(ADA).query(api.planBlocks.getWithTasks, {
+      planBlockId: oldPlan,
+    })
+    expect(oldDetail?.tasks).toEqual([])
+    expect(await assignmentsOf(t)).toHaveLength(1)
   })
 
   it("never leaks another member's block or task", async () => {
@@ -275,6 +311,145 @@ describe('planBlocks.assign', () => {
 
     const detail = await t.withIdentity(ADA).query(api.planBlocks.getWithTasks, { planBlockId })
     expect(detail?.tasks.map((task) => task.id)).toEqual([taskId])
+  })
+})
+
+describe('planBlocks.create with tasks', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('writes the block, a new task and every assignment together', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const first = await seedTask(t, userId, { title: 'Read a chapter' })
+    const second = await seedTask(t, userId, { title: 'Solve exercises' })
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, {
+      dayStart: DAY,
+      title: 'Deep work',
+      plannedStart: UPCOMING_START,
+      plannedEnd: UPCOMING_END,
+      taskIds: [first, second],
+      newTaskTitles: ['Write notes'],
+    })
+
+    const [plan] = await t.run(async (ctx) => await ctx.db.query('planBlock').collect())
+    const detail = await t.withIdentity(ADA).query(api.planBlocks.getWithTasks, {
+      planBlockId: plan._id,
+    })
+    expect(detail?.tasks.map((task) => task.title)).toEqual([
+      'Read a chapter',
+      'Solve exercises',
+      'Write notes',
+    ])
+    expect(await assignmentsOf(t)).toHaveLength(3)
+    const day = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(day.map((task) => task.title)).toEqual([
+      'Read a chapter',
+      'Solve exercises',
+      'Write notes',
+    ])
+  })
+
+  it('moves a picked task from another Day into the block Day', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const previousDay = DAY - 24 * H
+    const taskId = await seedTask(t, userId, { plannedAt: previousDay })
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, {
+      dayStart: DAY,
+      title: 'Deep work',
+      plannedStart: UPCOMING_START,
+      plannedEnd: UPCOMING_END,
+      taskIds: [taskId],
+    })
+
+    const day = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(day.map((task) => task.id)).toEqual([taskId])
+  })
+
+  it('leaves no block, task or assignment when any part is refused', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const done = await seedTask(t, userId, { title: 'Already done', done: true })
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.create, {
+        dayStart: DAY,
+        title: 'Deep work',
+        plannedStart: UPCOMING_START,
+        plannedEnd: UPCOMING_END,
+        taskIds: [done],
+        newTaskTitles: ['Should never exist'],
+      })
+    ).rejects.toThrow(/open/)
+
+    expect(await t.run(async (ctx) => await ctx.db.query('planBlock').collect())).toEqual([])
+    expect(await assignmentsOf(t)).toEqual([])
+    expect(await t.run(async (ctx) => await ctx.db.query('task').collect())).toHaveLength(1)
+  })
+
+  it('refuses an unauthenticated create', async () => {
+    const t = makeTest()
+    await expect(
+      t.mutation(api.planBlocks.create, {
+        dayStart: DAY,
+        title: 'Deep work',
+        plannedStart: UPCOMING_START,
+        plannedEnd: UPCOMING_END,
+      })
+    ).rejects.toThrow(/Not authenticated/)
+  })
+})
+
+describe('planBlocks.assignNew', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('creates the task on the block Day and assigns it', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const planBlockId = await seedPlan(t, userId)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.assignNew, {
+      planBlockId,
+      title: 'Write notes',
+    })
+
+    const detail = await t.withIdentity(ADA).query(api.planBlocks.getWithTasks, { planBlockId })
+    expect(detail?.tasks.map((task) => task.title)).toEqual(['Write notes'])
+    const day = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(day.map((task) => task.title)).toEqual(['Write notes'])
+  })
+
+  it('writes neither the task nor the assignment when the block has ended', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    const ended = await seedPlan(t, userId, {
+      plannedStart: ENDED_START,
+      plannedEnd: ENDED_END,
+    })
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.assignNew, {
+        planBlockId: ended,
+        title: 'Too late',
+      })
+    ).rejects.toThrow(/ended/)
+
+    expect(await t.run(async (ctx) => await ctx.db.query('task').collect())).toEqual([])
+    expect(await assignmentsOf(t)).toEqual([])
   })
 })
 

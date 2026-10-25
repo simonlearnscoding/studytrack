@@ -20,8 +20,10 @@ _Avoid_: Plan, planned session, calendar entry
 **Plan assignment**:
 A Task's placement inside one planBlock. A Task has at most one assignment to a
 planBlock that has not ended; assignments to planBlocks that have ended stay as
-the record of what was intended. Whether an assignment is upcoming, live or past
-is read from its planBlock's window, never stored on the assignment.
+the record of what was intended. Attaching a Task that was planned for another
+Day moves it to the block's Day, so "in this plan" and "planned for that Day"
+never disagree. Whether an assignment is upcoming, live or past is read from its
+planBlock's window, never stored on the assignment.
 _Avoid_: Planned task, task link, plan item
 
 **Partial**:

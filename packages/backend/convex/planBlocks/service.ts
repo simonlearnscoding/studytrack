@@ -1,6 +1,7 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
+import { createTaskForDay, moveTaskToDay } from '../tasks/service'
 import { byQueueOrder } from '../tasks/util'
 import { getMe } from '../users/service'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../workSessions/util'
@@ -59,27 +60,40 @@ export async function getWithTasks(
 }
 
 // Create one of the caller's planBlocks. A member may keep several blocks on the
-// lane, so every call inserts a new row.
+// lane, so every call inserts a new row. The optional tasks land in the same
+// transaction: a refused task or block rolls every write back, so the popover
+// never leaves an orphan block or task (ST-34).
 export async function createPlanBlock(
   ctx: MutationCtx,
   dayStart: number,
   title: string | undefined,
   plannedStart: number,
-  plannedEnd: number
+  plannedEnd: number,
+  taskIds: Id<'task'>[] = [],
+  newTaskTitles: string[] = []
 ): Promise<void> {
   const user = await requireUser(ctx)
   const planTitle = normalizeTitle(title)
   const now = await getClockNow(ctx)
   assertValidWindow(dayStart, plannedStart, plannedEnd, now)
   await assertNoOverlap(ctx, user._id, dayStart, plannedStart, plannedEnd)
+  if (taskIds.length + newTaskTitles.length > MAX_TASKS_PER_PLAN) {
+    throw new Error(`A plan block can hold at most ${MAX_TASKS_PER_PLAN} tasks.`)
+  }
 
-  await ctx.db.insert('planBlock', {
+  const planBlockId = await ctx.db.insert('planBlock', {
     userId: user._id,
     dayStart,
     ...(planTitle === undefined ? {} : { title: planTitle }),
     plannedStart,
     plannedEnd,
   })
+
+  for (const taskId of new Set(taskIds)) await assignTask(ctx, planBlockId, taskId)
+  for (const taskTitle of newTaskTitles) {
+    const taskId = await createTaskForDay(ctx, user, taskTitle, dayStart, 'end')
+    await assignTask(ctx, planBlockId, taskId)
+  }
 }
 
 // Rename an owned planBlock and, while it has not started, move its window. The
@@ -115,11 +129,13 @@ export async function updatePlanBlock(
   })
 }
 
-// Put an owned, Open task into an owned block on the same Day. A task has at most
-// one assignment to a block that has not ended (ADR-0012): moving it into this
-// block drops its assignment to every other unended block, while an ended block
-// keeps its row as the record of what was intended. The block's window decides
-// what "unended" means, read from the server clock so a stale tab cannot win it.
+// Put an owned, Open task into an owned block. A task picked from another Day
+// moves to the block's Day first, so a plan assignment always points at a task
+// on the block's Day. A task has at most one assignment to a block that has not
+// ended (ADR-0012): moving it into this block drops its assignment to every other
+// unended block, while an ended block keeps its row as the record of what was
+// intended. The block's window decides what "unended" means, read from the server
+// clock so a stale tab cannot win it.
 export async function assignTask(
   ctx: MutationCtx,
   planBlockId: Id<'planBlock'>,
@@ -132,8 +148,9 @@ export async function assignTask(
 
   if (plan.plannedEnd <= now) throw new Error('That plan has ended.')
   if (task.done) throw new Error('Only an open task can be planned.')
+
   if (task.plannedAt !== plan.dayStart) {
-    throw new Error('A task can only be planned into a block on its Day.')
+    await moveTaskToDay(ctx, user, task, plan.dayStart)
   }
 
   const existing = await taskAssignments(ctx, taskId)
@@ -150,6 +167,22 @@ export async function assignTask(
     planBlockId,
     dayStart: plan.dayStart,
   })
+}
+
+// The stored popover's create-and-attach: one mutation writes the Task and its
+// assignment, so a refusal leaves neither behind.
+export async function assignNewTask(
+  ctx: MutationCtx,
+  planBlockId: Id<'planBlock'>,
+  title: string
+): Promise<void> {
+  const user = await requireUser(ctx)
+  const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
+  const now = await getClockNow(ctx)
+  if (plan.plannedEnd <= now) throw new Error('That plan has ended.')
+
+  const taskId = await createTaskForDay(ctx, user, title, plan.dayStart, 'end')
+  await assignTask(ctx, planBlockId, taskId)
 }
 
 // Detach an owned task from an owned block. A live block still accepts the edit;

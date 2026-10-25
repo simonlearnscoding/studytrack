@@ -24,6 +24,7 @@ import { useTimeline } from './hooks/use-timeline'
 import {
   TimelinePopupContent,
   type PlanBlockFormValues,
+  type PlanTaskSelection,
   type TimelinePopupData,
 } from './timeline-popup'
 import { TimelineSkeleton } from './timeline-skeleton'
@@ -64,16 +65,19 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
   const updatePlanBlock = useMutation(api.planBlocks.update)
   const removePlanBlock = useMutation(api.planBlocks.remove)
   const assignPlanTask = useMutation(api.planBlocks.assign)
+  const assignNewPlanTask = useMutation(api.planBlocks.assignNew)
   const unassignPlanTask = useMutation(api.planBlocks.unassign)
   const [taskError, setTaskError] = useState<string | null>(null)
   // One block at a time: the popover subscribes only while it is open, so the
-  // room's dashboard payload never carries every member's plan tasks.
+  // room's dashboard payload never carries every member's plan tasks. A draft
+  // reads only the Day's queue for its initial picker list.
   const planBlockId = popup?.data.kind === 'planBlock' ? popup.data.planBlockId : null
   const planDetail = useQuery(
     api.planBlocks.getWithTasks,
     planBlockId === null ? 'skip' : { planBlockId }
   )
-  const planDayTasks = useQuery(api.tasks.listMine, planBlockId === null ? 'skip' : { dayStart })
+  const needsDayTasks = popup?.data.kind === 'draft' || planBlockId !== null
+  const planDayTasks = useQuery(api.tasks.listMine, needsDayTasks ? { dayStart } : 'skip')
 
   // False on the server, the first client paint, and while the live read lands —
   // the reveal commit lands the measured width and the members together, so the
@@ -146,7 +150,7 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
     })
   }
 
-  const createDraftPlanBlock = (values: PlanBlockFormValues) => {
+  const createDraftPlanBlock = (values: PlanBlockFormValues, tasks: PlanTaskSelection) => {
     if (popup?.data.kind !== 'draft') return
     setIsCreating(true)
     setCreateError(null)
@@ -155,6 +159,8 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
       title: values.title,
       plannedStart: dayStart + values.startMin * 60_000,
       plannedEnd: dayStart + values.endMin * 60_000,
+      taskIds: tasks.taskIds,
+      newTaskTitles: tasks.newTaskTitles,
     })
       .then(closePopup)
       .catch((error) => {
@@ -205,6 +211,15 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
     void unassignPlanTask({ planBlockId, taskId }).catch((error) => {
       console.error('[studytrack] plan unassign failed', error)
       setTaskError(planBlockWriteMessage(error, 'Could not remove the task.'))
+    })
+  }
+
+  const createTaskInPlan = (title: string) => {
+    if (!planBlockId) return
+    setTaskError(null)
+    void assignNewPlanTask({ planBlockId, title }).catch((error) => {
+      console.error('[studytrack] plan task create failed', error)
+      setTaskError(planBlockWriteMessage(error, 'Could not create the task.'))
     })
   }
 
@@ -297,13 +312,14 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
               dayStart={dayStart}
               now={now}
               planDetail={popup.data.kind === 'planBlock' ? planDetail : undefined}
-              planDayTasks={popup.data.kind === 'planBlock' ? planDayTasks : undefined}
+              planDayTasks={popup.data.kind === 'workSession' ? undefined : planDayTasks}
               onRemove={popup.data.kind === 'planBlock' ? removePopupPlanBlock : undefined}
               onCreate={popup.data.kind === 'draft' ? createDraftPlanBlock : undefined}
               onUpdate={popup.data.kind === 'planBlock' ? updatePopupPlanBlock : undefined}
               onCancel={popup.data.kind === 'draft' ? closePopup : undefined}
               onAssignTask={popup.data.kind === 'planBlock' ? assignTaskToPlan : undefined}
               onUnassignTask={popup.data.kind === 'planBlock' ? unassignTaskFromPlan : undefined}
+              onCreateTask={popup.data.kind === 'planBlock' ? createTaskInPlan : undefined}
               taskError={popup.data.kind === 'planBlock' ? taskError : null}
               isCreating={popup.data.kind === 'draft' && isCreating}
               isUpdating={popup.data.kind === 'planBlock' && isUpdating}

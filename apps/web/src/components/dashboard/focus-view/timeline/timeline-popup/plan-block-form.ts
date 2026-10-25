@@ -1,3 +1,4 @@
+import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
 import { DAY_MINUTES } from '@studytrack/backend/convex/timeline/types'
 
 // The popover edits on the same grain the lane's drag snaps to.
@@ -7,6 +8,13 @@ export type PlanBlockFormValues = {
   title: string
   startMin: number
   endMin: number
+}
+
+// What the draft popover collected for the atomic create: existing Tasks to move
+// in, plus titles that become new Tasks on the block's Day.
+export type PlanTaskSelection = {
+  taskIds: Id<'task'>[]
+  newTaskTitles: string[]
 }
 
 // "HH:MM" → minutes from the Day start. Minutes-of-day, so 24:00 is a legal end

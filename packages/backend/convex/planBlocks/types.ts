@@ -5,12 +5,16 @@ import type { Id } from '../_generated/dataModel'
 // Europe/Zurich Day the planBlock belongs to; the two instants must sit inside it
 // and on the 15-minute grid the drag snaps to. `title` is the member's name for
 // the block, trimmed by the service; an omitted or blank title leaves the block
-// unnamed and the lane falls back to its time range.
+// unnamed and the lane falls back to its time range. The optional task lists are
+// written in the same transaction (ST-34): `taskIds` are moved/assigned and
+// `newTaskTitles` become new Tasks on the block's Day.
 export const createPlanBlockArgs = v.object({
   dayStart: v.number(),
   title: v.optional(v.string()),
   plannedStart: v.number(),
   plannedEnd: v.number(),
+  taskIds: v.optional(v.array(v.id('task'))),
+  newTaskTitles: v.optional(v.array(v.string())),
 })
 export type CreatePlanBlockArgs = Infer<typeof createPlanBlockArgs>
 
@@ -36,13 +40,22 @@ export type RemovePlanBlockArgs = Infer<typeof removePlanBlockArgs>
 // task titles (ADR-0007); `isOwner` gates the picker and the remove controls.
 export const planBlockDetailArgs = v.object({ planBlockId: v.id('planBlock') })
 
-// Attach an owned, Open task to an owned block on the same Day. The write enforces
-// the one-unended-assignment rule and refuses an ended block.
+// Attach an owned, Open task to an owned block. Picking a task that sits on
+// another Day moves it to the block's Day; the write enforces the
+// one-unended-assignment rule and refuses an ended block.
 export const planTaskArgs = v.object({
   planBlockId: v.id('planBlock'),
   taskId: v.id('task'),
 })
 export type PlanTaskArgs = Infer<typeof planTaskArgs>
+
+// Create an Open task on the block's Day and attach it in one write, for the
+// stored popover's create-and-attach row.
+export const assignNewTaskArgs = v.object({
+  planBlockId: v.id('planBlock'),
+  title: v.string(),
+})
+export type AssignNewTaskArgs = Infer<typeof assignNewTaskArgs>
 
 // The owner's view of a planBlock. Not a workSession: there is no voice evidence
 // and no partials, only the window and name the member pencilled in.
