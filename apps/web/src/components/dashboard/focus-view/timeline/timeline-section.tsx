@@ -246,41 +246,45 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
 
   return (
     <div className="relative">
-      <div
-        aria-hidden={!ready}
-        className={cn(
-          'transition-opacity duration-300 ease-out',
-          ready ? 'opacity-100' : 'pointer-events-none opacity-0'
-        )}
-      >
-        <DayTimeline
-          window={axis}
-          rows={rows}
-          nowLabel={`now · ${formatClock(viewNowMin)}`}
-          showNow={isToday}
-          scrollerRef={scrollerRef}
-          isNightBandHeldOpen={auto.morning}
-          onToggleBand={toggleBand}
-          draftPlanBlock={draftPlanBlock}
-          onPlanBlockDrag={isPast ? undefined : openPlanBlockDraft}
-          onPlanBlockDoubleClick={isPast ? undefined : openPlanBlockDraft}
-          onPlanBlockClick={openPlanBlock}
-          onWorkSessionClick={openWorkSession}
-          onPlanBlockUpdate={
-            isPast
-              ? undefined
-              : (update) => {
-                  void updatePlanBlock({
-                    planBlockId: update.planBlockId,
-                    ...(update.title == null ? {} : { title: update.title }),
-                    plannedStart: dayStart + update.startMin * 60_000,
-                    plannedEnd: dayStart + update.endMin * 60_000,
-                  }).catch((error) => console.error('[studytrack] plan update failed', error))
-                }
-          }
-        />
+      {/* Both states share one grid cell, so the page keeps the taller of the
+          skeleton and the (still hidden) live track while the read lands. */}
+      <div className="grid">
+        <div
+          aria-hidden={!ready}
+          className={cn(
+            'col-start-1 row-start-1 transition-opacity duration-300 ease-out',
+            ready ? 'opacity-100' : 'pointer-events-none opacity-0'
+          )}
+        >
+          <DayTimeline
+            window={axis}
+            rows={rows}
+            nowLabel={`now · ${formatClock(viewNowMin)}`}
+            showNow={isToday}
+            scrollerRef={scrollerRef}
+            isNightBandHeldOpen={auto.morning}
+            onToggleBand={toggleBand}
+            draftPlanBlock={draftPlanBlock}
+            onPlanBlockDrag={isPast ? undefined : openPlanBlockDraft}
+            onPlanBlockDoubleClick={isPast ? undefined : openPlanBlockDraft}
+            onPlanBlockClick={openPlanBlock}
+            onWorkSessionClick={openWorkSession}
+            onPlanBlockUpdate={
+              isPast
+                ? undefined
+                : (update) => {
+                    void updatePlanBlock({
+                      planBlockId: update.planBlockId,
+                      ...(update.title == null ? {} : { title: update.title }),
+                      plannedStart: dayStart + update.startMin * 60_000,
+                      plannedEnd: dayStart + update.endMin * 60_000,
+                    }).catch((error) => console.error('[studytrack] plan update failed', error))
+                  }
+            }
+          />
+        </div>
+        {!ready && <TimelineSkeleton className="col-start-1 row-start-1" />}
       </div>
-      {!ready && <TimelineSkeleton className="absolute inset-0" />}
       <Popover
         open={popup !== null}
         onOpenChange={(open) => {
