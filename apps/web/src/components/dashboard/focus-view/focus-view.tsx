@@ -1,12 +1,14 @@
 /**
- * FocusView — port of the approved "floating page" mock.
+ * FocusView — the dashboard workspace shell.
  * Composition only: each region is its own component. The room rail is live from
  * Convex (`useLiveRoom`); the remaining placeholder data lives in the components.
  *
- * Mobile (<lg): single column — room first when out, you/room/timeline when
- * live. The personal rail (taskpane) is desktop-only and the quote lives in
- * the site header; on mobile the MobileTaskDock replaces them — a sticky
- * bottom bar + bottom sheet. Bottom padding on the root reserves their space.
+ * Desktop: three columns, the right one a full-height edge panel flush with the
+ * viewport (calendar on top, task list scrolling below). Mobile (<lg): single
+ * column — room first when out, you/room/timeline when live. The personal rail
+ * is desktop-only and the quote lives in the site header; on mobile the
+ * MobileTaskDock replaces them — a sticky bottom bar + bottom sheet. Bottom
+ * padding on the root reserves their space.
  */
 
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
@@ -55,8 +57,8 @@ export function FocusView() {
   const monthCalendar = <MonthCalendar calendar={calendar} />
 
   return (
-    <div className="mx-auto flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:max-w-(--content-max) lg:flex-col lg:gap-0">
-      <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(320px,350px)]">
+    <div className="flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:flex-col lg:gap-0">
+      <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(300px,320px)] xl:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_350px]">
         <div
           className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto lg:py-8 lg:pl-6 ${tracking.isOnline ? 'max-lg:order-2' : 'max-lg:order-1'}`}
         >
@@ -91,14 +93,10 @@ export function FocusView() {
           {/* the personal rail is desktop-only — on mobile the dock owns it */}
         </main>
 
-        <aside className="flex min-h-0 flex-col max-lg:hidden lg:overflow-hidden">
-          {/* calendar and tasks share one flush panel: calendar on top, tasks
-              below, separated by a hairline rather than a gap between cards */}
-          <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden border-l border-border">
-            <MonthCalendar calendar={calendar} isEmbedded />
-            <div className="border-t" />
-            <TaskPane queue={taskQueue} dayLabel={dayLabel} isEmbedded />
-          </div>
+        <aside className="bg-sidebar flex min-h-0 flex-col overflow-hidden border-l border-border max-lg:hidden">
+          <MonthCalendar calendar={calendar} isEmbedded />
+          <div className="border-t" />
+          <TaskPane queue={taskQueue} dayLabel={dayLabel} isEmbedded />
         </aside>
       </div>
 

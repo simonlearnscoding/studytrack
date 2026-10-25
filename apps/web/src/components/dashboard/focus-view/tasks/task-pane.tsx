@@ -134,20 +134,8 @@ export function TaskPane({
       {/* composer */}
       <form
         onSubmit={submit}
-        className="mb-4 flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.035] p-1.5 transition-colors duration-150 hover:border-white/[0.16] focus-within:border-primary/50 focus-within:bg-white/[0.055]"
+        className="mb-4 flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.045] p-1.5 transition-colors duration-150 hover:border-primary/40 focus-within:border-primary/70 focus-within:bg-primary/[0.07]"
       >
-        <div className="relative min-w-0 flex-1">
-          <Input
-            ref={inputRef}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
-            placeholder="Add a task…"
-            aria-label="New task"
-            className="peer h-9 border-0 bg-transparent pr-20 pl-2 text-sm placeholder:text-hint focus-visible:ring-0 dark:bg-transparent"
-          />
-          <TaskComposerHint />
-        </div>
         <Button
           type="submit"
           size="icon"
@@ -156,6 +144,18 @@ export function TaskPane({
         >
           <Plus className="h-4 w-4" aria-hidden />
         </Button>
+        <div className="relative min-w-0 flex-1">
+          <Input
+            ref={inputRef}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={(event) => handleComposerKeyDown(event, add, () => setTitle(''))}
+            placeholder="Add a task..."
+            aria-label="New task"
+            className="peer h-9 border-0 bg-transparent pr-20 pl-2 text-sm placeholder:text-hint focus-visible:ring-0 dark:bg-transparent"
+          />
+          <TaskComposerHint />
+        </div>
       </form>
 
       {/* contract: checkbox = complete · pencil = rename · trash = delete */}
