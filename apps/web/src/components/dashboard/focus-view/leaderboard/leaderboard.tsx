@@ -4,6 +4,7 @@ import { Avatar } from '~/components/ui/avatar'
 import { formatMinutes } from '~/lib/format'
 import { useLeaderboardPeriodPreference } from '~/preferences/use-leaderboard-period'
 import { PeriodRange, type LeaderboardPeriod } from './period-range'
+import { StandingBar } from './standing-bar'
 import type { LeaderboardRowVM } from './use-leaderboard'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { useMetric } from '~/preferences/use-metric'
@@ -51,12 +52,18 @@ export function Leaderboard({
   const visible = expanded ? ranked : ranked.slice(0, initial)
   const hidden = Math.max(0, ranked.length - initial)
   const isEmpty = ranked.length === 0
+  // Full is the leader's own value in the selected Period · metric, so #1 always
+  // fills the bar and everyone else reads as a fraction of it. Zero means nobody
+  // has logged time yet, which leaves every bar empty rather than dividing by 0.
+  const leaderMinutes = rows.reduce((max, row) => Math.max(max, minutesFor(row, sort, metric)), 0)
+  const shareOf = (row: LeaderboardRowVM) =>
+    leaderMinutes > 0 ? minutesFor(row, sort, metric) / leaderMinutes : 0
 
   // shared by the header and body rows so the column buttons sit exactly over
   // the values they sort
   const grid = compact
-    ? 'grid-cols-[16px_22px_minmax(0,1fr)_46px_46px_46px] gap-1 px-1 py-1.5'
-    : 'grid-cols-[20px_26px_minmax(90px,1fr)_54px_54px_54px] gap-2 px-1.5 py-1.5'
+    ? 'grid-cols-[16px_22px_minmax(0,1fr)_46px_46px_46px] gap-1 px-1'
+    : 'grid-cols-[20px_26px_minmax(90px,1fr)_54px_54px_54px] gap-2 px-1.5'
 
   return (
     <section className="select-none">
@@ -65,7 +72,7 @@ export function Leaderboard({
           <PeriodRange period={sort} />
         </div>
       )}
-      <div className={`grid items-center ${grid} border-b border-white/[0.06] pb-1.5`}>
+      <div className={`grid items-center ${grid} border-b border-white/[0.06] py-1.5`}>
         {compact ? (
           <>
             <span className="col-span-2" />
@@ -102,7 +109,7 @@ export function Leaderboard({
         visible.map((row) => (
           <div
             key={row.key}
-            className={`grid items-center border-b border-white/[0.04] ${grid} ${
+            className={`relative grid items-center border-b border-white/[0.04] pt-1.5 ${compact ? 'pb-2.5' : 'pb-3'} ${grid} ${
               row.you ? 'bg-primary/5 rounded-lg' : ''
             }`}
           >
@@ -126,6 +133,13 @@ export function Leaderboard({
                 {formatMinutes(minutesFor(row, p, metric))}
               </span>
             ))}
+            <div
+              className={`pointer-events-none absolute bottom-0.5 ${
+                compact ? 'inset-x-1' : 'inset-x-1.5'
+              }`}
+            >
+              <StandingBar share={shareOf(row)} compact={compact} />
+            </div>
           </div>
         ))
       )}
