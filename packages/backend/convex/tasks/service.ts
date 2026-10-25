@@ -1,5 +1,6 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
+import { getClockNow } from '../devClock/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import { getMe } from '../users/service'
 import type { ActiveTask, Task, TaskPlacement } from './types'
@@ -134,9 +135,11 @@ export async function toggleTask(
   const done = !task.done
   // The browser knows which Day it is showing; the server owns the wall clock. A
   // completion gets an instant only when those agree, so ticking a past Day's
-  // task never drops a dot on today (ADR-0010).
+  // task never drops a dot on today (ADR-0010). The dev clock moves both sides
+  // of that comparison, so a fake today behaves exactly like a real one.
+  const now = await getClockNow(ctx)
   const completedAt =
-    done && focusDayStart === startOfDay(Date.now(), DASHBOARD_TIME_ZONE) ? Date.now() : undefined
+    done && focusDayStart === startOfDay(now, DASHBOARD_TIME_ZONE) ? now : undefined
   await ctx.db.patch(taskId, { done, completedAt })
   if (done) await clearActiveIfMatches(ctx, user, taskId)
 }

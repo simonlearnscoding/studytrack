@@ -12,6 +12,7 @@
  */
 
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
+import { DevClockControl } from '~/dev-clock/dev-clock-control'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
 import { useSyncClerkUser } from '~/hooks/use-sync-clerk-user'
@@ -83,6 +84,7 @@ export function FocusView() {
             onToggleNowTask={todayNow.complete}
           />
           <DayHeading now={now} />
+          <DevClockControl />
           <TimelineSection dayStart={dayStart} />
           <div className="flex flex-col gap-6">
             <div className="lg:hidden">{monthCalendar}</div>

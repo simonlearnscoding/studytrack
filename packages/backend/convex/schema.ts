@@ -124,6 +124,13 @@ export default defineSchema({
     .index('by_userId_dayStart', ['userId', 'dayStart'])
     .index('by_dayStart', ['dayStart']),
 
+  // A development deployment's fake clock: one row holding the offset from real
+  // time. Production never reads it (see devClock/), so this table is inert there.
+  devClock: defineTable({
+    singleton: v.literal('global'),
+    offsetMs: v.number(),
+  }).index('by_singleton', ['singleton']),
+
   // The motivational quote shown in the site header, one per local Day. A cron
   // fetches it from ZenQuotes once a Day and stores it here, so readers never hit
   // the network (see quotes/). `dayStart` is the local midnight (Europe/Zurich).

@@ -79,7 +79,7 @@ export function DayHeading({ now }: { now: number }) {
         size="sm"
         title={isToday ? 'You are viewing today' : 'Back to today'}
         aria-label={isToday ? 'You are viewing today' : 'Back to today'}
-        onClick={() => selectToday(new Date())}
+        onClick={() => selectToday(new Date(now))}
         className={
           isToday
             ? 'text-subtle-foreground h-7 shrink-0 rounded-full px-3 hover:bg-white/[0.04]'

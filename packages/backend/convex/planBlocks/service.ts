@@ -1,5 +1,6 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
+import { getClockNow } from '../devClock/service'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../workSessions/util'
 import { getMe } from '../users/service'
 
@@ -39,7 +40,8 @@ export async function createPlanBlock(
 ): Promise<void> {
   const user = await requireUser(ctx)
   const planTitle = requireTitle(title)
-  assertValidWindow(dayStart, plannedStart, plannedEnd)
+  const now = await getClockNow(ctx)
+  assertValidWindow(dayStart, plannedStart, plannedEnd, now)
   await assertNoOverlap(ctx, user._id, dayStart, plannedStart, plannedEnd)
 
   await ctx.db.insert('planBlock', {
@@ -68,10 +70,11 @@ export async function updatePlanBlock(
   const windowChanged = plannedStart !== plan.plannedStart || plannedEnd !== plan.plannedEnd
 
   if (windowChanged) {
-    if (Date.now() >= plan.plannedStart) {
+    const now = await getClockNow(ctx)
+    if (now >= plan.plannedStart) {
       throw new Error('A plan block that has started cannot change its window.')
     }
-    assertValidWindow(plan.dayStart, plannedStart, plannedEnd)
+    assertValidWindow(plan.dayStart, plannedStart, plannedEnd, now)
     await assertNoOverlap(ctx, user._id, plan.dayStart, plannedStart, plannedEnd, plan._id)
   }
 
@@ -94,7 +97,12 @@ export async function removePlanBlock(
 
 // The window rules every write shares: inside one Day, positive, on the 15-minute
 // grid, and never starting in the past.
-function assertValidWindow(dayStart: number, plannedStart: number, plannedEnd: number): void {
+function assertValidWindow(
+  dayStart: number,
+  plannedStart: number,
+  plannedEnd: number,
+  now: number
+): void {
   const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
   if (startOfDay(dayStart, DASHBOARD_TIME_ZONE) !== dayStart) {
     throw new Error('A plan block belongs to a Day.')
@@ -109,7 +117,7 @@ function assertValidWindow(dayStart: number, plannedStart: number, plannedEnd: n
   ) {
     throw new Error('A plan block must sit on a 15-minute mark.')
   }
-  if (plannedStart < planFloor(dayStart, Date.now())) {
+  if (plannedStart < planFloor(dayStart, now)) {
     throw new Error('A plan block cannot start in the past.')
   }
 }
