@@ -2,7 +2,9 @@ import type { Doc } from '@studytrack/backend/convex/_generated/dataModel'
 import { api } from '@studytrack/backend/convex/_generated/api'
 import { DASHBOARD_TIME_ZONE, nextDayStart } from '@studytrack/backend/convex/workSessions/util'
 import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
+import { EMPTY_NOW_CANDIDATES } from '@studytrack/backend/convex/tasks/types'
 import { useQuery } from 'convex/react'
+import { useCachedMembers } from '~/hooks/use-cached-members'
 import { useDayStart } from '~/hooks/use-day-start'
 import { useNow } from '~/hooks/use-now'
 
@@ -43,13 +45,11 @@ export function useTimeline(dayStart: number): TimelineData {
   const wallNow = useNow(isToday ? 1000 : 60_000)
   const isPast = dayStart < todayStart
   const now = isToday ? wallNow : isPast ? nextDayStart(dayStart, DASHBOARD_TIME_ZONE) : dayStart
-  const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, {
+  const remoteMembers = useQuery(api.workSessions.getTodaysActivitiesForDashboard, {
     dayStart,
     todayStart,
-    // Now only needs minute precision; the rounded argument also keeps the
-    // query subscribed to one result per minute instead of one per second.
-    now: Math.floor(now / 60_000) * 60_000,
   })
+  const members = useCachedMembers(dayStart, remoteMembers)
   const me = useQuery(api.users.me)
   const ready = members !== undefined && me !== undefined
 
@@ -83,7 +83,7 @@ function withOwnLane(members: DashboardMember[], me: Doc<'users'> | null): Dashb
       online: false,
       workSessions: [],
       planBlocks: [],
-      activeTask: null,
+      nowCandidates: EMPTY_NOW_CANDIDATES,
     },
   ]
 }

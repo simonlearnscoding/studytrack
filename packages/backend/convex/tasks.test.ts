@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test'
 import { describe, expect, it } from 'vitest'
 import { api } from './_generated/api'
 import schema from './schema'
+import { pickNowCandidate } from './tasks/util'
 import { DASHBOARD_TIME_ZONE, startOfDay } from './workSessions/util'
 
 const modules = import.meta.glob('./**/*.ts')
@@ -41,6 +42,16 @@ async function tasksOf(t: Test) {
 
 async function create(t: Test, identity: { subject: string }, title: string, plannedAt = DAY) {
   await t.withIdentity(identity).mutation(api.tasks.create, { title, plannedAt })
+}
+
+async function nowTitle(
+  t: Test,
+  identity: { subject: string },
+  dayStart = DAY,
+  now = Date.now()
+): Promise<string | null> {
+  const candidates = await t.withIdentity(identity).query(api.tasks.getNow, { dayStart })
+  return candidates ? (pickNowCandidate(candidates, now)?.title ?? null) : null
 }
 
 describe('tasks.listMine', () => {
@@ -117,7 +128,7 @@ describe('tasks.getNow', () => {
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Read a chapter')
 
-    expect(await t.query(api.tasks.getNow, { dayStart: DAY, now: Date.now() })).toBeNull()
+    expect(await t.query(api.tasks.getNow, { dayStart: DAY })).toBeNull()
   })
 
   it('returns the first Open task in queue order and advances as tasks are done', async () => {
@@ -131,23 +142,19 @@ describe('tasks.getNow', () => {
       orderedTaskIds: [top.id, second.id],
     })
 
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() }))?.title).toBe(
-      'Top'
-    )
+    expect(await nowTitle(t, ADA)).toBe('Top')
 
     await t.withIdentity(ADA).mutation(api.tasks.toggle, {
       taskId: top.id,
       focusDayStart: TODAY,
     })
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() }))?.title).toBe(
-      'Second'
-    )
+    expect(await nowTitle(t, ADA)).toBe('Second')
 
     await t.withIdentity(ADA).mutation(api.tasks.toggle, {
       taskId: second.id,
       focusDayStart: TODAY,
     })
-    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() })).toBeNull()
+    expect(await nowTitle(t, ADA)).toBeNull()
   })
 
   it('is scoped to the Day it is asked for', async () => {
@@ -156,13 +163,9 @@ describe('tasks.getNow', () => {
     await create(t, ADA, 'Today', DAY)
     await create(t, ADA, 'Tomorrow', TOMORROW)
 
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: Date.now() }))?.title).toBe(
-      'Today'
-    )
-    expect((await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: TOMORROW, now: Date.now() }))?.title).toBe(
-      'Tomorrow'
-    )
-    expect(await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: YESTERDAY, now: Date.now() })).toBeNull()
+    expect(await nowTitle(t, ADA, DAY)).toBe('Today')
+    expect(await nowTitle(t, ADA, TOMORROW)).toBe('Tomorrow')
+    expect(await nowTitle(t, ADA, YESTERDAY)).toBeNull()
   })
 })
 

@@ -8,7 +8,8 @@ import type {
 } from './types'
 import { hasViewer } from '../auth/service'
 import { taskPlansForDay } from '../tasks/service'
-import { pickNowTask } from '../tasks/util'
+import { buildNowCandidates } from '../tasks/util'
+import { EMPTY_NOW_CANDIDATES } from '../tasks/types'
 import { attachTasksToWorkSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
@@ -46,13 +47,12 @@ export async function listRecent(ctx: QueryCtx) {
 export async function getTodaysActivitiesForDashboard(
   ctx: QueryCtx,
   dayStart: number,
-  todayStart: number = dayStart,
-  now: number = todayStart
+  todayStart: number = dayStart
 ): Promise<DashboardMember[]> {
   if (!(await hasViewer(ctx))) return []
   const isToday = dayStart === todayStart
   const members = await groupDayMembers(ctx, dayStart, isToday)
-  const withTasks = await attachDayTasks(ctx, members, dayStart, isToday, now)
+  const withTasks = await attachDayTasks(ctx, members, dayStart, isToday)
   return await attachDayPlanBlocks(ctx, withTasks, dayStart)
 }
 
@@ -168,7 +168,7 @@ async function groupPartials(
       online: workSessions.some((s) => s.status === 'active'),
       workSessions,
       planBlocks: [],
-      activeTask: null,
+      nowCandidates: EMPTY_NOW_CANDIDATES,
     })
   }
 
@@ -232,8 +232,7 @@ async function attachDayTasks(
   ctx: QueryCtx,
   members: DashboardMember[],
   dayStart: number,
-  isToday: boolean,
-  now: number
+  isToday: boolean
 ): Promise<DashboardMember[]> {
   const dayEnd = nextDayStart(dayStart, DASHBOARD_TIME_ZONE)
 
@@ -263,17 +262,15 @@ async function attachDayTasks(
       for (const task of completed) byId.set(task._id, task)
       const sources: WorkSessionTaskSource[] = [...byId.values()].map(toWorkSessionTaskSource)
 
-      // Now is the live plan's first Open task, else the unscheduled queue, then
-      // the earliest upcoming plan (ST-35). Derived from the same tasks and
-      // assignments the board reads, never a stored pointer; a past or future
-      // Day has no Now.
-      const nowTask = isToday ? pickNowTask(planned, plans, now) : null
-      const activeTask = nowTask ? { id: nowTask._id, title: nowTask.title } : null
-      if (sources.length === 0) return { ...member, activeTask }
+      // The room rail picks Now client-side from these clock-free candidates,
+      // so the dashboard read stays stable as time passes (ADR-0014). A past or
+      // future Day has no Now.
+      const nowCandidates = isToday ? buildNowCandidates(planned, plans) : EMPTY_NOW_CANDIDATES
+      if (sources.length === 0) return { ...member, nowCandidates }
 
       return {
         ...member,
-        activeTask,
+        nowCandidates,
         workSessions: attachTasksToWorkSessions(member.workSessions, sources),
       }
     })
@@ -314,7 +311,7 @@ async function attachDayPlanBlocks(
         online: false,
         workSessions: [],
         planBlocks: [],
-        activeTask: null,
+        nowCandidates: EMPTY_NOW_CANDIDATES,
       }
       result.push(member)
       byUser.set(key, member)

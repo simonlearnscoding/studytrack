@@ -22,12 +22,12 @@ export const listRecent = query({
 // shared calendar day) is supplied by the caller because queries must not read
 // the wall clock. `todayStart` is the start of the live Day; when it differs from
 // `dayStart`, the read stays inside that one Day and leaves running Sessions out.
-// `now` is the caller's clock for the live plan that leads Now (ADR-0014); it
-// falls back to `todayStart` for callers that only need the queue order. See
-// `workSessions/util` for `startOfDay` and `DASHBOARD_TIME_ZONE`.
+// Now's inputs ride along as clock-free candidates; the ticking client picks the
+// live plan (ADR-0014). See `workSessions/util` for `startOfDay` and
+// `DASHBOARD_TIME_ZONE`.
 export const getTodaysActivitiesForDashboard = query({
-  args: { dayStart: v.number(), todayStart: v.optional(v.number()), now: v.optional(v.number()) },
-  handler: async (ctx, args) => getTodaysActivities(ctx, args.dayStart, args.todayStart, args.now),
+  args: { dayStart: v.number(), todayStart: v.optional(v.number()) },
+  handler: async (ctx, args) => getTodaysActivities(ctx, args.dayStart, args.todayStart),
 })
 
 export const closeStale = internalMutation({

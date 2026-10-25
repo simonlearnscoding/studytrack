@@ -49,7 +49,7 @@ function member(overrides: Partial<DashboardMember> = {}): DashboardMember {
     online: false,
     workSessions: [],
     planBlocks: [],
-    activeTask: null,
+    nowCandidates: { unplanned: null, plans: [] },
     ...overrides,
   }
 }

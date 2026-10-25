@@ -16,7 +16,6 @@ import {
 import {
   clearActiveArgs,
   createTaskArgs,
-  getNowArgs,
   listMineArgs,
   removeTaskArgs,
   renameTaskArgs,
@@ -36,8 +35,8 @@ export const listMine = query({
 })
 
 export const getNow = query({
-  args: getNowArgs.fields,
-  handler: async (ctx, args) => readNow(ctx, args.dayStart, args.now),
+  args: listMineArgs.fields,
+  handler: async (ctx, args) => readNow(ctx, args.dayStart),
 })
 
 // The plan popover's title search over the caller's Open Tasks, across Days.

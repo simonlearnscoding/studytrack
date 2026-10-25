@@ -1,4 +1,4 @@
-import type { Task } from '@studytrack/backend/convex/tasks/types'
+import type { NowTaskCandidate } from '@studytrack/backend/convex/tasks/types'
 import { Square } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
@@ -18,7 +18,7 @@ export function Hero({
   isManual: boolean
   onStopManual: () => void
   elapsedMs: number
-  nowTask: Task | null
+  nowTask: NowTaskCandidate | null
   onToggleNowTask: () => void
 }) {
   if (!isOnline) return null

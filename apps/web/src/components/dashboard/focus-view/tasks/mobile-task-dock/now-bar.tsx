@@ -1,4 +1,4 @@
-import type { Task } from '@studytrack/backend/convex/tasks/types'
+import type { NowTaskCandidate } from '@studytrack/backend/convex/tasks/types'
 import { ListChecks, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Checkbox } from '~/components/ui/checkbox'
@@ -21,7 +21,7 @@ export function NowBar({
 }: {
   isOnline: boolean
   canStartManual: boolean
-  now: Task | null
+  now: NowTaskCandidate | null
   roomCount: number
   onStart: () => void
   onOpen: () => void

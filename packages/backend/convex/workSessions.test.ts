@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test'
 import { describe, expect, it } from 'vitest'
 import { api } from './_generated/api'
 import schema from './schema'
+import { pickNowCandidate } from './tasks/util'
 
 const modules = import.meta.glob('./**/*.ts')
 
@@ -564,10 +565,12 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
       .withIdentity({ subject: 'clerk-1' })
       .query(api.workSessions.getTodaysActivitiesForDashboard, {
         dayStart: DAY_START,
-        now: NOW,
       })
 
-    expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'First' })
+    expect(pickNowCandidate(res[0].nowCandidates, NOW)).toMatchObject({
+      id: expect.anything(),
+      title: 'First',
+    })
   })
 
   it('leads the room Now with a live plan', async () => {
@@ -629,10 +632,12 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
       .query(api.workSessions.getTodaysActivitiesForDashboard, {
         dayStart: DAY_START,
         todayStart: DAY_START,
-        now: NOW,
       })
 
-    expect(res[0].activeTask).toEqual({ id: expect.anything(), title: 'Live plan' })
+    expect(pickNowCandidate(res[0].nowCandidates, NOW)).toMatchObject({
+      id: expect.anything(),
+      title: 'Live plan',
+    })
   })
 
   it('leaves Now null when the Day has no Open tasks', async () => {
@@ -673,9 +678,8 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
       .withIdentity({ subject: 'clerk-1' })
       .query(api.workSessions.getTodaysActivitiesForDashboard, {
         dayStart: DAY_START,
-        now: NOW,
       })
 
-    expect(res[0].activeTask).toBeNull()
+    expect(pickNowCandidate(res[0].nowCandidates, NOW)).toBeNull()
   })
 })

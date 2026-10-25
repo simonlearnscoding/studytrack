@@ -63,7 +63,7 @@ const member = (
   online: workSessions.some((s) => s.status === 'active'),
   workSessions,
   planBlocks: [],
-  activeTask: null,
+  nowCandidates: { unplanned: null, plans: [] },
 })
 
 const window = resolveWindow({ nowMin: 15 * 60, availablePx: FLOOR_PX })

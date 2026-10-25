@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { Task } from './types'
 import {
+  buildNowCandidates,
   byPosition,
   byQueueOrder,
   insertionIndex,
-  pickNowTask,
+  pickNowCandidate,
   pickUpNext,
   planOrder,
   type TaskPlanWindow,
@@ -155,11 +156,15 @@ function planMap(entries: Array<[string, number, number]>) {
   )
 }
 
-describe('pickNowTask', () => {
+function nowId(tasks: Doc<'task'>[], plans: Map<Id<'task'>, TaskPlanWindow>, now: number) {
+  return pickNowCandidate(buildNowCandidates(tasks, plans), now)?.id ?? null
+}
+
+describe('pickNowCandidate', () => {
   it('leads with the live plan over an earlier unscheduled task', () => {
     const rows = [row('unscheduled', 1, 0), row('live', 2, 1)]
     const plans = planMap([['live', 9, 11]])
-    expect(pickNowTask(rows, plans, 10)?._id).toBe('live')
+    expect(nowId(rows, plans, 10)).toBe('live')
   })
 
   it('uses the live plan queue order', () => {
@@ -168,19 +173,19 @@ describe('pickNowTask', () => {
       ['live-b', 9, 11],
       ['live-a', 9, 11],
     ])
-    expect(pickNowTask(rows, plans, 10)?._id).toBe('live-a')
+    expect(nowId(rows, plans, 10)).toBe('live-a')
   })
 
   it('falls back to the unscheduled queue when the live plan has no open task', () => {
     const rows = [row('done-live', 1, 0, true), row('unscheduled', 2, 1)]
     const plans = planMap([['done-live', 9, 11]])
-    expect(pickNowTask(rows, plans, 10)?._id).toBe('unscheduled')
+    expect(nowId(rows, plans, 10)).toBe('unscheduled')
   })
 
   it('prefers unscheduled work over an upcoming plan', () => {
     const rows = [row('unscheduled', 1, 0), row('upcoming', 2, 1)]
     const plans = planMap([['upcoming', 12, 13]])
-    expect(pickNowTask(rows, plans, 10)?._id).toBe('unscheduled')
+    expect(nowId(rows, plans, 10)).toBe('unscheduled')
   })
 
   it('falls to the earliest upcoming plan when nothing is live or unscheduled', () => {
@@ -189,12 +194,12 @@ describe('pickNowTask', () => {
       ['later', 14, 15],
       ['soon', 12, 13],
     ])
-    expect(pickNowTask(rows, plans, 10)?._id).toBe('soon')
+    expect(nowId(rows, plans, 10)).toBe('soon')
   })
 
   it('treats a task whose plan ended as unscheduled', () => {
     const rows = [row('ended-plan', 1, 0)]
     const plans = planMap([['ended-plan', 8, 9]])
-    expect(pickNowTask(rows, plans, 10)?._id).toBe('ended-plan')
+    expect(nowId(rows, plans, 10)).toBe('ended-plan')
   })
 })

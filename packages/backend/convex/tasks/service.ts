@@ -3,8 +3,8 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
 import { getMe } from '../users/service'
-import type { ActiveTask, DayTask, Task, TaskPlacement, TaskPlan } from './types'
-import { byQueueOrder, insertionIndex, pickNowTask, planOrder } from './util'
+import type { ActiveTask, DayTask, NowCandidates, Task, TaskPlacement, TaskPlan } from './types'
+import { buildNowCandidates, byQueueOrder, insertionIndex, planOrder } from './util'
 
 const MAX_TASKS = 200
 const MAX_PLANS = 200
@@ -245,16 +245,10 @@ export async function clearActive(ctx: MutationCtx): Promise<void> {
   await clearActivePointer(ctx, user._id)
 }
 
-// The member's Now: the live plan's first Open task, else the first Open
-// unscheduled task, else the earliest upcoming plan's first Open task (ST-35).
-// The caller passes today's Day and its own clock, so the same derived value
-// reaches the header, dock and room. Null when signed out or when nothing is
-// Open.
-export async function getNow(
-  ctx: QueryCtx,
-  dayStart: number,
-  now: number = dayStart
-): Promise<Task | null> {
+// The caller's Now inputs, clock-free (ST-35): the ticking client picks from
+// these with its own clock, so crossing a plan boundary does not re-subscribe
+// this read. Null when signed out.
+export async function getNow(ctx: QueryCtx, dayStart: number): Promise<NowCandidates | null> {
   const user = await getMe(ctx)
   if (!user) return null
 
@@ -262,8 +256,7 @@ export async function getNow(
     dayTasks(ctx, user._id, dayStart),
     taskPlansForDay(ctx, user._id, dayStart),
   ])
-  const nowTask = pickNowTask(tasks, plans, now)
-  return nowTask ? toTask(nowTask) : null
+  return buildNowCandidates(tasks, plans)
 }
 
 // The caller's active task, or null when there is no pointer, the pointed task is

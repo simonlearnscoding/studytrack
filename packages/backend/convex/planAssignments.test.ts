@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import schema from './schema'
+import { pickNowCandidate } from './tasks/util'
 import { DASHBOARD_TIME_ZONE, startOfDay } from './workSessions/util'
 
 const modules = import.meta.glob('./**/*.ts')
@@ -38,6 +39,16 @@ async function seedUser(t: Test, identity: { subject: string }, name: string) {
       createdAt: NOW,
     })
   })
+}
+
+async function nowTitle(
+  t: Test,
+  identity: { subject: string },
+  dayStart = DAY,
+  now = NOW
+): Promise<string | null> {
+  const candidates = await t.withIdentity(identity).query(api.tasks.getNow, { dayStart })
+  return candidates ? (pickNowCandidate(candidates, now)?.title ?? null) : null
 }
 
 async function seedTask(
@@ -766,17 +777,13 @@ describe('tasks.getNow with plan groups', () => {
     await seedAssignment(t, userId, live, liveBlock)
     await seedAssignment(t, userId, upcoming, upcomingBlock)
 
-    expect(
-      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
-    ).toBe('Live')
+    expect(await nowTitle(t, ADA)).toBe('Live')
 
     await t.withIdentity(ADA).mutation(api.tasks.toggle, {
       taskId: live,
       focusDayStart: DAY,
     })
-    expect(
-      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
-    ).toBe('Unscheduled')
+    expect(await nowTitle(t, ADA)).toBe('Unscheduled')
   })
 
   it('uses the live plan queue order', async () => {
@@ -795,9 +802,7 @@ describe('tasks.getNow with plan groups', () => {
     await seedAssignment(t, userId, second, liveBlock)
     await seedAssignment(t, userId, first, liveBlock)
 
-    expect(
-      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
-    ).toBe('First')
+    expect(await nowTitle(t, ADA)).toBe('First')
   })
 
   it('falls to the earliest upcoming plan when nothing is live or unscheduled', async () => {
@@ -816,9 +821,7 @@ describe('tasks.getNow with plan groups', () => {
     await seedAssignment(t, userId, later, laterBlock)
     await seedAssignment(t, userId, soon, soonBlock)
 
-    expect(
-      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
-    ).toBe('Soon')
+    expect(await nowTitle(t, ADA)).toBe('Soon')
   })
 
   it('treats a task whose plan ended as unscheduled', async () => {
@@ -831,8 +834,6 @@ describe('tasks.getNow with plan groups', () => {
     })
     await seedAssignment(t, userId, endedTask, endedBlock)
 
-    expect(
-      (await t.withIdentity(ADA).query(api.tasks.getNow, { dayStart: DAY, now: NOW }))?.title
-    ).toBe('Ended plan')
+    expect(await nowTitle(t, ADA)).toBe('Ended plan')
   })
 })

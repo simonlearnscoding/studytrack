@@ -39,8 +39,10 @@ the live plan:
 A Task whose latest plan has ended counts as unscheduled; it is not in a group.
 Reordering inside the live group changes Now, and entering a plan window changes
 Now automatically. The rule is derived, never stored, and both the room and the
-pane use it. Because a query may not read the wall clock, `tasks.getNow` and the
-dashboard read take the caller's clock as an argument.
+pane use it. Queries stay clock-free: `tasks.getNow` and the dashboard read ship
+compact candidates (each plan's first Open task, plus the first Open task with no
+plan), and the ticking client picks against its own clock. Crossing a plan
+boundary changes the pick, not the query key.
 
 ## Done and the heading count
 

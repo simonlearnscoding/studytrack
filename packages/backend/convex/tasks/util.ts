@@ -1,5 +1,12 @@
 import type { Doc, Id } from '../_generated/dataModel'
-import type { Task, TaskPlacement, TaskPlan } from './types'
+import type {
+  NowCandidates,
+  NowPlanCandidate,
+  NowTaskCandidate,
+  Task,
+  TaskPlacement,
+  TaskPlan,
+} from './types'
 
 // The up-next suggestion, derived from an oldest-first Day list. It is the first
 // Open task below the active row, or the first Open task when nothing is active.
@@ -41,45 +48,54 @@ export type TaskPlanWindow = Pick<TaskPlan, 'planBlockId' | 'plannedStart' | 'pl
 // task whose latest plan has already ended: that block is the record, not a live
 // group. Every branch reads the same queue order, so reordering inside the live
 // group changes what the member is on.
-export function pickNowTask(
+//
+// The compact form lets a ticking client pick Now from a stable read: it ships
+// each plan's first Open task plus the first Open task with no plan, and the
+// client compares them against its own clock. The server builds it without a
+// clock, so the query never re-subscribes just because time passed.
+export function buildNowCandidates(
   tasks: Doc<'task'>[],
-  plans: Map<Id<'task'>, TaskPlanWindow>,
-  now: number
-): Doc<'task'> | null {
-  const open = tasks.filter((task) => !task.done)
-  const planOf = (task: Doc<'task'>) => plans.get(task._id)
+  plans: Map<Id<'task'>, TaskPlanWindow>
+): NowCandidates {
+  // Queue order is the tie-breaker everywhere; `order` carries it across the wire.
+  const open = [...tasks].filter((task) => !task.done).sort(byQueueOrder)
+  const ordered = open.map((task, order) => ({
+    task,
+    candidate: { id: task._id, title: task.title, order } satisfies NowTaskCandidate,
+  }))
 
-  const live = open
-    .filter((task) => {
-      const plan = planOf(task)
-      return plan !== undefined && plan.plannedStart <= now && plan.plannedEnd > now
+  const unplanned = ordered.find(({ task }) => !plans.has(task._id))?.candidate ?? null
+  const byPlan = new Map<Id<'planBlock'>, NowPlanCandidate>()
+  for (const { task, candidate } of ordered) {
+    const plan = plans.get(task._id)
+    if (!plan || byPlan.has(plan.planBlockId)) continue
+    byPlan.set(plan.planBlockId, {
+      plannedStart: plan.plannedStart,
+      plannedEnd: plan.plannedEnd,
+      firstOpenTask: candidate,
     })
-    .sort((a, b) => {
-      const planA = planOf(a)!
-      const planB = planOf(b)!
-      return planA.plannedStart - planB.plannedStart || byPosition(a, b)
-    })
-  if (live.length > 0) return live[0]
+  }
 
-  const unassigned = open
-    .filter((task) => {
-      const plan = planOf(task)
-      return plan === undefined || plan.plannedEnd <= now
-    })
-    .sort(byPosition)
-  if (unassigned.length > 0) return unassigned[0]
+  return {
+    unplanned,
+    plans: [...byPlan.values()].sort((a, b) => a.plannedStart - b.plannedStart),
+  }
+}
 
-  const upcoming = open
-    .filter((task) => {
-      const plan = planOf(task)
-      return plan !== undefined && plan.plannedStart > now
-    })
-    .sort((a, b) => {
-      const planA = planOf(a)!
-      const planB = planOf(b)!
-      return planA.plannedStart - planB.plannedStart || byPosition(a, b)
-    })
-  return upcoming[0] ?? null
+// The clock-dependent half: run this in render, not in the query key.
+export function pickNowCandidate(candidates: NowCandidates, now: number): NowTaskCandidate | null {
+  const live = candidates.plans.find((plan) => plan.plannedStart <= now && plan.plannedEnd > now)
+  if (live) return live.firstOpenTask
+
+  const unscheduled = [
+    candidates.unplanned,
+    ...candidates.plans.filter((plan) => plan.plannedEnd <= now).map((plan) => plan.firstOpenTask),
+  ].filter((task): task is NowTaskCandidate => task !== null)
+  if (unscheduled.length > 0) {
+    return unscheduled.reduce((first, task) => (task.order < first.order ? task : first))
+  }
+
+  return candidates.plans.find((plan) => plan.plannedStart > now)?.firstOpenTask ?? null
 }
 
 // Where a new Open task lands in a Day already in queue order. `now` goes to the

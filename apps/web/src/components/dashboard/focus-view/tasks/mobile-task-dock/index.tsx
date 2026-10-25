@@ -1,5 +1,5 @@
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
-import type { Task } from '@studytrack/backend/convex/tasks/types'
+import type { NowTaskCandidate } from '@studytrack/backend/convex/tasks/types'
 import { useEffect, useState } from 'react'
 import { useMounted } from '~/hooks/use-mounted'
 import { useDateStore } from '~/state/date.store'
@@ -21,7 +21,7 @@ export function MobileTaskDock({
   roomCount,
 }: {
   queue: DayTaskQueue
-  nowTask: Task | null
+  nowTask: NowTaskCandidate | null
   onCompleteNow: () => void
   tracking: WorkSessionTracking
   roomCount: number

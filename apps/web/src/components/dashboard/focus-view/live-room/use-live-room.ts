@@ -8,9 +8,10 @@ import type {
   DashboardWorkSession,
 } from '@studytrack/backend/convex/workSessions/types'
 import { formatDurationHM } from '@studytrack/backend/convex/workSessions/util'
+import { pickNowCandidate } from '@studytrack/backend/convex/tasks/util'
 import { useQuery } from 'convex/react'
+import { useCachedMembers } from '~/hooks/use-cached-members'
 import { useDayStart } from '~/hooks/use-day-start'
-import { useNow } from '~/hooks/use-now'
 import type { Metric } from '@studytrack/backend/convex/preferences/types'
 import { colorFor, initials } from '~/lib/avatar'
 
@@ -38,17 +39,15 @@ export type LiveRoomPerson = {
 // reads; the caller supplies the clock for any durations it derives.
 export function useLiveRoom(): { inRoom: DashboardMember[] | undefined; count: number } {
   const dayStart = useDayStart()
-  // Now is derived against the caller's clock (a live plan can lead it), so the
-  // room ticks once a minute even though its durations tick on the rail.
-  const now = useNow(60_000)
   // The room is always the live Day, so it passes the same `todayStart` the
   // timeline does. With the Focus day on today the two subscriptions share one
-  // read; when the timeline views another Day, only that one is separate.
-  const members = useQuery(api.workSessions.getTodaysActivitiesForDashboard, {
+  // read; when the timeline views another Day, only that one is separate. The
+  // clock stays out of the args — the rail picks Now from the candidates.
+  const remoteMembers = useQuery(api.workSessions.getTodaysActivitiesForDashboard, {
     dayStart,
     todayStart: dayStart,
-    now: Math.floor(now / 60_000) * 60_000,
   })
+  const members = useCachedMembers(dayStart, remoteMembers)
   const inRoom = members
     ?.filter((member) => member.online)
     .sort((a, b) => joinedAt(a) - joinedAt(b))
@@ -67,6 +66,7 @@ export function toLiveRoomPerson(
   const name = member.name ?? member.discordId
   const active = activeWorkSession(member)
   const mode = active ? currentMode(active) : null
+  const nowTask = now === null ? null : pickNowCandidate(member.nowCandidates, now)
 
   return {
     key: member.discordId,
@@ -81,7 +81,7 @@ export function toLiveRoomPerson(
           )
         : null,
     mode: mode && mode !== 'break' ? mode : null,
-    task: member.activeTask?.title ?? null,
+    task: nowTask?.title ?? null,
     idle: idleLine(member.discordId, now),
   }
 }

@@ -1,4 +1,5 @@
 import type { Id } from '../_generated/dataModel'
+import type { NowCandidates } from '../tasks/types'
 import type { StudyMode } from '../bot/types'
 
 // A partial atom on the dashboard: one stretch of constant voice state. Breaks
@@ -63,14 +64,6 @@ export type DashboardPlanBlock = {
   endAt: number
 }
 
-// The member's one NOW task: the user-level active pointer, not tied to a
-// WorkSession and not cleared when tracking stops (ST-27). Public like every task
-// title (ADR-0007). Null when the pointer is unset or stale.
-export type DashboardActiveTask = {
-  id: Id<'task'>
-  title: string
-}
-
 // One card on the dashboard: a person's whole day.
 export type DashboardMember = {
   userId: Id<'users'> | null
@@ -86,6 +79,7 @@ export type DashboardMember = {
   // The member's planBlocks for this Day, oldest first. planBlocks are public,
   // so they ride on every member's card, even when they have no workSessions today.
   planBlocks: DashboardPlanBlock[]
-  // What the member says they are on right now, for the room rail.
-  activeTask: DashboardActiveTask | null
+  // The compact inputs for the room rail's Now, picked against the client clock.
+  // Clock-free, so the dashboard read stays stable; empty on a past or future Day.
+  nowCandidates: NowCandidates
 }

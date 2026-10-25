@@ -8,10 +8,6 @@ export const taskPlacement = v.union(v.literal('end'), v.literal('next'), v.lite
 // The dashboard's "today" is a shared calendar day; the caller passes its start
 // so queries never read the wall clock (see ../workSessions/util `startOfDay`).
 export const listMineArgs = v.object({ dayStart: v.number() })
-// Now depends on the caller's clock to tell a live plan from an upcoming one, so
-// the client supplies it (queries do not read the wall clock). `dayStart` is
-// today's Day, never the Day being viewed (ADR-0011).
-export const getNowArgs = v.object({ dayStart: v.number(), now: v.optional(v.number()) })
 // The plan popover's search over the caller's Open Tasks, across Days. `limit` is
 // clamped by the service; the query is already debounced on the client.
 export const searchTasksArgs = v.object({
@@ -44,7 +40,6 @@ export const clearActiveArgs = v.object({})
 
 export type TaskPlacement = Infer<typeof taskPlacement>
 export type ListMineArgs = Infer<typeof listMineArgs>
-export type GetNowArgs = Infer<typeof getNowArgs>
 export type SearchTasksArgs = Infer<typeof searchTasksArgs>
 export type CreateTaskArgs = Infer<typeof createTaskArgs>
 export type ToggleTaskArgs = Infer<typeof toggleTaskArgs>
@@ -86,3 +81,27 @@ export type ActiveTask = {
   task: Task
   activeSince: number
 }
+
+// The compact inputs a ticking client needs to pick Now without a re-read:
+// every plan's first Open task (in queue order) and the first Open task with no
+// plan. `order` is the task's index in the member's Open queue, so two candidates
+// can be compared without shipping the whole queue.
+export type NowTaskCandidate = {
+  id: Id<'task'>
+  title: string
+  order: number
+}
+
+export type NowPlanCandidate = {
+  plannedStart: number
+  plannedEnd: number
+  firstOpenTask: NowTaskCandidate
+}
+
+export type NowCandidates = {
+  unplanned: NowTaskCandidate | null
+  // Plans with at least one Open task, earliest first.
+  plans: NowPlanCandidate[]
+}
+
+export const EMPTY_NOW_CANDIDATES: NowCandidates = { unplanned: null, plans: [] }
