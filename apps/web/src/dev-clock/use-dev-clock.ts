@@ -20,7 +20,7 @@ export function useDevClockOffset(): number {
 }
 
 export function useDevClock() {
-  const clock = useQuery(api.devClock.get, {})
+  const clock = useQuery(api.devClock.get, isDevClockBuild ? {} : 'skip')
   const selectToday = useDateStore((state) => state.selectToday)
   const save = useMutation(api.devClock.setOffset).withOptimisticUpdate((localStore, args) => {
     const cachedClock = localStore.getQuery(api.devClock.get, {})
