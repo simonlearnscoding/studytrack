@@ -24,6 +24,7 @@ export type LiveRoomPerson = {
   key: string
   initials: string
   color: string
+  image: string | null
   name: string
   time: string | null
   mode: Exclude<StudyMode, 'break'> | null
@@ -66,6 +67,7 @@ export function toLiveRoomPerson(
     key: member.discordId,
     initials: initials(name),
     color: colorFor(member.discordId),
+    image: member.image,
     name,
     time:
       active && now !== null

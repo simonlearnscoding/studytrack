@@ -15,12 +15,15 @@ import {
 } from '../workSessions/util'
 import type {
   GetBoardsArgs,
-  GetBoardsForViewerArgs,
+  GetLeaderboardTableForViewerArgs,
   LeaderboardBoards,
+  LeaderboardPeriodTotals,
   LeaderboardRow,
+  LeaderboardTableRow,
+  LeaderboardTableTotal,
   LeaderboardTotal,
 } from './types'
-import { rankTotals, todaysTotals } from './util'
+import { buildTableRows, rankTotals, todaysTotals } from './util'
 
 // The bot's leaderboard read: Today, plus the Week and Month of the focus day in
 // one round trip. It passes focus = today, so the boards are the current periods.
@@ -29,29 +32,35 @@ import { rankTotals, todaysTotals } from './util'
 // must not read the wall clock.
 export async function getBoards(ctx: QueryCtx, args: GetBoardsArgs): Promise<LeaderboardBoards> {
   assertBotSecret(args.secret)
-  return await buildBoards(ctx, args)
+  const totals = await collectPeriodTotals(ctx, args)
+  return {
+    today: await resolveNames(ctx, rankTotals(totals.today)),
+    day: await resolveNames(ctx, rankTotals(totals.day)),
+    week: await resolveNames(ctx, rankTotals(totals.week)),
+    month: await resolveNames(ctx, rankTotals(totals.month)),
+  }
 }
 
-// The web's read of the same three boards, for a signed-in member. Same ranking
-// and same data as the bot's; only the gate differs. An unauthenticated caller
-// gets empty boards rather than an error, so the dashboard can show its empty
-// state without special-casing.
-export async function getBoardsForViewer(
+// The web's read: one comparison row per member who reaches a period's top ten
+// under either metric, with every period's value present. An unauthenticated
+// caller gets an empty table rather than an error, so the dashboard can show its
+// empty state without special-casing.
+export async function getLeaderboardTableForViewer(
   ctx: QueryCtx,
-  args: GetBoardsForViewerArgs
-): Promise<LeaderboardBoards> {
-  if (!(await hasViewer(ctx))) return { today: [], day: [], week: [], month: [] }
-  return await buildBoards(ctx, args)
+  args: GetLeaderboardTableForViewerArgs
+): Promise<LeaderboardTableRow[]> {
+  if (!(await hasViewer(ctx))) return []
+  const totals = await collectPeriodTotals(ctx, args)
+  return await resolveTableNames(ctx, buildTableRows(totals))
 }
 
-// The shared computation behind both reads: today's live totals per member, plus
-// the Day, Week and Month of the focus day built from past Daily totals merged
-// with today's. Auth is the caller's concern; this is pure I/O and ranking over
-// the focus day's windows.
-async function buildBoards(
+// Today's live totals per member, plus the Day, Week and Month of the focus day
+// built from past Daily totals merged with today's. Auth is the caller's concern;
+// this is the I/O shared by the bot's ranked lists and the web's table.
+async function collectPeriodTotals(
   ctx: QueryCtx,
-  args: GetBoardsForViewerArgs
-): Promise<LeaderboardBoards> {
+  args: GetLeaderboardTableForViewerArgs
+): Promise<LeaderboardPeriodTotals> {
   const todayStart = startOfDay(args.now, DASHBOARD_TIME_ZONE)
   const focusStart = args.focusDayStart
   const focusEnd = nextDayStart(focusStart, DASHBOARD_TIME_ZONE)
@@ -76,12 +85,7 @@ async function buildBoards(
     liveIfContains(monthStart, monthEnd, todayStart, todayTotals)
   )
 
-  return {
-    today: await resolveNames(ctx, rankTotals(todayTotals)),
-    day: await resolveNames(ctx, rankTotals(dayTotals)),
-    week: await resolveNames(ctx, rankTotals(weekTotals)),
-    month: await resolveNames(ctx, rankTotals(monthTotals)),
-  }
+  return { today: todayTotals, day: dayTotals, week: weekTotals, month: monthTotals }
 }
 
 // Today's still-running totals are merged into a window only when that window
@@ -106,6 +110,7 @@ function mergeTotals(past: DailyTotalSum[], today: LeaderboardTotal[]): Leaderbo
       discordId: total.memberKey,
       userId: total.userId,
       name: null,
+      image: null,
       deepFocusMs: total.deepFocusMs,
       totalMs: total.totalMs,
       online: false,
@@ -122,34 +127,68 @@ function mergeTotals(past: DailyTotalSum[], today: LeaderboardTotal[]): Leaderbo
     existing.totalMs += row.totalMs
     existing.online = row.online
     existing.name ??= row.name
+    existing.image ??= row.image
     existing.userId ??= row.userId
   }
 
   return [...byMember.values()]
 }
 
-// Fill in names for the ranked rows only — the board never fetches users for the
-// whole week or month, just the top ten it shows.
+// Fill in names for the ranked rows only — the bot never fetches users for the
+// whole week or month, just the ten it shows.
 async function resolveNames(ctx: QueryCtx, rows: LeaderboardTotal[]): Promise<LeaderboardRow[]> {
   const named: LeaderboardRow[] = []
   for (const row of rows) {
-    let name = row.name
-    if (name === null) {
-      const user = row.userId
-        ? await ctx.db.get(row.userId)
-        : await ctx.db
-            .query('users')
-            .withIndex('by_discordId', (q) => q.eq('discordId', row.discordId))
-            .first()
-      name = user?.name ?? null
-    }
+    const profile = await resolveProfile(ctx, row)
     named.push({
       discordId: row.discordId,
-      name,
+      name: profile.name,
+      image: profile.image,
       deepFocusMs: row.deepFocusMs,
       totalMs: row.totalMs,
       online: row.online,
     })
   }
   return named
+}
+
+// Same profile lookup for the web table's union rows.
+async function resolveTableNames(
+  ctx: QueryCtx,
+  rows: LeaderboardTableTotal[]
+): Promise<LeaderboardTableRow[]> {
+  const named: LeaderboardTableRow[] = []
+  for (const row of rows) {
+    const profile = await resolveProfile(ctx, row)
+    named.push({
+      discordId: row.discordId,
+      name: profile.name,
+      image: profile.image,
+      day: row.day,
+      week: row.week,
+      month: row.month,
+    })
+  }
+  return named
+}
+
+// Today's live rows already carry the profile; past Daily totals do not, so
+// resolve it from the owning user, falling back to the Discord id index.
+async function resolveProfile(
+  ctx: QueryCtx,
+  row: {
+    discordId: string
+    name: string | null
+    image: string | null
+    userId: LeaderboardTotal['userId']
+  }
+): Promise<{ name: string | null; image: string | null }> {
+  if (row.name !== null && row.image !== null) return { name: row.name, image: row.image }
+  const user = row.userId
+    ? await ctx.db.get(row.userId)
+    : await ctx.db
+        .query('users')
+        .withIndex('by_discordId', (q) => q.eq('discordId', row.discordId))
+        .first()
+  return { name: row.name ?? user?.name ?? null, image: row.image ?? user?.image ?? null }
 }

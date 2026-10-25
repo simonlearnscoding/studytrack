@@ -20,6 +20,7 @@ function row(overrides: Partial<LeaderboardRow> = {}): LeaderboardRow {
   return {
     discordId: 'd1',
     name: 'Ada',
+    image: null,
     deepFocusMs: 0,
     totalMs: 0,
     online: false,

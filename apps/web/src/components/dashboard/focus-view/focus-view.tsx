@@ -52,7 +52,7 @@ export function FocusView() {
     tracking.startedAt === null ? 0 : Math.max(0, now - tracking.startedAt)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useLiveRoom()
-  const { dayRows, weekRows, monthRows } = useLeaderboard(now)
+  const { rows: leaderboardRows } = useLeaderboard(now)
   const calendar = useMonthCalendar(now)
   // below xl it sits full-width in the main column; xl+ keeps it in the rail
   const monthCalendar = <MonthCalendar calendar={calendar} />
@@ -66,7 +66,7 @@ export function FocusView() {
           <PresenceRail members={inRoom} />
           {/* medium screens: consistency tucks into the left rail, behind a divider */}
           <div className="hidden border-t border-white/[0.06] pt-5 lg:block xl:hidden">
-            <Leaderboard dayRows={dayRows} weekRows={weekRows} monthRows={monthRows} compact />
+            <Leaderboard rows={leaderboardRows} compact />
           </div>
         </div>
 
@@ -89,7 +89,7 @@ export function FocusView() {
           <div className="flex flex-col gap-6">
             <div className="lg:hidden">{monthCalendar}</div>
             <div className="lg:hidden xl:block">
-              <Leaderboard dayRows={dayRows} weekRows={weekRows} monthRows={monthRows} />
+              <Leaderboard rows={leaderboardRows} />
             </div>
           </div>
           {/* the personal rail is desktop-only — on mobile the dock owns it */}

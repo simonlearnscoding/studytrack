@@ -1,62 +1,79 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
-import type { LeaderboardRow } from '@studytrack/backend/convex/leaderboard/types'
+import type {
+  LeaderboardCell,
+  LeaderboardTableRow,
+} from '@studytrack/backend/convex/leaderboard/types'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { useQuery } from 'convex/react'
 import { useDateStore } from '~/state/date.store'
 import { colorFor, initials } from '~/lib/avatar'
 
-// One row of the leaderboard: a member's avatar identity plus their study
-// time in the two viewed periods, in whole minutes. The site metric switch picks
-// `focus` or `total` for the numbers and the rank.
+// One member's cell in one period: both metric cuts plus the rank each would
+// lead with. The site metric switch picks which pair to show.
+export type LeaderboardCellVM = {
+  focus: number
+  total: number
+  focusRank: number | null
+  totalRank: number | null
+}
+
+// One row of the comparison table: a member's avatar identity plus their numbers
+// in every period. Every row carries all three periods, so a value is present
+// even when that period's own top ten did not include the member.
 export type LeaderboardRowVM = {
   key: string
   initials: string
   color: string
+  image: string | null
   name: string
-  focus: number
-  total: number
   you: boolean
+  day: LeaderboardCellVM
+  week: LeaderboardCellVM
+  month: LeaderboardCellVM
 }
 
-// The live board read: the Day, Week and Month of the focus day, keyed on the
+// The live table read: the Day, Week and Month of the focus day, keyed on the
 // selected date. The caller supplies a once-a-minute `now` so the current period's
 // live minutes update without refetching every second; every other argument is
 // stable, so Convex can reuse the read across identical focus days.
-export function useLeaderboard(now: number): {
-  dayRows: LeaderboardRowVM[]
-  weekRows: LeaderboardRowVM[]
-  monthRows: LeaderboardRowVM[]
-} {
+export function useLeaderboard(now: number): { rows: LeaderboardRowVM[] } {
   const selectedDate = useDateStore((state) => state.selectedDate)
   // Normalise the client Date to the shared Europe/Zurich day start rather than
   // trusting the browser's own midnight.
   const focusDayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
-  const boards = useQuery(api.leaderboard.getBoardsForViewer, { focusDayStart, now })
+  const table = useQuery(api.leaderboard.getLeaderboardTableForViewer, { focusDayStart, now })
   const me = useQuery(api.users.me)
   // A row is keyed by the shared member key the backend writes: the Discord id, or
   // the user id for a manual-only member with no Discord identity.
   const meKey = me ? (me.discordId ?? String(me._id)) : null
 
-  return {
-    dayRows: toRows(boards?.day ?? [], meKey),
-    weekRows: toRows(boards?.week ?? [], meKey),
-    monthRows: toRows(boards?.month ?? [], meKey),
-  }
+  return { rows: toRows(table ?? [], meKey) }
 }
 
-function toRows(rows: LeaderboardRow[], meKey: string | null): LeaderboardRowVM[] {
+function toRows(rows: LeaderboardTableRow[], meKey: string | null): LeaderboardRowVM[] {
   return rows.map((row) => {
     const name = row.name ?? row.discordId
     return {
       key: row.discordId,
       initials: initials(name),
       color: colorFor(row.discordId),
+      image: row.image,
       name,
-      focus: toMinutes(row.deepFocusMs),
-      total: toMinutes(row.totalMs),
       you: row.discordId === meKey,
+      day: toCell(row.day),
+      week: toCell(row.week),
+      month: toCell(row.month),
     }
   })
+}
+
+function toCell(cell: LeaderboardCell): LeaderboardCellVM {
+  return {
+    focus: toMinutes(cell.deepFocusMs),
+    total: toMinutes(cell.totalMs),
+    focusRank: cell.deepFocusRank,
+    totalRank: cell.totalRank,
+  }
 }
 
 function toMinutes(ms: number): number {

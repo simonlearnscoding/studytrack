@@ -72,7 +72,7 @@ export function PresenceRail({
                 className="card-surface px-3 py-2.5 max-lg:w-[10.5rem] max-lg:shrink-0"
               >
                 <div className="flex items-center gap-2.5">
-                  <Avatar initials={p.initials} color={p.color} dot />
+                  <Avatar initials={p.initials} color={p.color} image={p.image} dot />
                   <p className="min-w-0 flex-1 truncate text-xs font-medium">{p.name}</p>
                   {p.mode && <ModeGlyph mode={p.mode} />}
                   <span className="text-primary font-mono text-xs font-medium">

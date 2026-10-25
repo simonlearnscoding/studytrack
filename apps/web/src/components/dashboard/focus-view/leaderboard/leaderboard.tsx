@@ -10,79 +10,47 @@ import { useMetric } from '~/preferences/use-metric'
 
 const periods = ['day', 'week', 'month'] as const
 type Period = LeaderboardPeriod
-const other = { focus: 'total', total: 'focus' } as Record<Metric, Metric>
 
-type MergedRow = {
-  key: string
-  day?: LeaderboardRowVM
-  week?: LeaderboardRowVM
-  month?: LeaderboardRowVM
-  rank: number
-}
+type RankedRow = LeaderboardRowVM & { rank: number | null }
 
-/** The row's minutes for one period · metric pair — the number the rank sorts on.
- *  A member missing from a period (no study in that Day, Week or Month) sorts last. */
-const rowFor = (row: MergedRow, period: Period) => row[period]
-const minutesFor = (row: MergedRow, period: Period, metric: Metric) =>
-  rowFor(row, period)?.[metric] ?? -1
+/** The rank the selected period's chosen metric leads with. Null when the member
+ *  had no time in that period, so they sort after everyone who did. */
+const rankFor = (row: LeaderboardRowVM, period: Period, metric: Metric) =>
+  metric === 'focus' ? row[period].focusRank : row[period].totalRank
 
-/** One row per person: join the Day, Week and Month lists on the member key,
- *  keeping anyone who appears in any. A member missing from one period still gets
- *  a row, with a dash in the periods they miss. */
-function mergeRows(
-  dayRows: LeaderboardRowVM[],
-  weekRows: LeaderboardRowVM[],
-  monthRows: LeaderboardRowVM[]
-): MergedRow[] {
-  const byKey = new Map<string, MergedRow>()
-  for (const day of dayRows) byKey.set(day.key, { key: day.key, day, rank: 0 })
-  for (const week of weekRows) {
-    const existing = byKey.get(week.key)
-    if (existing) existing.week = week
-    else byKey.set(week.key, { key: week.key, week, rank: 0 })
-  }
-  for (const month of monthRows) {
-    const existing = byKey.get(month.key)
-    if (existing) existing.month = month
-    else byKey.set(month.key, { key: month.key, month, rank: 0 })
-  }
-  return [...byKey.values()]
-}
+/** The row's displayed number for one period · metric pair. */
+const minutesFor = (row: LeaderboardRowVM, period: Period, metric: Metric) => row[period][metric]
 
 export function Leaderboard({
-  dayRows,
-  weekRows,
-  monthRows,
+  rows,
   compact = false,
   initial = 10,
 }: {
-  dayRows: LeaderboardRowVM[]
-  weekRows: LeaderboardRowVM[]
-  monthRows: LeaderboardRowVM[]
+  rows: LeaderboardRowVM[]
   /** compact = slim row for the left rail */
   compact?: boolean
   /** rows shown before the "show more" affordance */
   initial?: number
 }) {
   // The metric comes from the live-room rail's switch, which leads both the
-  // numbers and the rank order here; the live surfaces follow it too. Defaults
-  // to Deep focus.
+  // numbers and the rank order here.
   const metric = useMetric()
   // The Period is a Preference too, so the board opens on the member's last
   // choice across devices.
   const [sort, setSort] = useLeaderboardPeriodPreference()
   const [expanded, setExpanded] = useState(false)
-  // The column header picks the Period that leads the rank; the other breaks ties.
-  const rows = mergeRows(dayRows, weekRows, monthRows)
+  // Ranking is over every member, not just the rows returned, so a row surfaced
+  // by another period still shows its true standing — or none — here.
+  const ranked: RankedRow[] = [...rows]
     .sort(
       (a, b) =>
-        minutesFor(b, sort, metric) - minutesFor(a, sort, metric) ||
-        minutesFor(b, sort, other[metric]) - minutesFor(a, sort, other[metric])
+        (rankFor(a, sort, metric) ?? Infinity) - (rankFor(b, sort, metric) ?? Infinity) ||
+        a.key.localeCompare(b.key)
     )
-    .map((row, i) => ({ ...row, rank: i + 1 }))
-  const visible = expanded ? rows : rows.slice(0, initial)
-  const hidden = Math.max(0, rows.length - initial)
-  const isEmpty = rows.length === 0
+    .map((row) => ({ ...row, rank: rankFor(row, sort, metric) }))
+  const visible = expanded ? ranked : ranked.slice(0, initial)
+  const hidden = Math.max(0, ranked.length - initial)
+  const isEmpty = ranked.length === 0
 
   // shared by the header and body rows so the column buttons sit exactly over
   // the values they sort
@@ -91,7 +59,7 @@ export function Leaderboard({
     : 'grid-cols-[20px_26px_minmax(90px,1fr)_54px_54px_54px] gap-2 px-1.5 py-1.5'
 
   return (
-    <section>
+    <section className="select-none">
       {compact && (
         <div className="pb-2">
           <PeriodRange period={sort} />
@@ -131,48 +99,35 @@ export function Leaderboard({
           </p>
         </div>
       ) : (
-        visible.map((b) => {
-          // The Week is the lead row; a member the Week misses falls back to Month,
-          // then Day (a focus day outside both would be a future/past edge case).
-          const lead = b.week ?? b.month ?? b.day
-          if (!lead) return null
-          return (
-            <div
-              key={b.key}
-              className={`grid items-center border-b border-white/[0.04] ${grid} ${
-                lead.you ? 'bg-primary/5 rounded-lg' : ''
-              }`}
+        visible.map((row) => (
+          <div
+            key={row.key}
+            className={`grid items-center border-b border-white/[0.04] ${grid} ${
+              row.you ? 'bg-primary/5 rounded-lg' : ''
+            }`}
+          >
+            <span
+              className={`text-subtle-foreground font-mono ${compact ? 'text-sm' : 'text-base'}`}
             >
+              {row.rank === null ? '—' : `#${row.rank}`}
+            </span>
+            <Avatar initials={row.initials} color={row.color} image={row.image} size={24} />
+            <p className={`truncate text-white/70 ${compact ? 'text-sm' : 'text-base'}`}>
+              {row.name}
+              {row.you && <span className="text-primary ml-1.5 text-base">you</span>}
+            </p>
+            {periods.map((p) => (
               <span
-                className={`text-subtle-foreground font-mono ${compact ? 'text-sm' : 'text-base'}`}
+                key={p}
+                className={`text-right font-mono whitespace-nowrap transition-colors ${compact ? 'text-sm' : 'text-base'} ${
+                  sort === p ? 'text-foreground/75' : 'text-subtle-foreground'
+                }`}
               >
-                #{b.rank}
+                {formatMinutes(minutesFor(row, p, metric))}
               </span>
-              <Avatar initials={lead.initials} color={lead.color} size={24} />
-              <p className={`truncate text-white/70 ${compact ? 'text-sm' : 'text-base'}`}>
-                {lead.name}
-                {lead.you && <span className="text-primary ml-1.5 text-base">you</span>}
-              </p>
-              {periods.map((p) => {
-                const cell = rowFor(b, p)
-                return (
-                  <span
-                    key={p}
-                    className={`text-right font-mono whitespace-nowrap transition-colors ${compact ? 'text-sm' : 'text-base'} ${
-                      cell
-                        ? sort === p
-                          ? 'text-foreground/75'
-                          : 'text-subtle-foreground'
-                        : 'text-hint'
-                    }`}
-                  >
-                    {cell ? formatMinutes(cell[metric]) : '—'}
-                  </span>
-                )
-              })}
-            </div>
-          )
-        })
+            ))}
+          </div>
+        ))
       )}
       {hidden > 0 && (
         <button

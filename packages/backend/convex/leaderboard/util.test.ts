@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
 import type { DashboardMember, DashboardPartial, DashboardWorkSession } from '../workSessions/types'
-import type { LeaderboardRow } from './types'
-import { MAX_LEADERBOARD_ROWS, rankTotals, todaysTotals } from './util'
+import type { LeaderboardRow, LeaderboardTotal } from './types'
+import { buildTableRows, MAX_LEADERBOARD_ROWS, rankTotals, todaysTotals } from './util'
 
 const M = 60 * 1000
 const H = 60 * 60 * 1000
@@ -51,11 +51,16 @@ function row(overrides: Partial<LeaderboardRow> = {}): LeaderboardRow {
   return {
     discordId: 'd1',
     name: 'Ada',
+    image: null,
     deepFocusMs: 0,
     totalMs: 0,
     online: false,
     ...overrides,
   }
+}
+
+function total(overrides: Partial<LeaderboardTotal> = {}): LeaderboardTotal {
+  return { ...row(), userId: null, ...overrides }
 }
 
 describe('todaysTotals', () => {
@@ -137,5 +142,45 @@ describe('rankTotals', () => {
     const ranked = rankTotals(rows)
     expect(ranked).toHaveLength(MAX_LEADERBOARD_ROWS)
     expect(ranked[0].discordId).toBe('member-11')
+  })
+})
+
+describe('buildTableRows', () => {
+  it('keeps a period value for a member another period cut from its top ten', () => {
+    const week = Array.from({ length: 12 }, (_, i) =>
+      total({
+        discordId: `member-${i}`,
+        deepFocusMs: (20 - i) * M,
+        totalMs: (20 - i) * M,
+      })
+    )
+    const ada = total({ discordId: 'ada', deepFocusMs: 5 * M, totalMs: 5 * M })
+    const day = [total({ discordId: 'ada', deepFocusMs: 30 * M, totalMs: 30 * M })]
+
+    const table = buildTableRows({ day, week: [...week, ada], month: [...week, ada] })
+    const adaRow = table.find((r) => r.discordId === 'ada')
+
+    expect(adaRow).toMatchObject({
+      day: { deepFocusMs: 30 * M, deepFocusRank: 1 },
+      week: { deepFocusMs: 5 * M, deepFocusRank: 13 },
+    })
+  })
+
+  it('includes a member who only reaches a period’s top ten under Total time', () => {
+    const week = Array.from({ length: 11 }, (_, i) =>
+      total({
+        discordId: `focus-${i}`,
+        deepFocusMs: (20 - i) * M,
+        totalMs: 1 * M,
+      })
+    )
+    const totalOnly = total({ discordId: 'total-only', deepFocusMs: 0, totalMs: 4 * H })
+
+    const table = buildTableRows({ day: [], week: [...week, totalOnly], month: [] })
+    const row = table.find((r) => r.discordId === 'total-only')
+
+    expect(row).toMatchObject({
+      week: { deepFocusMs: 0, totalMs: 4 * H, deepFocusRank: 12, totalRank: 1 },
+    })
   })
 })

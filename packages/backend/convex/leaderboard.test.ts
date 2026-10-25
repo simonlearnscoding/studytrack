@@ -22,6 +22,12 @@ const PREV_WEEK_FOCUS = Date.UTC(2026, 5, 7, 22, 0, 0)
 // Fri 15 May: a focus day whose Week and Month both fall before today's.
 const MAY_FOCUS = Date.UTC(2026, 4, 14, 22, 0, 0)
 
+// Thursday 18 June (local) and a past Day inside its Week, so the Week has time
+// before the focus day itself.
+const THURSDAY_START = Date.UTC(2026, 5, 17, 22, 0, 0)
+const THURSDAY_NOW = Date.UTC(2026, 5, 18, 8, 0, 0)
+const THURSDAY_WEEK_DAY = Date.UTC(2026, 5, 15, 22, 0, 0)
+
 beforeAll(() => {
   process.env.BOT_SHARED_SECRET = SECRET
 })
@@ -49,13 +55,13 @@ function viewerArgs(overrides: Partial<typeof WINDOWS> = {}) {
   return { ...WINDOWS, ...overrides }
 }
 
-async function addUser(t: Test, discordId: string, name: string) {
+async function addUser(t: Test, discordId: string, name: string, image?: string) {
   await t.run(async (ctx) => {
     const existing = await ctx.db
       .query('users')
       .withIndex('by_discordId', (q) => q.eq('discordId', discordId))
       .first()
-    if (!existing) await ctx.db.insert('users', { discordId, name, createdAt: NOW })
+    if (!existing) await ctx.db.insert('users', { discordId, name, image, createdAt: NOW })
   })
 }
 
@@ -379,8 +385,8 @@ describe('leaderboard.getBoards', () => {
   })
 })
 
-describe('leaderboard.getBoardsForViewer', () => {
-  it('returns empty boards when unauthenticated', async () => {
+describe('leaderboard.getLeaderboardTableForViewer', () => {
+  it('returns an empty table when unauthenticated', async () => {
     const t = makeTest()
     await addWorkSession(t, {
       discordId: 'ada',
@@ -390,13 +396,54 @@ describe('leaderboard.getBoardsForViewer', () => {
       endedAt: NOW,
     })
 
-    const boards = await t.query(api.leaderboard.getBoardsForViewer, viewerArgs())
-    expect(boards).toEqual({ today: [], day: [], week: [], month: [] })
+    const table = await t.query(api.leaderboard.getLeaderboardTableForViewer, viewerArgs())
+    expect(table).toEqual([])
   })
 
-  it('returns the same three boards as the bot for a signed-in member', async () => {
+  it('keeps every period value even when that period’s top ten cuts the member', async () => {
     const t = makeTest()
-    await addUser(t, 'ada', 'Ada')
+    // Eleven members with an hour earlier in the Week, so Ada's 30m today ranks
+    // twelfth there — outside the bot's Week list — while she leads the Day.
+    for (let i = 0; i < 11; i++) {
+      const discordId = `member-${i}`
+      await addUser(t, discordId, `Member ${i}`)
+      await addPastDay(t, {
+        discordId,
+        dayStart: THURSDAY_WEEK_DAY,
+        deepFocusMs: 1 * H,
+        totalMs: 1 * H,
+      })
+    }
+    await addWorkSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: THURSDAY_NOW - 30 * M,
+      endedAt: THURSDAY_NOW,
+    })
+
+    const args = viewerArgs({ now: THURSDAY_NOW, focusDayStart: THURSDAY_START })
+    const table = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.leaderboard.getLeaderboardTableForViewer, args)
+    const ada = table.find((row) => row.discordId === 'ada')
+
+    expect(ada).toMatchObject({
+      name: 'Ada',
+      day: { deepFocusMs: 30 * M, totalMs: 30 * M, deepFocusRank: 1, totalRank: 1 },
+      week: { deepFocusMs: 30 * M, totalMs: 30 * M, deepFocusRank: 12, totalRank: 12 },
+    })
+
+    // The bot's Week list still caps at ten and cuts her; the table does not.
+    const boards = await t.query(api.leaderboard.getBoards, queryArgs(args))
+    expect(boards.week).toHaveLength(10)
+    expect(boards.week.map((row) => row.discordId)).not.toContain('ada')
+  })
+
+  it('keeps a past period’s value and resolves names for a past focus day', async () => {
+    const t = makeTest()
+    const image = 'https://example.test/ada.png'
+    await addUser(t, 'ada', 'Ada', image)
     await addPastDay(t, {
       discordId: 'ada',
       dayStart: Date.UTC(2026, 5, 8, 22, 0, 0),
@@ -411,16 +458,22 @@ describe('leaderboard.getBoardsForViewer', () => {
       endedAt: NOW - 90 * M,
     })
 
-    // Bot parity on the same focus day: the viewer read and the bot read agree,
-    // including the past Week as a pure sum and the live Month.
-    const args = viewerArgs({ focusDayStart: PREV_WEEK_FOCUS })
-    const viaBot = await t.query(api.leaderboard.getBoards, queryArgs(args))
-    const viaViewer = await t
+    // Focus = the previous Week: Day is empty, Week is a pure sum, and the Month
+    // still contains today's live minutes.
+    const table = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.leaderboard.getBoardsForViewer, args)
+      .query(
+        api.leaderboard.getLeaderboardTableForViewer,
+        viewerArgs({ focusDayStart: PREV_WEEK_FOCUS })
+      )
 
-    expect(viaViewer).toEqual(viaBot)
-    expect(viaViewer.week[0]).toMatchObject({ name: 'Ada', deepFocusMs: 40 * M })
-    expect(viaViewer.month[0]).toMatchObject({ name: 'Ada', deepFocusMs: 70 * M })
+    expect(table).toHaveLength(1)
+    expect(table[0]).toMatchObject({
+      name: 'Ada',
+      image,
+      day: { deepFocusMs: 0, totalMs: 0, deepFocusRank: null, totalRank: null },
+      week: { deepFocusMs: 40 * M, totalMs: 1 * H, deepFocusRank: 1, totalRank: 1 },
+      month: { deepFocusMs: 70 * M, totalMs: 90 * M, deepFocusRank: 1, totalRank: 1 },
+    })
   })
 })
