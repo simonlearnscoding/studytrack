@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { Input } from '~/components/ui/input'
 import { parseClockText, type PlanBlockFormValues } from './plan-block-form'
 
-// The three fields a draft and a stored plan share: a required name, the two
+// The three fields a draft and a stored plan share: an optional name, the two
 // endpoints on the Day's clock, and the duration derived from them. Editing the
 // total moves only the end; the start stays put.
 export function PlanBlockFields({
@@ -27,7 +27,7 @@ export function PlanBlockFields({
 
   return (
     <div className="mt-2 flex flex-col gap-2">
-      <Field label="Title">
+      <Field label="Title (optional)">
         <Input
           autoFocus={autoFocusTitle}
           value={values.title}

@@ -99,14 +99,19 @@ describe('planBlocks.create', () => {
     expect(row.title).toBe('Physics')
   })
 
-  it('refuses a plan without a title', async () => {
+  it('stores a plan whose title is blank or omitted', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await expect(
-      t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { title: '   ' }))
-    ).rejects.toThrow(/title/)
-    expect(await rowsOf(t)).toEqual([])
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA, { title: '   ' }))
+    await t.withIdentity(ADA).mutation(api.planBlocks.create, {
+      dayStart: DAY,
+      plannedStart: END,
+      plannedEnd: END + H,
+    })
+
+    const rows = await rowsOf(t)
+    expect(rows.map((row) => row.title)).toEqual([undefined, undefined])
   })
 
   it('refuses a Day that is not a day start', async () => {
@@ -260,23 +265,22 @@ describe('planBlocks.update', () => {
     expect(after).toMatchObject({ title: 'Physics', plannedStart: START, plannedEnd: END })
   })
 
-  it('refuses an empty title and writes nothing', async () => {
+  it('clears the title when the update sends a blank one', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
-    await expect(
-      t.withIdentity(ADA).mutation(api.planBlocks.update, {
-        planBlockId: row._id,
-        title: '   ',
-        plannedStart: START,
-        plannedEnd: END,
-      })
-    ).rejects.toThrow(/title/)
+    await t.withIdentity(ADA).mutation(api.planBlocks.update, {
+      planBlockId: row._id,
+      title: '   ',
+      plannedStart: START,
+      plannedEnd: END,
+    })
 
     const [after] = await rowsOf(t)
-    expect(after).toMatchObject({ title: 'Deep work', plannedStart: START, plannedEnd: END })
+    expect(after.title).toBeUndefined()
+    expect(after).toMatchObject({ plannedStart: START, plannedEnd: END })
   })
 
   it('refuses a resize that overlaps a neighbouring plan', async () => {

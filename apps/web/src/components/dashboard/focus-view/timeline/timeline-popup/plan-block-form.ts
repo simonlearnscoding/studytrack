@@ -34,7 +34,6 @@ export function planBlockFormError({
   nowMin: number
   isWindowEditable: boolean
 }): string | null {
-  if (!values.title.trim()) return 'Give the plan a title.'
   if (!isWindowEditable) return null
   if (values.startMin < 0 || values.endMin > DAY_MINUTES) return 'Keep the plan inside its day.'
   if (values.endMin <= values.startMin) return 'The end must be after the start.'

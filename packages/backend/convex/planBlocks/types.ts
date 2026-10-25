@@ -4,10 +4,11 @@ import type { Id } from '../_generated/dataModel'
 // One planBlock's whole window, supplied by the caller. `dayStart` is the
 // Europe/Zurich Day the planBlock belongs to; the two instants must sit inside it
 // and on the 15-minute grid the drag snaps to. `title` is the member's name for
-// the block, trimmed by the service.
+// the block, trimmed by the service; an omitted or blank title leaves the block
+// unnamed and the lane falls back to its time range.
 export const createPlanBlockArgs = v.object({
   dayStart: v.number(),
-  title: v.string(),
+  title: v.optional(v.string()),
   plannedStart: v.number(),
   plannedEnd: v.number(),
 })
@@ -15,8 +16,8 @@ export type CreatePlanBlockArgs = Infer<typeof createPlanBlockArgs>
 
 // Rename one of the caller's planBlocks and, while it has not started, move its
 // window. The Day comes from the stored row, never from the caller, so a
-// planBlock cannot be moved across Days. A supplied title must be non-empty; a
-// drag on a legacy row may omit it to keep the row title-less.
+// planBlock cannot be moved across Days. A supplied title is trimmed; a blank one
+// clears the name, while omitting it (a drag) keeps the stored title.
 export const updatePlanBlockArgs = v.object({
   planBlockId: v.id('planBlock'),
   title: v.optional(v.string()),

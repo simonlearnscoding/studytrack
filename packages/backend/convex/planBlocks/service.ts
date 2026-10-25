@@ -34,12 +34,12 @@ export function planFloor(dayStart: number, now: number): number {
 export async function createPlanBlock(
   ctx: MutationCtx,
   dayStart: number,
-  title: string,
+  title: string | undefined,
   plannedStart: number,
   plannedEnd: number
 ): Promise<void> {
   const user = await requireUser(ctx)
-  const planTitle = requireTitle(title)
+  const planTitle = normalizeTitle(title)
   const now = await getClockNow(ctx)
   assertValidWindow(dayStart, plannedStart, plannedEnd, now)
   await assertNoOverlap(ctx, user._id, dayStart, plannedStart, plannedEnd)
@@ -47,7 +47,7 @@ export async function createPlanBlock(
   await ctx.db.insert('planBlock', {
     userId: user._id,
     dayStart,
-    title: planTitle,
+    ...(planTitle === undefined ? {} : { title: planTitle }),
     plannedStart,
     plannedEnd,
   })
@@ -66,7 +66,8 @@ export async function updatePlanBlock(
 ): Promise<void> {
   const user = await requireUser(ctx)
   const plan = await requireOwnedPlanBlock(ctx, user, planBlockId)
-  const planTitle = title === undefined ? undefined : requireTitle(title)
+  const hasTitleUpdate = title !== undefined
+  const planTitle = hasTitleUpdate ? normalizeTitle(title) : undefined
   const windowChanged = plannedStart !== plan.plannedStart || plannedEnd !== plan.plannedEnd
 
   if (windowChanged) {
@@ -79,7 +80,7 @@ export async function updatePlanBlock(
   }
 
   await ctx.db.patch(plan._id, {
-    ...(planTitle === undefined ? {} : { title: planTitle }),
+    ...(hasTitleUpdate ? { title: planTitle } : {}),
     plannedStart,
     plannedEnd,
   })
@@ -149,11 +150,10 @@ async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
   return user
 }
 
-// A planBlock always has a name: whitespace is not a title.
-function requireTitle(title: string): string {
-  const trimmed = title.trim()
-  if (!trimmed) throw new Error('A plan block needs a title.')
-  return trimmed
+// A blank title means "unnamed": the lane falls back to the window instead.
+function normalizeTitle(title: string | undefined): string | undefined {
+  const trimmed = title?.trim()
+  return trimmed ? trimmed : undefined
 }
 
 // Same error for missing or someone else's planBlock: never leak that it exists.
