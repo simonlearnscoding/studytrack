@@ -2,6 +2,7 @@ import { SignInButton, SignUpButton, useAuth } from '@clerk/tanstack-react-start
 import { createFileRoute } from '@tanstack/react-router'
 import { FocusView } from '~/components/dashboard/focus-view/focus-view'
 import { Button } from '~/components/ui/button'
+import { isDevClockBuild } from '~/dev-clock/use-dev-clock'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -9,7 +10,10 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const { isSignedIn } = useAuth()
-  return isSignedIn ? <FocusView /> : <Welcome />
+  // A dev-clock build runs signed-out against a dev deployment, where
+  // DEV_AUTH_BYPASS impersonates the seeded member. Production builds never set
+  // VITE_DEV_CLOCK, so this branch cannot render there.
+  return isSignedIn || isDevClockBuild ? <FocusView /> : <Welcome />
 }
 
 function Welcome() {
