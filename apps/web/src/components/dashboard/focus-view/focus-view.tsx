@@ -55,10 +55,10 @@ export function FocusView() {
   const monthCalendar = <MonthCalendar calendar={calendar} />
 
   return (
-    <div className="mx-auto flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:max-w-(--content-max) lg:flex-col lg:gap-4 lg:p-8 lg:px-6 lg:pb-6">
-      <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(300px,336px)]">
+    <div className="mx-auto flex max-lg:min-h-dvh max-lg:flex-col max-lg:gap-5 max-lg:px-3.5 max-lg:py-3.5 max-lg:pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:h-[calc(100dvh-3.5rem)] lg:max-w-(--content-max) lg:flex-col lg:gap-0">
+      <div className="grid min-h-0 flex-1 gap-6 max-lg:flex max-lg:flex-col lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)_minmax(320px,350px)]">
         <div
-          className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto ${tracking.isOnline ? 'max-lg:order-2' : 'max-lg:order-1'}`}
+          className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto lg:py-8 lg:pl-6 ${tracking.isOnline ? 'max-lg:order-2' : 'max-lg:order-1'}`}
         >
           <PresenceRail members={inRoom} />
           {/* medium screens: consistency tucks into the left rail, behind a divider */}
@@ -68,7 +68,7 @@ export function FocusView() {
         </div>
 
         <main
-          className={`flex min-h-0 flex-col gap-6 max-lg:gap-5 max-lg:overflow-visible lg:overflow-y-auto ${tracking.isOnline ? 'max-lg:order-3' : 'max-lg:order-2'}`}
+          className={`flex min-h-0 flex-col gap-6 max-lg:gap-5 max-lg:overflow-visible lg:overflow-y-auto lg:py-8 ${tracking.isOnline ? 'max-lg:order-3' : 'max-lg:order-2'}`}
         >
           <Hero
             isOnline={tracking.isOnline}
@@ -91,10 +91,10 @@ export function FocusView() {
           {/* the personal rail is desktop-only — on mobile the dock owns it */}
         </main>
 
-        <aside className="flex min-h-0 flex-col gap-4 max-lg:hidden lg:overflow-hidden">
-          {/* calendar and tasks share one bubble: calendar on top, tasks below,
-              separated by a hairline rather than a gap between cards */}
-          <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
+        <aside className="flex min-h-0 flex-col max-lg:hidden lg:overflow-hidden">
+          {/* calendar and tasks share one flush panel: calendar on top, tasks
+              below, separated by a hairline rather than a gap between cards */}
+          <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden border-l border-border">
             <MonthCalendar calendar={calendar} isEmbedded />
             <div className="border-t" />
             <TaskPane queue={taskQueue} dayLabel={dayLabel} isEmbedded />
