@@ -1,7 +1,7 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import { internal } from '../_generated/api'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import { isDeepFocus, todaysTotals } from '../leaderboard/util'
+import { isDeepFocus, liveTailFor, todaysSettledTotals } from '../leaderboard/util'
 import { getMemberToday } from '../workSessions/service'
 import {
   DASHBOARD_TIME_ZONE,
@@ -10,7 +10,12 @@ import {
   startOfDay,
 } from '../workSessions/util'
 import { getMe } from '../users/service'
-import type { DailyTotalCalendarDay, DailyTotalDay, DailyTotalSum } from './types'
+import type {
+  DailyTotalCalendar,
+  DailyTotalCalendarToday,
+  DailyTotalDay,
+  DailyTotalSum,
+} from './types'
 import { overlapMs } from './util'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -157,20 +162,19 @@ export async function listMine(ctx: QueryCtx, fromDayStart: number): Promise<Dai
 }
 
 // The caller's own Daily totals for one Month window, as the web calendar reads
-// them. Today's row is a read-time merge from today's WorkSessions and partials, using
-// the same Deep focus / Total rules as the leaderboard, clipped to [today, now).
-// It is never written to `dailyTotal`; the rollup owns closed Days.
+// them. Closed Days are final; today is settled plus a live tail, using the same
+// Deep focus / Total rules as the leaderboard. Today is never written to
+// `dailyTotal`; the rollup owns closed Days.
 export async function getCalendar(
   ctx: QueryCtx,
   fromDayStart: number,
   toDayStart: number,
-  now: number
-): Promise<DailyTotalCalendarDay[]> {
+  todayStart: number
+): Promise<DailyTotalCalendar> {
   const user = await getMe(ctx)
-  if (!user) return []
+  if (!user) return { days: [], today: null }
 
   const memberKey = user.discordId ?? String(user._id)
-  const todayStart = startOfDay(now, DASHBOARD_TIME_ZONE)
 
   const rows = await ctx.db
     .query('dailyTotal')
@@ -189,18 +193,38 @@ export async function getCalendar(
       deepFocusMs: row.deepFocusMs,
       totalMs: row.totalMs,
     }))
+    .sort((a, b) => a.dayStart - b.dayStart)
 
-  if (todayStart >= fromDayStart && todayStart < toDayStart) {
-    // Only the caller's own row is needed, so read their Day rather than
-    // grouping every member just to pick one card out.
-    const mine = await getMemberToday(ctx, user, todayStart)
-    const live = mine ? todaysTotals([mine], todayStart, now)[0] : null
-    if (live && (live.deepFocusMs > 0 || live.totalMs > 0)) {
-      days.push({ dayStart: todayStart, deepFocusMs: live.deepFocusMs, totalMs: live.totalMs })
-    }
+  const today =
+    todayStart >= fromDayStart && todayStart < toDayStart
+      ? await readToday(ctx, user, todayStart)
+      : null
+
+  return { days, today }
+}
+
+// Only the caller's own row is needed, so read their Day rather than grouping
+// every member just to pick one card out.
+async function readToday(
+  ctx: QueryCtx,
+  user: Doc<'users'>,
+  todayStart: number
+): Promise<DailyTotalCalendarToday | null> {
+  const mine = await getMemberToday(ctx, user, todayStart)
+  if (!mine) return null
+
+  const settled = todaysSettledTotals([mine], todayStart)[0]
+  const live = liveTailFor(mine, todayStart)
+  const hasStudy = settled.deepFocusMs > 0 || settled.totalMs > 0
+  const isRunning = live.deepFocusSince !== null || live.spanSince !== null
+  if (!hasStudy && !isRunning) return null
+
+  return {
+    dayStart: todayStart,
+    deepFocusMs: settled.deepFocusMs,
+    totalMs: settled.totalMs,
+    live,
   }
-
-  return days.sort((a, b) => a.dayStart - b.dayStart)
 }
 
 type MemberTotal = {

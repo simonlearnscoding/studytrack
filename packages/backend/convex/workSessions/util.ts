@@ -11,6 +11,12 @@ import type {
 // boundary for the whole board.
 export const DASHBOARD_TIME_ZONE = 'Europe/Zurich'
 
+// Milliseconds a live anchor has accrued up to the caller's clock. Null (nothing
+// running) contributes nothing; a future anchor cannot subtract time.
+export function elapsedSince(anchor: number | null, now: number): number {
+  return anchor === null ? 0 : Math.max(0, now - anchor)
+}
+
 // A partial's current length. Ended partials are fixed; a running one is live
 // from `startedAt` to `now`, which the caller supplies from its own clock.
 export function partialDurationMs(

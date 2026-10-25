@@ -13,6 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from '../workSessions/util'
+import type { DashboardMember } from '../workSessions/types'
 import type {
   GetBoardsArgs,
   GetLeaderboardTableForViewerArgs,
@@ -23,7 +24,13 @@ import type {
   LeaderboardTableTotal,
   LeaderboardTotal,
 } from './types'
-import { buildTableRows, rankTotals, todaysTotals } from './util'
+import {
+  buildTableRows,
+  liveTailsByMember,
+  rankTotals,
+  todaysSettledTotals,
+  todaysTotals,
+} from './util'
 
 // The bot's leaderboard read: Today, plus the Week and Month of the focus day in
 // one round trip. It passes focus = today, so the boards are the current periods.
@@ -32,7 +39,11 @@ import { buildTableRows, rankTotals, todaysTotals } from './util'
 // must not read the wall clock.
 export async function getBoards(ctx: QueryCtx, args: GetBoardsArgs): Promise<LeaderboardBoards> {
   assertBotSecret(args.secret)
-  const totals = await collectPeriodTotals(ctx, args)
+  const { totals } = await collectPeriodTotals(ctx, {
+    focusDayStart: args.focusDayStart,
+    todayStart: startOfDay(args.now, DASHBOARD_TIME_ZONE),
+    liveUntil: args.now,
+  })
   return {
     today: await resolveNames(ctx, rankTotals(totals.today)),
     day: await resolveNames(ctx, rankTotals(totals.day)),
@@ -50,31 +61,45 @@ export async function getLeaderboardTableForViewer(
   args: GetLeaderboardTableForViewerArgs
 ): Promise<LeaderboardTableRow[]> {
   if (!(await hasViewer(ctx))) return []
-  const totals = await collectPeriodTotals(ctx, args)
-  return await resolveTableNames(ctx, buildTableRows(totals))
+  const { totals, members } = await collectPeriodTotals(ctx, {
+    focusDayStart: args.focusDayStart,
+    todayStart: args.todayStart,
+    liveUntil: null,
+  })
+  const liveTails = liveTailsByMember(members, args.todayStart)
+  return await resolveTableNames(ctx, buildTableRows(totals, liveTails))
 }
 
-// Today's live totals per member, plus the Day, Week and Month of the focus day
-// built from past Daily totals merged with today's. Auth is the caller's concern;
-// this is the I/O shared by the bot's ranked lists and the web's table.
+// Today's totals per member, plus the Day, Week and Month of the focus day built
+// from past Daily totals merged with today's. `liveUntil` is where still-running
+// sessions stop: the bot's clock, or null for settled totals whose remainder the
+// web adds from live tails. Auth is the caller's concern.
+type PeriodTotalsArgs = {
+  focusDayStart: number
+  todayStart: number
+  liveUntil: number | null
+}
+
 async function collectPeriodTotals(
   ctx: QueryCtx,
-  args: GetLeaderboardTableForViewerArgs
-): Promise<LeaderboardPeriodTotals> {
-  const todayStart = startOfDay(args.now, DASHBOARD_TIME_ZONE)
-  const focusStart = args.focusDayStart
-  const focusEnd = nextDayStart(focusStart, DASHBOARD_TIME_ZONE)
-  const weekStart = startOfWeek(focusStart, DASHBOARD_TIME_ZONE)
+  args: PeriodTotalsArgs
+): Promise<{ totals: LeaderboardPeriodTotals; members: DashboardMember[] }> {
+  const { todayStart, focusDayStart } = args
+  const focusEnd = nextDayStart(focusDayStart, DASHBOARD_TIME_ZONE)
+  const weekStart = startOfWeek(focusDayStart, DASHBOARD_TIME_ZONE)
   const weekEnd = nextWeekStart(weekStart, DASHBOARD_TIME_ZONE)
-  const monthStart = startOfMonth(focusStart, DASHBOARD_TIME_ZONE)
+  const monthStart = startOfMonth(focusDayStart, DASHBOARD_TIME_ZONE)
   const monthEnd = nextMonthStart(monthStart, DASHBOARD_TIME_ZONE)
 
   const members = await groupTodaysMembers(ctx, todayStart)
-  const todayTotals = todaysTotals(members, todayStart, args.now)
+  const todayTotals =
+    args.liveUntil === null
+      ? todaysSettledTotals(members, todayStart)
+      : todaysTotals(members, todayStart, args.liveUntil)
 
   const dayTotals = mergeTotals(
-    await sumDailyTotals(ctx, focusStart, focusEnd),
-    liveIfContains(focusStart, focusEnd, todayStart, todayTotals)
+    await sumDailyTotals(ctx, focusDayStart, focusEnd),
+    liveIfContains(focusDayStart, focusEnd, todayStart, todayTotals)
   )
   const weekTotals = mergeTotals(
     await sumDailyTotals(ctx, weekStart, weekEnd),
@@ -85,7 +110,10 @@ async function collectPeriodTotals(
     liveIfContains(monthStart, monthEnd, todayStart, todayTotals)
   )
 
-  return { today: todayTotals, day: dayTotals, week: weekTotals, month: monthTotals }
+  return {
+    totals: { today: todayTotals, day: dayTotals, week: weekTotals, month: monthTotals },
+    members,
+  }
 }
 
 // Today's still-running totals are merged into a window only when that window
@@ -167,6 +195,7 @@ async function resolveTableNames(
       day: row.day,
       week: row.week,
       month: row.month,
+      live: row.live,
     })
   }
   return named

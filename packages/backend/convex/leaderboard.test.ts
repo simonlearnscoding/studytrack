@@ -38,11 +38,16 @@ function makeTest() {
 
 type Test = ReturnType<typeof makeTest>
 
-// The two instants every board is computed against: focus = today by default.
-// The viewer read takes these and no secret.
+// The bot's clock plus the focus day. The viewer read takes two stable Day
+// starts instead and adds live minutes in the browser.
 const WINDOWS = {
   now: NOW,
   focusDayStart: DAY_START,
+}
+
+const VIEWER_WINDOWS = {
+  focusDayStart: DAY_START,
+  todayStart: DAY_START,
 }
 
 function queryArgs(
@@ -51,8 +56,8 @@ function queryArgs(
   return { secret: SECRET, ...WINDOWS, ...overrides }
 }
 
-function viewerArgs(overrides: Partial<typeof WINDOWS> = {}) {
-  return { ...WINDOWS, ...overrides }
+function viewerArgs(overrides: Partial<typeof VIEWER_WINDOWS> = {}) {
+  return { ...VIEWER_WINDOWS, ...overrides }
 }
 
 async function addUser(t: Test, discordId: string, name: string, image?: string) {
@@ -400,7 +405,7 @@ describe('leaderboard.getLeaderboardTableForViewer', () => {
     expect(table).toEqual([])
   })
 
-  it('keeps every period value even when that period’s top ten cuts the member', async () => {
+  it('returns every member, including one that period’s top ten cuts', async () => {
     const t = makeTest()
     // Eleven members with an hour earlier in the Week, so Ada's 30m today ranks
     // twelfth there — outside the bot's Week list — while she leads the Day.
@@ -422,20 +427,27 @@ describe('leaderboard.getLeaderboardTableForViewer', () => {
       endedAt: THURSDAY_NOW,
     })
 
-    const args = viewerArgs({ now: THURSDAY_NOW, focusDayStart: THURSDAY_START })
     const table = await t
       .withIdentity({ subject: 'clerk-1' })
-      .query(api.leaderboard.getLeaderboardTableForViewer, args)
+      .query(
+        api.leaderboard.getLeaderboardTableForViewer,
+        viewerArgs({ focusDayStart: THURSDAY_START, todayStart: THURSDAY_START })
+      )
     const ada = table.find((row) => row.discordId === 'ada')
 
+    expect(table).toHaveLength(12)
     expect(ada).toMatchObject({
       name: 'Ada',
-      day: { deepFocusMs: 30 * M, totalMs: 30 * M, deepFocusRank: 1, totalRank: 1 },
-      week: { deepFocusMs: 30 * M, totalMs: 30 * M, deepFocusRank: 12, totalRank: 12 },
+      day: { deepFocusMs: 30 * M, totalMs: 30 * M },
+      week: { deepFocusMs: 30 * M, totalMs: 30 * M },
+      live: { deepFocusSince: null, spanSince: null },
     })
 
     // The bot's Week list still caps at ten and cuts her; the table does not.
-    const boards = await t.query(api.leaderboard.getBoards, queryArgs(args))
+    const boards = await t.query(
+      api.leaderboard.getBoards,
+      queryArgs({ now: THURSDAY_NOW, focusDayStart: THURSDAY_START })
+    )
     expect(boards.week).toHaveLength(10)
     expect(boards.week.map((row) => row.discordId)).not.toContain('ada')
   })
@@ -459,21 +471,45 @@ describe('leaderboard.getLeaderboardTableForViewer', () => {
     })
 
     // Focus = the previous Week: Day is empty, Week is a pure sum, and the Month
-    // still contains today's live minutes.
+    // still contains today's settled minutes.
     const table = await t
       .withIdentity({ subject: 'clerk-1' })
       .query(
         api.leaderboard.getLeaderboardTableForViewer,
-        viewerArgs({ focusDayStart: PREV_WEEK_FOCUS })
+        viewerArgs({ focusDayStart: PREV_WEEK_FOCUS, todayStart: DAY_START })
       )
 
     expect(table).toHaveLength(1)
     expect(table[0]).toMatchObject({
       name: 'Ada',
       image,
-      day: { deepFocusMs: 0, totalMs: 0, deepFocusRank: null, totalRank: null },
-      week: { deepFocusMs: 40 * M, totalMs: 1 * H, deepFocusRank: 1, totalRank: 1 },
-      month: { deepFocusMs: 70 * M, totalMs: 90 * M, deepFocusRank: 1, totalRank: 1 },
+      day: { deepFocusMs: 0, totalMs: 0 },
+      week: { deepFocusMs: 40 * M, totalMs: 1 * H },
+      month: { deepFocusMs: 70 * M, totalMs: 90 * M },
+      live: { deepFocusSince: null, spanSince: null },
+    })
+  })
+
+  it('returns the open ends of a running session instead of counting the clock', async () => {
+    const t = makeTest()
+    const start = NOW - 2 * H
+    await addWorkSession(t, {
+      discordId: 'ada',
+      name: 'Ada',
+      mode: 'camera',
+      startedAt: start,
+      endedAt: undefined,
+    })
+
+    const table = await t
+      .withIdentity({ subject: 'clerk-1' })
+      .query(api.leaderboard.getLeaderboardTableForViewer, viewerArgs())
+
+    expect(table[0]).toMatchObject({
+      day: { deepFocusMs: 0, totalMs: 0 },
+      week: { deepFocusMs: 0, totalMs: 0 },
+      month: { deepFocusMs: 0, totalMs: 0 },
+      live: { deepFocusSince: start, spanSince: start },
     })
   })
 })

@@ -1,6 +1,7 @@
 import { v, type Infer } from 'convex/values'
 import type { Id } from '../_generated/dataModel'
 import type { LeaderboardPeriod } from '../preferences/types'
+import type { LiveTail } from '../workSessions/types'
 
 // One row of a leaderboard, already ranked and capped by ./util. The bot renders
 // these directly and does no ranking of its own.
@@ -37,18 +38,23 @@ export type LeaderboardPeriodTotals = {
   month: LeaderboardTotal[]
 }
 
-// One member's numbers in one period. Ranks are over every member, not just the
-// rows returned, so the web's metric switch can lead with either metric.
+// One member's settled numbers in one period: everything up to the last close,
+// with still-running time left for the reader to add from `live`. Kept separate
+// from ranks because the reader ranks after adding that tail.
 export type LeaderboardCell = {
   deepFocusMs: number
   totalMs: number
+}
+
+// One cell plus the rank its value leads with, over every member with time in the
+// period. A null rank means the member had no time in that period.
+export type LeaderboardRankedCell = LeaderboardCell & {
   deepFocusRank: number | null
   totalRank: number | null
 }
 
-// One row of the web's comparison table: every period present for a member in any
-// period's top ten, so a value is never missing just because another period cut
-// them. A null rank means the member had no time in that period.
+// One row of the web's comparison table: every member with time in any period, so
+// the reader can rank the whole group after adding each live tail.
 export type LeaderboardTableRow = {
   discordId: string
   name: string | null
@@ -56,6 +62,14 @@ export type LeaderboardTableRow = {
   day: LeaderboardCell
   week: LeaderboardCell
   month: LeaderboardCell
+  live: LiveTail
+}
+
+// The reader's view of a table row, after adding `live` and ranking the group.
+export type LeaderboardRankedRow = Omit<LeaderboardTableRow, 'day' | 'week' | 'month' | 'live'> & {
+  day: LeaderboardRankedCell
+  week: LeaderboardRankedCell
+  month: LeaderboardRankedCell
 }
 
 // A table row before names are resolved.
@@ -65,25 +79,23 @@ export type LeaderboardTableTotal = LeaderboardTableRow & { userId: Id<'users'> 
 // leaderboard's saved preference already uses.
 export const leaderboardPeriods: readonly LeaderboardPeriod[] = ['day', 'week', 'month']
 
-// The two instants every board is computed against: the focus day the caller
-// selected (its Europe/Zurich midnight, epoch ms) and the caller's clock. The
-// service derives today's Day and the focus day's Week and Month from these, so
-// queries never read the wall clock (see ../workSessions/util).
-const boardArgs = {
-  now: v.number(),
-  focusDayStart: v.number(),
-}
-
-// The bot's read: the focus day plus the shared bot secret. It passes the focus
-// day = today, so its three boards behave exactly as before.
+// The bot's read: the focus day, the caller's clock and the shared bot secret.
+// The bot polls, so a ticking `now` costs it nothing.
 export const getBoardsArgs = v.object({
   secret: v.string(),
-  ...boardArgs,
+  now: v.number(),
+  focusDayStart: v.number(),
 })
 
-// The web's read of the comparison table for a signed-in member. No secret — the
-// service gates it on the Clerk identity instead.
-export const getLeaderboardTableForViewerArgs = v.object(boardArgs)
+// The web's read of the comparison table for a signed-in member. Both instants
+// are stable for the whole Day (`todayStart` only moves at midnight), so the
+// subscription is not replaced by the clock. Still-running time is returned as
+// `live` anchors and added in the browser. No secret — the service gates it on
+// the Clerk identity instead.
+export const getLeaderboardTableForViewerArgs = v.object({
+  focusDayStart: v.number(),
+  todayStart: v.number(),
+})
 
 export type GetBoardsArgs = Infer<typeof getBoardsArgs>
 export type GetLeaderboardTableForViewerArgs = Infer<typeof getLeaderboardTableForViewerArgs>

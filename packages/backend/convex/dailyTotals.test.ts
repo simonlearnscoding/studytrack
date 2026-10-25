@@ -323,8 +323,6 @@ describe('dailyTotals.rollupDay', () => {
 })
 
 describe('dailyTotals.getCalendar', () => {
-  const NOW = DAY_START + 5 * H
-
   async function seedAda(t: Test) {
     return await t.run(
       async (ctx) =>
@@ -343,9 +341,9 @@ describe('dailyTotals.getCalendar', () => {
       await t.query(api.dailyTotals.getCalendar, {
         fromDayStart: PREV_DAY_START,
         toDayStart: DAY_END,
-        now: NOW,
+        todayStart: DAY_START,
       })
-    ).toEqual([])
+    ).toEqual({ days: [], today: null })
   })
 
   it('returns only the caller rows inside the half-open Month window', async () => {
@@ -381,15 +379,20 @@ describe('dailyTotals.getCalendar', () => {
       totalMs: 5 * H,
     })
 
-    const rows = await t.withIdentity({ subject: 'clerk-ada' }).query(api.dailyTotals.getCalendar, {
-      fromDayStart: PREV_DAY_START,
-      toDayStart: DAY_START,
-      now: NOW,
+    const calendar = await t
+      .withIdentity({ subject: 'clerk-ada' })
+      .query(api.dailyTotals.getCalendar, {
+        fromDayStart: PREV_DAY_START,
+        toDayStart: DAY_START,
+        todayStart: DAY_START,
+      })
+    expect(calendar).toEqual({
+      days: [{ dayStart: PREV_DAY_START, deepFocusMs: 30 * M, totalMs: 1 * H }],
+      today: null,
     })
-    expect(rows).toEqual([{ dayStart: PREV_DAY_START, deepFocusMs: 30 * M, totalMs: 1 * H }])
   })
 
-  it('merges today live from WorkSessions, replacing any stored today row', async () => {
+  it('returns today settled, replacing any stored today row', async () => {
     const t = makeTest()
     await seedAda(t)
     await seedDailyTotal(t, {
@@ -410,12 +413,51 @@ describe('dailyTotals.getCalendar', () => {
       ],
     })
 
-    const rows = await t.withIdentity({ subject: 'clerk-ada' }).query(api.dailyTotals.getCalendar, {
-      fromDayStart: DAY_START,
-      toDayStart: DAY_END,
-      now: NOW,
+    const calendar = await t
+      .withIdentity({ subject: 'clerk-ada' })
+      .query(api.dailyTotals.getCalendar, {
+        fromDayStart: DAY_START,
+        toDayStart: DAY_END,
+        todayStart: DAY_START,
+      })
+    expect(calendar).toEqual({
+      days: [],
+      today: {
+        dayStart: DAY_START,
+        deepFocusMs: 1 * H,
+        totalMs: 2 * H,
+        live: { deepFocusSince: null, spanSince: null },
+      },
     })
-    expect(rows).toEqual([{ dayStart: DAY_START, deepFocusMs: 1 * H, totalMs: 2 * H }])
+  })
+
+  it('returns a live tail for a running session without counting the clock', async () => {
+    const t = makeTest()
+    await seedAda(t)
+    const start = DAY_START + 1 * H
+    await seedWorkSession(t, {
+      discordId: 'ada',
+      startedAt: start,
+      partials: [{ mode: 'camera', startedAt: start }],
+    })
+
+    const calendar = await t
+      .withIdentity({ subject: 'clerk-ada' })
+      .query(api.dailyTotals.getCalendar, {
+        fromDayStart: DAY_START,
+        toDayStart: DAY_END,
+        todayStart: DAY_START,
+      })
+
+    expect(calendar).toEqual({
+      days: [],
+      today: {
+        dayStart: DAY_START,
+        deepFocusMs: 0,
+        totalMs: 0,
+        live: { deepFocusSince: start, spanSince: start },
+      },
+    })
   })
 
   it('does not merge today when it is outside the window', async () => {
@@ -432,9 +474,9 @@ describe('dailyTotals.getCalendar', () => {
     const past = await t.withIdentity({ subject: 'clerk-ada' }).query(api.dailyTotals.getCalendar, {
       fromDayStart: PREV_DAY_START,
       toDayStart: DAY_START,
-      now: NOW,
+      todayStart: DAY_START,
     })
-    expect(past).toEqual([])
+    expect(past).toEqual({ days: [], today: null })
   })
 
   it('keys a manual-only member by their user id', async () => {
@@ -460,14 +502,17 @@ describe('dailyTotals.getCalendar', () => {
       totalMs: 9 * H,
     })
 
-    const rows = await t
+    const calendar = await t
       .withIdentity({ subject: 'clerk-manual' })
       .query(api.dailyTotals.getCalendar, {
         fromDayStart: DAY_START,
         toDayStart: DAY_END,
-        now: DAY_END + 5 * H,
+        todayStart: DAY_END,
       })
-    expect(rows).toEqual([{ dayStart: DAY_START, deepFocusMs: 20 * M, totalMs: 40 * M }])
+    expect(calendar).toEqual({
+      days: [{ dayStart: DAY_START, deepFocusMs: 20 * M, totalMs: 40 * M }],
+      today: null,
+    })
   })
 })
 

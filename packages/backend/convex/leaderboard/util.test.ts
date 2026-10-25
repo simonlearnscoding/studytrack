@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { Id } from '../_generated/dataModel'
 import type { DashboardMember, DashboardPartial, DashboardWorkSession } from '../workSessions/types'
-import type { LeaderboardRow, LeaderboardTotal } from './types'
-import { buildTableRows, MAX_LEADERBOARD_ROWS, rankTotals, todaysTotals } from './util'
+import type { LeaderboardRow, LeaderboardTableRow, LeaderboardTotal } from './types'
+import {
+  buildTableRows,
+  liveTailFor,
+  MAX_LEADERBOARD_ROWS,
+  rankLiveTableRows,
+  rankTotals,
+  todaysSettledTotals,
+  todaysTotals,
+} from './util'
 
 const M = 60 * 1000
 const H = 60 * 60 * 1000
@@ -61,6 +69,19 @@ function row(overrides: Partial<LeaderboardRow> = {}): LeaderboardRow {
 
 function total(overrides: Partial<LeaderboardTotal> = {}): LeaderboardTotal {
   return { ...row(), userId: null, ...overrides }
+}
+
+function tableRow(overrides: Partial<LeaderboardTableRow> = {}): LeaderboardTableRow {
+  return {
+    discordId: 'd1',
+    name: 'Ada',
+    image: null,
+    day: { deepFocusMs: 0, totalMs: 0 },
+    week: { deepFocusMs: 0, totalMs: 0 },
+    month: { deepFocusMs: 0, totalMs: 0 },
+    live: { deepFocusSince: null, spanSince: null },
+    ...overrides,
+  }
 }
 
 describe('todaysTotals', () => {
@@ -126,6 +147,107 @@ describe('todaysTotals', () => {
   })
 })
 
+describe('todaysSettledTotals', () => {
+  it('counts closed time and leaves running time to the live tail', () => {
+    const closedStart = DAY_START + 1 * H
+    const closed = workSession(
+      [partial({ mode: 'camera', startedAt: closedStart, endedAt: closedStart + 30 * M })],
+      {
+        status: 'ended',
+        startedAt: closedStart,
+        endedAt: closedStart + 1 * H,
+      }
+    )
+    const runningStart = DAY_START + 3 * H
+    const running = workSession(
+      [partial({ mode: 'camera', startedAt: runningStart, endedAt: null })],
+      {
+        status: 'active',
+        startedAt: runningStart,
+        endedAt: null,
+      }
+    )
+    const ada = member({ discordId: 'ada', workSessions: [closed, running] })
+
+    const [totals] = todaysSettledTotals([ada], DAY_START)
+
+    expect(totals).toMatchObject({ deepFocusMs: 30 * M, totalMs: 1 * H })
+  })
+
+  it('counts a closed session that straddled midnight only from the Day start', () => {
+    const start = DAY_START - 30 * M
+    const ada = member({
+      workSessions: [
+        workSession([partial({ mode: 'camera', startedAt: start, endedAt: start + 1 * H })], {
+          status: 'ended',
+          startedAt: start,
+          endedAt: start + 1 * H,
+        }),
+      ],
+    })
+
+    const [totals] = todaysSettledTotals([ada], DAY_START)
+
+    expect(totals).toMatchObject({ deepFocusMs: 30 * M, totalMs: 30 * M })
+  })
+})
+
+describe('liveTailFor', () => {
+  it('clamps a running session and Deep focus partial to the Day start', () => {
+    const start = DAY_START - 30 * M
+    const ada = member({
+      workSessions: [
+        workSession([partial({ mode: 'camera', startedAt: start, endedAt: null })], {
+          status: 'active',
+          startedAt: start,
+          endedAt: null,
+        }),
+      ],
+    })
+
+    expect(liveTailFor(ada, DAY_START)).toEqual({
+      deepFocusSince: DAY_START,
+      spanSince: DAY_START,
+    })
+  })
+
+  it('keeps the Total span but not Deep focus for a running break', () => {
+    const start = DAY_START + 1 * H
+    const ada = member({
+      workSessions: [
+        workSession([partial({ mode: 'break', startedAt: start, endedAt: null })], {
+          status: 'active',
+          startedAt: start,
+          endedAt: null,
+        }),
+      ],
+    })
+
+    expect(liveTailFor(ada, DAY_START)).toEqual({
+      deepFocusSince: null,
+      spanSince: start,
+    })
+  })
+
+  it('has no tail once everything is closed', () => {
+    const start = DAY_START + 1 * H
+    const ada = member({
+      workSessions: [
+        workSession([partial({ mode: 'camera', startedAt: start, endedAt: start + 30 * M })], {
+          status: 'ended',
+          startedAt: start,
+          endedAt: start + 30 * M,
+        }),
+      ],
+    })
+
+    expect(liveTailFor(ada, DAY_START)).toEqual({
+      deepFocusSince: null,
+      spanSince: null,
+    })
+  })
+})
+
 describe('rankTotals', () => {
   it('ranks by Deep focus, then Total time, then id', () => {
     const ada = row({ discordId: 'ada', deepFocusMs: 30 * M, totalMs: 3 * H })
@@ -146,7 +268,7 @@ describe('rankTotals', () => {
 })
 
 describe('buildTableRows', () => {
-  it('keeps a period value for a member another period cut from its top ten', () => {
+  it('keeps every member with time in any period, not just a top ten', () => {
     const week = Array.from({ length: 12 }, (_, i) =>
       total({
         discordId: `member-${i}`,
@@ -157,30 +279,82 @@ describe('buildTableRows', () => {
     const ada = total({ discordId: 'ada', deepFocusMs: 5 * M, totalMs: 5 * M })
     const day = [total({ discordId: 'ada', deepFocusMs: 30 * M, totalMs: 30 * M })]
 
-    const table = buildTableRows({ day, week: [...week, ada], month: [...week, ada] })
+    const table = buildTableRows({ day, week: [...week, ada], month: [...week, ada] }, new Map())
     const adaRow = table.find((r) => r.discordId === 'ada')
 
+    expect(table).toHaveLength(13)
     expect(adaRow).toMatchObject({
-      day: { deepFocusMs: 30 * M, deepFocusRank: 1 },
-      week: { deepFocusMs: 5 * M, deepFocusRank: 13 },
+      day: { deepFocusMs: 30 * M, totalMs: 30 * M },
+      week: { deepFocusMs: 5 * M, totalMs: 5 * M },
+      live: { deepFocusSince: null, spanSince: null },
     })
   })
 
-  it('includes a member who only reaches a period’s top ten under Total time', () => {
-    const week = Array.from({ length: 11 }, (_, i) =>
-      total({
-        discordId: `focus-${i}`,
-        deepFocusMs: (20 - i) * M,
-        totalMs: 1 * M,
-      })
+  it('attaches the live tail by member key', () => {
+    const live = { deepFocusSince: DAY_START + 1 * H, spanSince: DAY_START + 1 * H }
+    const table = buildTableRows(
+      { day: [total({ discordId: 'ada' })], week: [], month: [] },
+      new Map([['ada', live]])
     )
-    const totalOnly = total({ discordId: 'total-only', deepFocusMs: 0, totalMs: 4 * H })
 
-    const table = buildTableRows({ day: [], week: [...week, totalOnly], month: [] })
-    const row = table.find((r) => r.discordId === 'total-only')
+    expect(table[0].live).toEqual(live)
+  })
+})
 
-    expect(row).toMatchObject({
-      week: { deepFocusMs: 0, totalMs: 4 * H, deepFocusRank: 12, totalRank: 1 },
+describe('rankLiveTableRows', () => {
+  it('adds live minutes to every period that contains today, then ranks the group', () => {
+    const now = DAY_START + 2 * H
+    const ada = tableRow({
+      discordId: 'ada',
+      live: { deepFocusSince: DAY_START + 1 * H, spanSince: DAY_START + 1 * H },
     })
+    const bob = tableRow({
+      discordId: 'bob',
+      day: { deepFocusMs: 90 * M, totalMs: 90 * M },
+      week: { deepFocusMs: 90 * M, totalMs: 90 * M },
+      month: { deepFocusMs: 90 * M, totalMs: 90 * M },
+    })
+
+    const ranked = rankLiveTableRows([ada, bob], DAY_START, now)
+    const adaRow = ranked.find((row) => row.discordId === 'ada')
+    const bobRow = ranked.find((row) => row.discordId === 'bob')
+
+    expect(adaRow).toMatchObject({
+      day: { deepFocusMs: 1 * H, totalMs: 1 * H, deepFocusRank: 2, totalRank: 2 },
+      week: { deepFocusMs: 1 * H, totalMs: 1 * H, deepFocusRank: 2, totalRank: 2 },
+      month: { deepFocusMs: 1 * H, totalMs: 1 * H, deepFocusRank: 2, totalRank: 2 },
+    })
+    expect(bobRow).toMatchObject({
+      day: { deepFocusMs: 90 * M, deepFocusRank: 1 },
+    })
+  })
+
+  it('leaves the rank null when the member has no time in that period', () => {
+    const row = tableRow({
+      week: { deepFocusMs: 30 * M, totalMs: 30 * M },
+      month: { deepFocusMs: 30 * M, totalMs: 30 * M },
+    })
+
+    const [ranked] = rankLiveTableRows([row], DAY_START, DAY_START + 1 * H)
+
+    expect(ranked.day).toEqual({
+      deepFocusMs: 0,
+      totalMs: 0,
+      deepFocusRank: null,
+      totalRank: null,
+    })
+    expect(ranked.week.deepFocusRank).toBe(1)
+  })
+
+  it('does not add today’s live tail to a past Day', () => {
+    const yesterday = DAY_START - 24 * H
+    const row = tableRow({
+      day: { deepFocusMs: 30 * M, totalMs: 30 * M },
+      live: { deepFocusSince: DAY_START + 1 * H, spanSince: DAY_START + 1 * H },
+    })
+
+    const [ranked] = rankLiveTableRows([row], yesterday, DAY_START + 2 * H)
+
+    expect(ranked.day).toMatchObject({ deepFocusMs: 30 * M, totalMs: 30 * M })
   })
 })

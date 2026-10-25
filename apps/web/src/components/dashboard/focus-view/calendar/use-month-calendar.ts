@@ -1,12 +1,15 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
+import type { DailyTotalCalendar } from '@studytrack/backend/convex/dailyTotals/types'
 import {
   buildMonthGrid,
   buildWeekGrid,
   monthLabel,
+  type CalendarDayTotal,
   type MonthCell,
 } from '@studytrack/backend/convex/workSessions/calendar'
 import {
   DASHBOARD_TIME_ZONE,
+  elapsedSince,
   nextMonthStart,
   nextWeekStart,
   shiftMonth,
@@ -15,6 +18,7 @@ import {
   startOfWeek,
 } from '@studytrack/backend/convex/workSessions/util'
 import { useQuery } from 'convex/react'
+import { useLastDefined } from '~/hooks/use-last-defined'
 import { useDateStore } from '~/state/date.store'
 import { useMetric } from '~/preferences/use-metric'
 
@@ -55,26 +59,33 @@ export function useMonthCalendar(now: number): MonthCalendarView {
   const monthEnd = nextMonthStart(monthStart, DASHBOARD_TIME_ZONE)
   const weekEnd = nextWeekStart(weekStart, DASHBOARD_TIME_ZONE)
 
-  const monthTotals = useQuery(api.dailyTotals.getCalendar, {
-    fromDayStart: monthStart,
-    toDayStart: monthEnd,
-    now,
-  })
+  // Stable Day starts, so the minute tick never replaces the query. The last
+  // good read survives a key change to keep the grid from blanking.
+  const monthCalendar = useLastDefined(
+    useQuery(api.dailyTotals.getCalendar, {
+      fromDayStart: monthStart,
+      toDayStart: monthEnd,
+      todayStart: todayDayStart,
+    })
+  )
   // The week card usually sits inside the viewed month, so its seven Days are
   // already in the month read. Only page a separate week when the two ranges
   // have drifted apart; the grid ignores totals outside its seven Days.
   const weekInsideMonth = weekStart >= monthStart && weekEnd <= monthEnd
-  const weekTotals = useQuery(
-    api.dailyTotals.getCalendar,
-    weekInsideMonth
-      ? 'skip'
-      : {
-          fromDayStart: weekStart,
-          toDayStart: weekEnd,
-          now,
-        }
+  const weekCalendar = useLastDefined(
+    useQuery(
+      api.dailyTotals.getCalendar,
+      weekInsideMonth
+        ? 'skip'
+        : {
+            fromDayStart: weekStart,
+            toDayStart: weekEnd,
+            todayStart: todayDayStart,
+          }
+    )
   )
-  const weekSourceTotals = weekInsideMonth ? (monthTotals ?? []) : (weekTotals ?? [])
+  const monthTotals = withLiveToday(monthCalendar, now)
+  const weekTotals = withLiveToday(weekInsideMonth ? monthCalendar : weekCalendar, now)
 
   return {
     monthLabel: monthLabel(monthStart, DASHBOARD_TIME_ZONE),
@@ -83,7 +94,7 @@ export function useMonthCalendar(now: number): MonthCalendarView {
       monthStart,
       focusDayStart,
       todayDayStart,
-      totals: monthTotals ?? [],
+      totals: monthTotals,
       metric,
       timeZone: DASHBOARD_TIME_ZONE,
     }),
@@ -91,7 +102,7 @@ export function useMonthCalendar(now: number): MonthCalendarView {
       weekStart,
       focusDayStart,
       todayDayStart,
-      totals: weekSourceTotals,
+      totals: weekTotals,
       metric,
       timeZone: DASHBOARD_TIME_ZONE,
     }),
@@ -103,4 +114,21 @@ export function useMonthCalendar(now: number): MonthCalendarView {
     showFocusWeek: () => showWeek(startOfWeek(focusDayStart, DASHBOARD_TIME_ZONE)),
     showWeekMonth: () => showMonth(startOfMonth(weekStart, DASHBOARD_TIME_ZONE)),
   }
+}
+
+// Closed Days are final; today's settled cell gets its still-running minutes
+// added from the reader's clock, so the read stays stable for the whole Day.
+function withLiveToday(calendar: DailyTotalCalendar | undefined, now: number): CalendarDayTotal[] {
+  if (!calendar) return []
+
+  const days = [...calendar.days]
+  if (calendar.today) {
+    days.push({
+      dayStart: calendar.today.dayStart,
+      deepFocusMs:
+        calendar.today.deepFocusMs + elapsedSince(calendar.today.live.deepFocusSince, now),
+      totalMs: calendar.today.totalMs + elapsedSince(calendar.today.live.spanSince, now),
+    })
+  }
+  return days
 }

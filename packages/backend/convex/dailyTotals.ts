@@ -15,12 +15,12 @@ export const listMine = query({
   handler: async (ctx, args) => readMine(ctx, args.fromDayStart),
 })
 
-// The private month calendar read: one Month of the caller's Daily totals plus
-// today's live row. See ST-28.
+// The private month calendar read: one Month of the caller's closed Daily totals
+// plus today's settled row and live tail. See ST-28.
 export const getCalendar = query({
   args: getCalendarArgs.fields,
   handler: async (ctx, args) => {
-    return await readCalendar(ctx, args.fromDayStart, args.toDayStart, args.now)
+    return await readCalendar(ctx, args.fromDayStart, args.toDayStart, args.todayStart)
   },
 })
 

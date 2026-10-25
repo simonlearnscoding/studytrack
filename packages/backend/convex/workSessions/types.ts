@@ -42,6 +42,16 @@ export type DashboardWorkSession = {
   tasks: DashboardWorkSessionTask[]
 }
 
+// Where a member's still-open time starts accruing inside the current Day, so a
+// reader can add `now` itself instead of asking the server to re-read the clock.
+// `deepFocusSince` is the running Deep focus partial's start; `spanSince` is the
+// running workSession's start. Both are clipped to the Day start. Null means that
+// metric has no open end.
+export type LiveTail = {
+  deepFocusSince: number | null
+  spanSince: number | null
+}
+
 // A member's planned workSession for the Day: a name and a future window on
 // their lane. Public like tasks (ADR-0007), and not a WorkSession — no voice
 // evidence. `title` is null on rows written before ST-31; the lane falls back to

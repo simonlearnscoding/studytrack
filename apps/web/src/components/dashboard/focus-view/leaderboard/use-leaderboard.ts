@@ -1,10 +1,12 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import type {
-  LeaderboardCell,
-  LeaderboardTableRow,
+  LeaderboardRankedCell,
+  LeaderboardRankedRow,
 } from '@studytrack/backend/convex/leaderboard/types'
+import { rankLiveTableRows } from '@studytrack/backend/convex/leaderboard/util'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { useQuery } from 'convex/react'
+import { useLastDefined } from '~/hooks/use-last-defined'
 import { useDateStore } from '~/state/date.store'
 import { colorFor, initials } from '~/lib/avatar'
 
@@ -19,7 +21,7 @@ export type LeaderboardCellVM = {
 
 // One row of the comparison table: a member's avatar identity plus their numbers
 // in every period. Every row carries all three periods, so a value is present
-// even when that period's own top ten did not include the member.
+// even when the member has no time in one of them.
 export type LeaderboardRowVM = {
   key: string
   initials: string
@@ -33,24 +35,29 @@ export type LeaderboardRowVM = {
 }
 
 // The live table read: the Day, Week and Month of the focus day, keyed on the
-// selected date. The caller supplies a once-a-minute `now` so the current period's
-// live minutes update without refetching every second; every other argument is
-// stable, so Convex can reuse the read across identical focus days.
+// selected date. The query only takes stable Day starts, so the clock never
+// replaces the subscription; the `now` tick is added here, in the browser, from
+// the live tails. The last good table survives a key change so the board never
+// blanks for a round trip.
 export function useLeaderboard(now: number): { rows: LeaderboardRowVM[] } {
   const selectedDate = useDateStore((state) => state.selectedDate)
   // Normalise the client Date to the shared Europe/Zurich day start rather than
   // trusting the browser's own midnight.
   const focusDayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
-  const table = useQuery(api.leaderboard.getLeaderboardTableForViewer, { focusDayStart, now })
+  const todayStart = startOfDay(now, DASHBOARD_TIME_ZONE)
+  const table = useLastDefined(
+    useQuery(api.leaderboard.getLeaderboardTableForViewer, { focusDayStart, todayStart })
+  )
   const me = useQuery(api.users.me)
   // A row is keyed by the shared member key the backend writes: the Discord id, or
   // the user id for a manual-only member with no Discord identity.
   const meKey = me ? (me.discordId ?? String(me._id)) : null
+  const ranked = table ? rankLiveTableRows(table, focusDayStart, now) : []
 
-  return { rows: toRows(table ?? [], meKey) }
+  return { rows: toRows(ranked, meKey) }
 }
 
-function toRows(rows: LeaderboardTableRow[], meKey: string | null): LeaderboardRowVM[] {
+function toRows(rows: LeaderboardRankedRow[], meKey: string | null): LeaderboardRowVM[] {
   return rows.map((row) => {
     const name = row.name ?? row.discordId
     return {
@@ -67,7 +74,7 @@ function toRows(rows: LeaderboardTableRow[], meKey: string | null): LeaderboardR
   })
 }
 
-function toCell(cell: LeaderboardCell): LeaderboardCellVM {
+function toCell(cell: LeaderboardRankedCell): LeaderboardCellVM {
   return {
     focus: toMinutes(cell.deepFocusMs),
     total: toMinutes(cell.totalMs),
