@@ -21,17 +21,20 @@ export function CollectiveFocusMeter({
 }) {
   const mounted = useMounted()
   const now = useNow(100)
+  const isTotal = metric === 'total'
 
   return (
-    <div className="flex items-baseline gap-2 px-0.5 pb-3">
-      {mounted ? (
-        <span className="font-mono text-body font-medium text-primary">
-          {formatDurationClock(collectiveFocusMs(members, now, metric))}
-        </span>
-      ) : (
-        <span aria-hidden className="skeleton inline-block h-4 w-16 rounded" />
-      )}
-      <span className="text-label">{metric === 'total' ? 'time together' : 'focus together'}</span>
+    <div className="card-surface mb-2.5 px-4 py-3.5">
+      <p className="text-label">{isTotal ? 'Time together' : 'Focus together'}</p>
+      <div className="pt-2">
+        {mounted ? (
+          <p className="text-metric font-mono font-medium">
+            {formatDurationClock(collectiveFocusMs(members, now, metric))}
+          </p>
+        ) : (
+          <span aria-hidden className="skeleton inline-block h-6 w-32 rounded" />
+        )}
+      </div>
     </div>
   )
 }
