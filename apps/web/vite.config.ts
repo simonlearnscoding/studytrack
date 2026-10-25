@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 3000,
-    allowedHosts: ['.ts.net', 'simone-pc.tail2a49c0.ts.net'],
+    allowedHosts: ['.ts.net', 'simone-pc.tail2a49c0.ts.net', 'aproda-ag.simone-muscas.com'],
   },
   plugins: [
     tailwindcss(),
