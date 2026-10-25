@@ -1,4 +1,5 @@
 import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
+import { Square } from 'lucide-react'
 import { useMetric } from '~/preferences/use-metric'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
@@ -8,6 +9,7 @@ import { MetricToggle } from '~/components/ui/metric-toggle'
 import { MODE_ICON, MODE_LABEL, MODE_TEXT } from '~/components/ui/mode-colors'
 import { Avatar } from '~/components/ui/avatar'
 import { CollectiveFocusMeter } from './collective-focus-meter'
+import { JoinRoomInvite } from './join-room-invite'
 import { toLiveRoomPerson } from './use-live-room'
 
 // The present-tense room rail: who is in a study channel right now, in join order.
@@ -15,9 +17,16 @@ import { toLiveRoomPerson } from './use-live-room'
 // page (and off the server render, via `useMounted`).
 export function PresenceRail({
   members,
+  invite,
+  viewerKey,
+  onStopManual,
   className,
 }: {
   members: DashboardMember[] | undefined
+  invite?: { canStart: boolean; onStart: () => void }
+  // The viewer's member key, so their own card can carry the stop control.
+  viewerKey?: string | null
+  onStopManual?: () => void
   className?: string
 }) {
   const mounted = useMounted()
@@ -59,11 +68,19 @@ export function PresenceRail({
         <p className="text-subtle-foreground px-0.5 text-caption">No one is studying right now.</p>
       )}
 
-      {/* contract: live members in join order · horizontal chips on mobile · the rail scrolls, not this list */}
+      {/* contract: the invite leads, then live members in join order · horizontal
+          chips on mobile · the rail scrolls, not this list */}
       <div
         className="flex flex-col gap-2 pr-0.5
                   max-lg:flex-row max-lg:overflow-x-auto max-lg:overflow-y-hidden"
       >
+        {invite && (
+          <JoinRoomInvite
+            canStart={invite.canStart}
+            isRoomEmpty={people?.length === 0}
+            onStart={invite.onStart}
+          />
+        )}
         {loading
           ? [0, 1, 2].map((i) => <RoomRowSkeleton key={i} />)
           : people.map((p) => (
@@ -79,9 +96,21 @@ export function PresenceRail({
                     {p.time ?? '—'}
                   </span>
                 </div>
-                <p className="text-subtle-foreground mt-1.5 truncate text-caption">
-                  {p.task ?? `${p.idle}${dots}`}
-                </p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <p className="text-subtle-foreground min-w-0 flex-1 truncate text-caption">
+                    {p.task ?? `${p.idle}${dots}`}
+                  </p>
+                  {p.key === viewerKey && onStopManual && (
+                    <button
+                      type="button"
+                      onClick={onStopManual}
+                      aria-label="Stop tracking"
+                      className="text-destructive hover:bg-destructive/15 grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded-full transition-colors"
+                    >
+                      <Square className="h-2.5 w-2.5 fill-current" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
       </div>

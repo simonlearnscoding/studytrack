@@ -12,6 +12,8 @@
  */
 
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
+import { api } from '@studytrack/backend/convex/_generated/api'
+import { useQuery } from 'convex/react'
 import { DevClockControl } from '~/dev-clock/dev-clock-control'
 import { useMounted } from '~/hooks/use-mounted'
 import { useNow } from '~/hooks/use-now'
@@ -44,6 +46,10 @@ export function FocusView() {
   const dayStart = startOfDay(selectedDate.getTime(), DASHBOARD_TIME_ZONE)
   const dayLabel = !mounted ? 'Today' : focusDayLabel(dayStart)
   const tracking = useTrackingStatus()
+  // The signed-in member's key — Discord id, or the user id for manual-only
+  // members — matches the room rows so the rail can flag and act on your own.
+  const me = useQuery(api.users.me)
+  const viewerKey = me ? (me.discordId ?? String(me._id)) : null
   // Two scopes on purpose: the queue is the Day being viewed (list, add, drag),
   // while Now is today's top Open task and never follows the calendar.
   const taskQueue = useDayTaskQueue(dayStart, now)
@@ -63,7 +69,16 @@ export function FocusView() {
         <div
           className={`min-h-0 space-y-6 lg:max-h-full lg:overflow-y-auto lg:py-8 lg:pl-6 ${tracking.isOnline ? 'max-lg:order-2' : 'max-lg:order-1'}`}
         >
-          <PresenceRail members={inRoom} />
+          <PresenceRail
+            members={inRoom}
+            invite={
+              tracking.isOnline
+                ? undefined
+                : { canStart: tracking.canStartManual, onStart: tracking.startManual }
+            }
+            viewerKey={viewerKey}
+            onStopManual={tracking.isManual ? tracking.stopManual : undefined}
+          />
           {/* medium screens: consistency tucks into the left rail, behind a divider */}
           <div className="hidden border-t border-white/[0.06] pt-5 lg:block xl:hidden">
             <Leaderboard rows={leaderboardRows} compact />
@@ -76,8 +91,6 @@ export function FocusView() {
           <Hero
             isOnline={tracking.isOnline}
             isManual={tracking.isManual}
-            canStartManual={tracking.canStartManual}
-            onStartManual={tracking.startManual}
             onStopManual={tracking.stopManual}
             elapsedMs={workSessionElapsedMs}
             nowTask={todayNow.task}
