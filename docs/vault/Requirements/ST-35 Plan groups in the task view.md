@@ -1,6 +1,6 @@
 ---
 id: ST-35
-status: todo
+status: done
 type: requirement
 priority: B
 area: requirements
@@ -49,17 +49,17 @@ Read ST-30 (the Done group pattern), ADR-0010 and ADR-0012.
 
 ## Acceptance criteria
 
-- [ ] The viewed Day's active plan blocks appear as groups, ordered by start time,
+- [x] The viewed Day's active plan blocks appear as groups, ordered by start time,
       with title, time and count.
-- [ ] Dragging a Task into a group assigns it and persists; dragging it out
+- [x] Dragging a Task into a group assigns it and persists; dragging it out
       unassigns it; dragging it to another group moves it.
-- [ ] Empty groups remain visible and accept a drop.
-- [ ] A done Task appears in Done, not in its plan group.
-- [ ] Reordering the main queue never changes the order of Tasks inside a group.
-- [ ] When a block ends, its group disappears and unfinished Tasks return to the
+- [x] Empty groups remain visible and accept a drop.
+- [x] A done Task appears in Done, not in its plan group.
+- [x] Reordering the main queue never changes the order of Tasks inside a group.
+- [x] When a block ends, its group disappears and unfinished Tasks return to the
       main queue; a past block's popover still shows the record.
-- [ ] The mobile sheet remains flat with a plan chip.
-- [ ] Keyboard and screen-reader drags announce the target group; the existing
+- [x] The mobile sheet remains flat with a plan chip.
+- [x] Keyboard and screen-reader drags announce the target group; the existing
       schedule-for-today rail still works.
 
 ## Decisions (2026-10-25)
@@ -77,3 +77,15 @@ Read ST-30 (the Done group pattern), ADR-0010 and ADR-0012.
   pane, hero and room agree (ADR-0011 amended by ADR-0014).
 - **Kept out:** per-group `...` menus, coloured accent stripes, and an
   "Add a task to this session" row.
+
+## Done
+
+`buildPlanSections` projects the one queue order into live group → unassigned →
+upcoming groups → Done, with each Task's plan read bounding the assignment to its
+window. `PlanGroupSection` is the foldable heading plus a droppable body (empty
+bodies say "Drop a task here to plan it"), and `dropActionFor` builds the full
+order by moving only the dropped Task between sections, so one drop writes the
+assignment and the order together. A group heading shows its count and
+`done/total`; Done stays the only home for finished work. Announcements name the
+target group, the mobile sheet stays flat with the plan chip, and Now follows
+ADR-0014.

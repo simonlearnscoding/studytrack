@@ -1,6 +1,6 @@
 ---
 id: ST-33
-status: todo
+status: done
 type: requirement
 priority: A
 area: requirements
@@ -52,19 +52,36 @@ Completion, planBlock and Plan assignment.
 
 ## Acceptance criteria
 
-- [ ] Adding an open Task from the block's Day attaches it and the popover and
+- [x] Adding an open Task from the block's Day attaches it and the popover and
       task row update live; removing it detaches it.
-- [ ] Assigning a Task already in another active block moves it: the old active
+- [x] Assigning a Task already in another active block moves it: the old active
       block no longer lists it, the new one does, and an ended block keeps its
       assignment.
-- [ ] A past block's task list is read-only and offers no checkbox.
-- [ ] A past block reports its tasks' eventual state and, where known, whether the
+- [x] A past block's task list is read-only and offers no checkbox.
+- [x] A past block reports its tasks' eventual state and, where known, whether the
       completion fell inside its window; a retrospective completion with no
       instant is never counted inside.
-- [ ] Deleting an upcoming block leaves its Tasks on the Day; live and past blocks
+- [x] Deleting an upcoming block leaves its Tasks on the Day; live and past blocks
       have no remove action.
-- [ ] No code reads or writes `plannedWorkSessionId`; work-session popovers still
+- [x] No code reads or writes `plannedWorkSessionId`; work-session popovers still
       show completed Tasks.
-- [ ] Ownership is enforced on every write; another member's Task or block never
+- [x] Ownership is enforced on every write; another member's Task or block never
       leaks its existence.
-- [ ] A mobile tap on a plan block opens the popover.
+- [x] A mobile tap on a plan block opens the popover.
+
+## Done
+
+`planAssignment` (owner, Task, block, the block's Day; no position, no state) with
+`assign` / `unassign` / `assignNew`, and `getWithTasks` public to signed-in members
+with an `isOwner` flag. `assignTask` moves a Task from another Day onto the block's
+Day first and drops every assignment to an unended block; an ended one stays as the
+record. A plan assignment always points at a Task on the block's Day, so the Day
+read is one indexed query (`taskPlansForDay`, newest assignment per Task) and the
+row chip disappears once its window closes. The past popover reports
+`doneInside` / `doneOutside` / `doneUnknownTime`, and a completion with no instant
+is never counted inside (ADR-0010). `plannedWorkSessionId` and its index are gone.
+Assignment is owner-only and never offered for a past block; the lane's plan block
+is a real button on both breakpoints.
+
+Follow-up: the richer create-and-attach path lives in
+[[ST-34 Plan a block with tasks]].

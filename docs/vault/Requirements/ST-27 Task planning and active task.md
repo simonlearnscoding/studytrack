@@ -1,6 +1,6 @@
 ---
 id: ST-27
-status: todo
+status: done
 type: requirement
 priority: A
 area: requirements
@@ -289,3 +289,31 @@ task tests migrate their fixtures to set `plannedAt` rather than being duplicate
 - **Future room read:** with the active pointer on `users`, a room read can join
   users → active task without a schema change.
 - **Visibility:** ADR-0007 governs; there is no per-task privacy flag.
+
+## Done (2026-10-26)
+
+The Day contract shipped and the beta UI did follow it, but one clause was
+superseded on the way:
+
+- **Shipped as specified.** `task.plannedAt` (Europe/Zurich day start) with
+  `by_userId_plannedAt`; `listMine({ dayStart })` returning exactly that Day in
+  queue order; `create({ title, plannedAt })` appending (or `now` / `next` at the
+  top); `completedAt` still the completion instant and still what binds a Task to
+  its Session; the Session payload as a deduped union of planned and finished
+  entries, read through the two indexed queries; ownership checks and the
+  "same error for missing and someone else's" rule; `position` for manual order
+  ([[ST-29 Task reordering by drag]]). The beta pane and dock read these functions
+  directly, so the composer, Day switch, ticking and renaming are live.
+- **Superseded: the stored active task.** `users.activeTaskId` / `activeSince` and
+  its `setActive` / `clearActive` / `getActive` path were built, then retired by
+  ADR-0011: Now is derived from the Day queue (and, since
+  [[ST-35 Plan groups in the task view]], from the live plan first) because a
+  stored pointer can only drift from create, drag, complete, delete, reschedule
+  and midnight. The pointer, its mutations and `pickUpNext` are now unread; see
+  [[ST-36 Delete the unused active-task pointer]]. User stories 16–23 and 35 are
+  therefore answered by derivation, not by a stored pointer, and the `activeSince`
+  clock is gone with it.
+- **Still open elsewhere.** Carry-over and re-planning UX stay in
+  [[Tasks — planning mechanics to decide]]; a Task's planned Session
+  (`plannedSessionId`) never got a writer, because plan blocks took that job
+  (ADR-0012).

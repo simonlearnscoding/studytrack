@@ -31,16 +31,24 @@ specs describe:
 - [[ST-9 Discord daily leaderboard]] — the bot board (shipped).
 - [[Daily totals]] — the stored per-Day record everything else sums over.
 
+The planning arc shipped (ST-31 → [[ST-35 Plan groups in the task view]]): a plan
+block has an optional name and an editable window, holds Tasks through a plan
+assignment, and appears in the task pane as a foldable group. The pane reads live
+plan → unassigned queue → upcoming plans → Done (ADR-0014), and Now leads with the
+live plan (ADR-0011 as amended).
+
 ## Next: needs one owner session first
 
-- **Finish wiring the Focus view to live data.** Some surfaces still run on
-  placeholders (the month calendar, the hero stats); the backend they need
-  (Tasks ST-5, Daily totals ST-11, the Period boards ST-12) is built. The web Period board's metric switch is
-  decided — see the Decided list in [[Weekly and monthly leaderboard]] — so the
-  remaining work is the authenticated read plus swapping every fixture to
-  `api.*`.
-- [[Streak]] (ST-14): parked behind the calendar — the month calendar
-  already shows a streak token; revisit only if it feels worth it live.
+- **Carry-over and re-planning.** An unfinished Task stays on its Day. The only
+  deliberate Day moves today are "schedule for today" on a past Day and picking a
+  Task into a plan block (which moves it to the block's Day); there is no
+  plan-tomorrow and no way to move a Task to another Day from the row. The open
+  questions are in [[Tasks — planning mechanics to decide]]: manual or automatic,
+  whether a "carried over" mark or slip history is kept, and how an overdue plan
+  is surfaced. The schema already supports the move (`tasks.reschedule`); the
+  design does not.
+- [[Streak]] (ST-14): parked behind the calendar — the month calendar already
+  shows a streak token; revisit only if it feels worth it live.
 
 ## Later: parked, blurry on purpose
 
@@ -54,9 +62,9 @@ specs describe:
 - **Visibility period boards on the web.** The [[Weekly and monthly leaderboard]]
   web board is the Focus view's consistency board; the Review-view home for it is
   still parked until that view exists.
-- **Planning (planned Sessions, Task carry-over, Day columns, retrospective).**
-  Needs Session feel first, plus a "Task has a Day" decision — Tasks are scoped
-  by `_creationTime` today.
+- **Planning beyond the Day (Day columns, retrospective).** Tasks are Day-scoped
+  now (`plannedAt`) and carry-over is the next owner session; the kanban-style
+  Day columns and a per-Session retrospective still need Session feel first.
 - **Customization (backgrounds, themes), non-study activities, points/rewards,
   Witness and Symbiosis surfaces.** Off the proven axis or without evidence;
   each unlocks only if members ask.

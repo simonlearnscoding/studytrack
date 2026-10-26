@@ -1,6 +1,6 @@
 ---
 id: ST-32
-status: todo
+status: done
 type: requirement
 priority: B
 area: requirements
@@ -41,12 +41,23 @@ viewing today) and ADR-0011 (Now is today's top task); the dev clock moves
 
 ## Acceptance criteria
 
-- [ ] With the dev clock off, behaviour is the production clock; the control is
+- [x] With the dev clock off, behaviour is the production clock; the control is
       not reachable in production.
-- [ ] With it on, jumping forward makes an upcoming block live and then past
+- [x] With it on, jumping forward makes an upcoming block live and then past
       without waiting; the lane, the plan popover and the task view agree.
-- [ ] Creating a block at the fake now obeys the fake past floor.
-- [ ] Ticking a task under the fake clock records the same live/retrospective
+- [x] Creating a block at the fake now obeys the fake past floor.
+- [x] Ticking a task under the fake clock records the same live/retrospective
       decision the server would make at that instant.
-- [ ] Reset returns every surface, including the Focus day, to the real clock.
-- [ ] Automated tests cover the pure offset and the production guard.
+- [x] Reset returns every surface, including the Focus day, to the real clock.
+- [x] Automated tests cover the pure offset and the production guard.
+
+## Done
+
+`devClock` singleton (one deployment-wide `offsetMs`) behind
+`isDevClockDeployment(isDevBypass())`, so production reads an always-off clock and
+refuses writes even if a row exists. Interactive writes ask `getClockNow(ctx)`;
+crons and stored Daily totals keep `Date.now()`. The web opts in twice — the
+`VITE_DEV_CLOCK` build flag skips the query entirely without it, and the
+`DevClockControl` renders only from an enabled clock — and a day jump moves the
+Focus day with it. Depth: `devClock/util.test.ts` for the pure offset, and `devClock.test.ts`
+for the guard, the floor and the completion instant.

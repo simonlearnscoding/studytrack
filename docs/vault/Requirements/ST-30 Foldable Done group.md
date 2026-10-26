@@ -1,6 +1,6 @@
 ---
 id: ST-30
-status: todo
+status: done
 type: requirement
 priority: B
 area: requirements
@@ -200,3 +200,13 @@ both are listed under Out of Scope so this slice stays about folding.
 
 Sources: the `next-steps.md` entry "Collapsible Done section", the design mock for
 the task queue, and the design conversation of 2026-10-24.
+
+## Done
+
+`preference.isDoneFolded` with its own mutation, `useDoneFold()` reading the live
+Preference, and the shared `TaskGroup` heading (caret, `aria-expanded`, count in
+the accessible name). Done rows stay out of the sortable list, and the desktop
+pane and the mobile sheet read the same fold. Preferences tests cover the default,
+both writes and the metric/fold independence. The shared heading was reused by
+[[ST-35 Plan groups in the task view]] as planned, with one addition: a plan group
+also carries a `done/total` progress count.

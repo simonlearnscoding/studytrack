@@ -1,6 +1,6 @@
 ---
 id: ST-34
-status: todo
+status: done
 type: requirement
 priority: A
 area: requirements
@@ -46,14 +46,25 @@ assignment.
 
 ## Acceptance criteria
 
-- [ ] Creating a block with two existing Tasks and one new title stores the block,
+- [x] Creating a block with two existing Tasks and one new title stores the block,
       the new Task and all three assignments; Cancel stores none.
-- [ ] Search is debounced and never queries on every keystroke; it returns a
+- [x] Search is debounced and never queries on every keystroke; it returns a
       bounded result set with each Task's current Day.
-- [ ] Picking a Task from another Day moves it to the block's Day and it appears
+- [x] Picking a Task from another Day moves it to the block's Day and it appears
       in that Day's queue.
-- [ ] "Create and attach" creates the Task on the block's Day and assigns it.
-- [ ] Done Tasks are not offered; a Task already in the block is not offered
+- [x] "Create and attach" creates the Task on the block's Day and assigns it.
+- [x] Done Tasks are not offered; a Task already in the block is not offered
       twice.
-- [ ] The atomic create leaves no orphan block or Task when any part is refused.
-- [ ] The picker is usable by keyboard and screen reader.
+- [x] The atomic create leaves no orphan block or Task when any part is refused.
+- [x] The picker is usable by keyboard and screen reader.
+
+## Done
+
+One `PlanTaskSearch` shared by the draft and the stored popover: the block Day's
+open Tasks before typing, then a 250 ms-debounced `tasks.search` over the Convex
+title index filtered to Open across every Day, capped at 8 and labelled with each
+Task's Day. The draft collects a pending list and `planBlocks.create` writes the
+block, the new Tasks and every assignment in one transaction, so Cancel writes
+nothing and a refused part rolls the rest back. The stored popover writes one Task
+per `assignNew`. Picking is `cmdk` under the hood, so arrowing and Enter work and
+the active result is announced.
