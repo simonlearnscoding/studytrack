@@ -247,8 +247,11 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
   return (
     <div className="relative">
       {/* Both states share one grid cell, so the page keeps the taller of the
-          skeleton and the (still hidden) live track while the read lands. */}
-      <div className="grid">
+          skeleton and the (still hidden) live track while the read lands.
+          grid-cols-1 clamps the column to minmax(0,1fr): an implicit column
+          would size to the axis' inline width, and the scroller measuring the
+          axis it just rendered feeds back into a runaway width loop. */}
+      <div className="grid grid-cols-1">
         <div
           aria-hidden={!ready}
           className={cn(
