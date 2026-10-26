@@ -104,11 +104,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
     void reorderStoredTasks({ dayStart, orderedTaskIds }).catch(logTaskError)
   }
 
-  const assignTaskToPlan = (
-    id: TaskId,
-    planBlockId: Id<'planBlock'>,
-    orderedTaskIds: TaskId[]
-  ) => {
+  const assignTaskToPlan = (id: TaskId, planBlockId: Id<'planBlock'>, orderedTaskIds: TaskId[]) => {
     void assignStoredTask({ planBlockId, taskId: id, orderedTaskIds }).catch(logTaskError)
   }
 
