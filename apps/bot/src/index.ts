@@ -2,8 +2,8 @@ import 'dotenv/config'
 import { Client, GatewayIntentBits } from 'discord.js'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@studytrack/backend/convex/_generated/api'
-import { describeVoiceMove, toVoiceSnapshot } from './voice'
-import { startLeaderboard } from './leaderboard'
+import { describeVoiceMove, hasHumanInVoice, toVoiceSnapshot } from './voice'
+import { startLeaderboard, type LeaderboardRefresh } from './leaderboard'
 
 const token = process.env.DISCORD_TOKEN
 const convexUrl = process.env.CONVEX_URL
@@ -21,10 +21,22 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 })
 
+// Starts once the gateway is ready; null until then, or if the board channel is
+// not a text channel.
+let leaderboard: LeaderboardRefresh | null = null
+
 client.once('clientReady', async () => {
   console.log(`studytrack bot logged in as ${client.user?.tag}`)
   try {
-    await startLeaderboard(client, convex, botSecret)
+    leaderboard = await startLeaderboard(client, convex, botSecret, {
+      // Asked on every leaderboard tick, so it reads the gateway cache only.
+      hasVoiceActivity: () => {
+        for (const guild of client.guilds.cache.values()) {
+          if (hasHumanInVoice(guild.voiceStates.cache.values())) return true
+        }
+        return false
+      },
+    })
   } catch (error) {
     console.error('[leaderboard] failed to start', error)
   }
@@ -52,6 +64,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       from,
       to,
     })
+    // The board's timer would take up to a minute to notice a join; the event is
+    // already here, so redraw from it instead of polling faster.
+    leaderboard?.nudge()
   } catch (error) {
     console.error('[voice] failed to record event', error)
   }

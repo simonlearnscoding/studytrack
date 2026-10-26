@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeVoiceMove, toVoiceSnapshot } from './voice'
+import { describeVoiceMove, hasHumanInVoice, toVoiceSnapshot } from './voice'
 
 describe('toVoiceSnapshot', () => {
   it('maps selfVideo to camera and streaming to screenShare', () => {
@@ -35,5 +35,26 @@ describe('describeVoiceMove', () => {
   it('reports nothing when the channel is unchanged', () => {
     expect(describeVoiceMove('voice-1', 'voice-1')).toBe('none')
     expect(describeVoiceMove(null, null)).toBe('none')
+  })
+})
+
+describe('hasHumanInVoice', () => {
+  const human = (channelId: string | null) => ({ channelId, member: { user: { bot: false } } })
+  const bot = (channelId: string) => ({ channelId, member: { user: { bot: true } } })
+
+  it('is false when the room is empty', () => {
+    expect(hasHumanInVoice([])).toBe(false)
+  })
+
+  it('is false when everyone cached is disconnected', () => {
+    expect(hasHumanInVoice([human(null), human(null)])).toBe(false)
+  })
+
+  it('is true when one person is in a channel', () => {
+    expect(hasHumanInVoice([human(null), human('voice-1')])).toBe(true)
+  })
+
+  it('ignores bots', () => {
+    expect(hasHumanInVoice([bot('voice-1')])).toBe(false)
   })
 })

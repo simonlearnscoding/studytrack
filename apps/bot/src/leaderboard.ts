@@ -16,7 +16,21 @@ import {
 // the channel's only content, so it is cleared on every start.
 export const LEADERBOARD_CHANNEL_ID = '916484382091513917'
 
-const UPDATE_INTERVAL_MS = 60 * 1000
+// A refresh is also the board's cost: each one re-reads the Day, Week and Month
+// windows of `dailyTotal` on the server (leaderboard.getBoards), which is the
+// bot's whole database-I/O bill. Durations only tick while somebody is in voice,
+// so a busy room is worth a refresh a minute; an empty room can only change
+// through a web-started session or the midnight rollover, and the slow interval
+// below is the safety net for those. Voice state changes arrive as gateway
+// events, so a join still lands immediately (see `nudge`).
+const LIVE_REFRESH_MS = 60 * 1000
+const IDLE_REFRESH_MS = 15 * 60 * 1000
+// Local timer only — it decides whether to refresh, so it must be finer than both
+// intervals above and costs nothing.
+const TICK_MS = 60 * 1000
+// A join plus a camera and a screen-share toggle land within seconds of each
+// other; coalesce them so one arrival costs one refresh.
+const NUDGE_DEBOUNCE_MS = 15 * 1000
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000
 const MEDALS = ['🥇', '🥈', '🥉']
 // Discord's own error code for a message that no longer exists.
@@ -117,19 +131,32 @@ export function formatDurationShort(ms: number): string {
 }
 
 // On start: clear the bot-owned channel, post a fresh three-message board (one
-// embed each), then keep editing those same messages every minute. Discord only
-// renders the first embed reliably when several are stacked in one message, so
-// each board gets its own message. The message ids live only in memory — a
-// restart clears and reposts (ST-9).
+// embed each), then keep editing those same messages on the cadence above.
+// Discord only renders the first embed reliably when several are stacked in one
+// message, so each board gets its own message. The message ids live only in
+// memory — a restart clears and reposts (ST-9).
+export type LeaderboardRefresh = {
+  // Redraw now, debounced. A gateway voice event is the one thing the timer
+  // cannot know about, so it nudges the board instead of waiting for a tick.
+  nudge: () => void
+}
+
+export type LeaderboardOptions = {
+  // Whether anybody is sitting in a voice channel right now. Read from the
+  // gateway's own cache, so asking costs nothing.
+  hasVoiceActivity: () => boolean
+}
+
 export async function startLeaderboard(
   client: Client,
   convex: ConvexHttpClient,
-  secret: string
-): Promise<void> {
+  secret: string,
+  options: LeaderboardOptions
+): Promise<LeaderboardRefresh | null> {
   const channel = await client.channels.fetch(LEADERBOARD_CHANNEL_ID)
   if (!(channel instanceof TextChannel)) {
     console.error(`[leaderboard] channel ${LEADERBOARD_CHANNEL_ID} is not a text channel`)
-    return
+    return null
   }
 
   await clearChannel(channel)
@@ -155,25 +182,60 @@ export async function startLeaderboard(
   const messages = await postBoard(channel, await render())
   console.log(`[leaderboard] posted in #${channel.name}`)
 
-  const update = async () => {
-    const embeds = await render()
-    for (const [index, embed] of embeds.entries()) {
-      try {
-        await messages[index].edit({ embeds: [embed] })
-      } catch (error) {
-        // The message was deleted: repost so the board heals itself.
-        if (error instanceof DiscordAPIError && error.code === UNKNOWN_MESSAGE) {
-          messages[index] = await channel.send({ embeds: [embed] })
-          continue
+  let isUpdating = false
+  let shouldUpdateAgain = false
+  let lastRefreshAt = Date.now()
+
+  const update = async (): Promise<void> => {
+    // Edits are Discord round trips; a nudge that lands mid-refresh is folded into
+    // one follow-up rather than racing the message edits.
+    if (isUpdating) {
+      shouldUpdateAgain = true
+      return
+    }
+    isUpdating = true
+    lastRefreshAt = Date.now()
+    try {
+      const embeds = await render()
+      for (const [index, embed] of embeds.entries()) {
+        try {
+          await messages[index].edit({ embeds: [embed] })
+        } catch (error) {
+          // The message was deleted: repost so the board heals itself.
+          if (error instanceof DiscordAPIError && error.code === UNKNOWN_MESSAGE) {
+            messages[index] = await channel.send({ embeds: [embed] })
+            continue
+          }
+          console.error('[leaderboard] update failed', error)
         }
-        console.error('[leaderboard] update failed', error)
+      }
+    } catch (error) {
+      console.error('[leaderboard] refresh failed', error)
+    } finally {
+      isUpdating = false
+      if (shouldUpdateAgain) {
+        shouldUpdateAgain = false
+        void update()
       }
     }
   }
 
   setInterval(() => {
-    void update()
-  }, UPDATE_INTERVAL_MS)
+    const isDue = Date.now() - lastRefreshAt >= IDLE_REFRESH_MS
+    if (options.hasVoiceActivity() || isDue) void update()
+  }, TICK_MS)
+
+  let isNudgeQueued = false
+  const nudge = () => {
+    if (isNudgeQueued) return
+    isNudgeQueued = true
+    setTimeout(() => {
+      isNudgeQueued = false
+      void update()
+    }, NUDGE_DEBOUNCE_MS)
+  }
+
+  return { nudge }
 }
 
 // One message per board, sent in order so Today stays above Week above Month.
