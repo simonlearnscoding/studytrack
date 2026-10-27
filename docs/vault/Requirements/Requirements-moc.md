@@ -51,3 +51,4 @@ projection of the Day queue.
 - [[ST-33 Plan block task assignment]] (ST-33): done · the plan assignment link
 - [[ST-34 Plan a block with tasks]] (ST-34): done · debounced search and atomic create-and-attach
 - [[ST-35 Plan groups in the task view]] (ST-35): done · plan blocks as foldable groups in the task pane
+- [[ST-37 Add a task inside a plan group]] (ST-37): todo · #ready-for-agent · an inline composer at the foot of each expanded plan group

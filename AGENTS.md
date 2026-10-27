@@ -54,6 +54,14 @@ packages/
   `rest`; `cachedTasks`, not `remembered`; `isTracking`, not `live`. Avoid vague
   identifiers (`current`, `item`, `items`, `data`), and prefix booleans with
   `is` / `has` / `can`.
+- A name must reveal intent: for a value, **what it is**; for a function,
+  **what it does to what**. No bare participles that hide their subject
+  (`trimmed`, `filtered`, `sorted`) and no deictic names (`next`, `existing`,
+  `target`): write `taskTitle`, `dayTaskRows`, `bottomPosition`,
+  `targetDayTaskRows`. Functions are verb + object — `insertTaskInDayQueue`, not
+  `createTaskForDay`; `deleteTask`, not `remove` — so a reader never opens the
+  body to learn the target. Prefer a longer, searchable name over a short
+  ambiguous one, and use one word per concept across the codebase.
 - File names follow the same rule: `mock-data.ts`, not `data.ts`;
   `use-my-tasks.ts`, not `hooks.ts`; `voiceStrategies.ts`, not `strategies.ts`
   (Convex module names are camelCase — no hyphens). The only exceptions are the

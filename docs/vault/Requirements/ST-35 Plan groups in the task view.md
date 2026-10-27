@@ -89,3 +89,6 @@ assignment and the order together. A group heading shows its count and
 `done/total`; Done stays the only home for finished work. Announcements name the
 target group, the mobile sheet stays flat with the plan chip, and Now follows
 ADR-0014.
+
+Superseded in part by [[ST-37 Add a task inside a plan group]]: the inline "add a
+task" row kept out here is now specified there.
