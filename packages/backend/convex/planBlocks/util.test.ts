@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countPlanTasks, planCountdown, planPhase } from './util'
+import { countPlanTasks, countdownTone, planCountdown, planPhase } from './util'
 
 const H = 60 * 60 * 1000
 const START = 14 * H
@@ -53,6 +53,7 @@ describe('planCountdown', () => {
       endsAt: END,
       leftMs: 48 * MIN,
       drained: 0.2,
+      tone: 'normal',
     })
   })
 
@@ -88,6 +89,7 @@ describe('planCountdown', () => {
       endsAt: LATER_END,
       leftMs: LATER_END - END,
       drained: 0,
+      tone: 'normal',
     })
   })
 
@@ -101,5 +103,21 @@ describe('planCountdown', () => {
         START - H
       )
     ).toEqual({ kind: 'upcoming', startsAt: END, untilMs: END - (START - H) })
+  })
+})
+
+describe('countdownTone', () => {
+  const MIN = 60 * 1000
+  const HOUR = 60 * MIN
+
+  it('goes low in the last ten minutes of a long block', () => {
+    expect(countdownTone(11 * MIN, HOUR)).toBe('normal')
+    expect(countdownTone(10 * MIN, HOUR)).toBe('low')
+    expect(countdownTone(0, HOUR)).toBe('low')
+  })
+
+  it('scales the lead to a short block instead of going low for most of it', () => {
+    expect(countdownTone(4 * MIN, 12 * MIN)).toBe('normal')
+    expect(countdownTone(3 * MIN, 12 * MIN)).toBe('low')
   })
 })

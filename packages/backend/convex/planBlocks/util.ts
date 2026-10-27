@@ -14,9 +14,27 @@ export function planPhase(plannedStart: number, plannedEnd: number, now: number)
 // Derived from the covering block, never stored: a session has no planned end of
 // its own, so the only end time that exists is the block's.
 export type PlanCountdown =
-  | { kind: 'live'; startsAt: number; endsAt: number; leftMs: number; drained: number }
+  | {
+      kind: 'live'
+      startsAt: number
+      endsAt: number
+      leftMs: number
+      drained: number
+      tone: CountdownTone
+    }
   | { kind: 'upcoming'; startsAt: number; untilMs: number }
   | { kind: 'none' }
+
+// How loudly the clock should read. The lead is relative to the block, not
+// absolute: ten fixed minutes would make a 15-minute block low for two thirds of
+// its life. One step only — the ring shifts colour, the number never does.
+export type CountdownTone = 'normal' | 'low'
+
+const LOW_LEAD_MS = 10 * 60 * 1000
+
+export function countdownTone(leftMs: number, spanMs: number): CountdownTone {
+  return leftMs <= Math.min(LOW_LEAD_MS, spanMs / 4) ? 'low' : 'normal'
+}
 
 // Time left in the block that covers `now`, else the wait until the Day's next
 // block, else nothing. `blocks` is one Day's, so a header can never count down
@@ -39,6 +57,7 @@ export function planCountdown(
         // How much of the block's window is gone: what a dial draws. Clamped so
         // a block with no span (or a clock oddity) never yields NaN.
         drained: span <= 0 ? 0 : Math.min(1, Math.max(0, (now - block.plannedStart) / span)),
+        tone: countdownTone(block.plannedEnd - now, span),
       }
     }
     if (phase === 'upcoming' && (next === null || block.plannedStart < next.plannedStart)) {
