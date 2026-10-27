@@ -1,50 +1,49 @@
+import type { PlanCountdown } from '@studytrack/backend/convex/planBlocks/util'
 import type { NowTaskCandidate } from '@studytrack/backend/convex/tasks/types'
 import { Square } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Checkbox } from '~/components/ui/checkbox'
+import { CountdownClock } from './countdown-clock'
 
 // The workSession header. Its task area shows the member's Now — today's first
 // open task — whatever Day the board is showing. It is absent until the member
 // is tracking; starting lives in the room rail's invite card.
+//
+// The clock slot counts down the plan block, not the session, and disappears
+// when the Day has no block to count toward. On mobile the slot is the whole
+// header, so the section goes with it.
 export function Hero({
   isOnline,
   isManual,
   onStopManual,
-  elapsedMs,
+  countdown,
   nowTask,
   onToggleNowTask,
 }: {
   isOnline: boolean
   isManual: boolean
   onStopManual: () => void
-  elapsedMs: number
+  countdown: PlanCountdown
   nowTask: NowTaskCandidate | null
   onToggleNowTask: () => void
 }) {
   if (!isOnline) return null
 
-  const elapsedMinutes = Math.floor(elapsedMs / 60_000)
-  const hours = Math.floor(elapsedMinutes / 60)
-  const minutes = String(elapsedMinutes % 60).padStart(2, '0')
+  const hasClock = countdown.kind !== 'none'
 
   return (
-    <section className="flex shrink-0 items-center gap-5 border-b border-border pb-5 max-lg:flex-col max-lg:items-start max-lg:gap-4 lg:sticky lg:top-0 lg:z-10 lg:min-h-19 lg:bg-background/80 lg:backdrop-blur">
-      <div className="shrink-0 whitespace-nowrap">
-        <p className="text-label">Your work session</p>
-        {/* contract: single clock, minute resolution — everyone ticks per minute */}
-        <div className="mt-1.5 font-mono text-clock font-medium">
-          {hours}
-          <span className="text-subtle-foreground text-[0.62em]">h </span>
-          {minutes}
-          <span className="text-subtle-foreground text-[0.62em]">m</span>
-        </div>
-      </div>
+    <section
+      className={`flex shrink-0 items-center gap-5 border-b border-border pb-5 max-lg:flex-col max-lg:items-start max-lg:gap-4 lg:sticky lg:top-0 lg:z-10 lg:min-h-19 lg:bg-background/80 lg:backdrop-blur ${
+        hasClock ? '' : 'max-lg:hidden'
+      }`}
+    >
+      <CountdownClock countdown={countdown} />
 
-      {/* The divider keeps the timer and Now as separate reads: the timer is the
-          workSession's, Now is today's top Open task. Now is desktop only — on
+      {/* The divider keeps the clock and Now as separate reads: the clock is the
+          plan block's, Now is today's top Open task. Now is desktop only — on
           mobile the sticky bottom bar already carries it. */}
       <div className="flex min-w-0 flex-1 items-center gap-5 max-lg:hidden">
-        <div className="h-12 w-px shrink-0 bg-border" />
+        {hasClock && <div className="h-12 w-px shrink-0 bg-border" />}
 
         <div className="min-w-0 flex-1">
           <p className="text-label text-primary">Now</p>

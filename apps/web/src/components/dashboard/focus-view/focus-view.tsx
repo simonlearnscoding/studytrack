@@ -13,6 +13,7 @@
 
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { api } from '@studytrack/backend/convex/_generated/api'
+import { planCountdown } from '@studytrack/backend/convex/planBlocks/util'
 import { useQuery } from 'convex/react'
 import { DevClockControl } from '~/dev-clock/dev-clock-control'
 import { useMounted } from '~/hooks/use-mounted'
@@ -54,8 +55,12 @@ export function FocusView() {
   // while Now is today's top Open task and never follows the calendar.
   const taskQueue = useDayTaskQueue(dayStart, now)
   const todayNow = useNowTask(now)
-  const workSessionElapsedMs =
-    tracking.startedAt === null ? 0 : Math.max(0, now - tracking.startedAt)
+  // The header clock counts down the Day's plan blocks, not the session: a
+  // workSession has no planned end. Today's blocks are the ones read, so peeking
+  // at tomorrow still counts down today's block rather than tomorrow's.
+  const todayStart = startOfDay(now, DASHBOARD_TIME_ZONE)
+  const todayPlanBlocks = useQuery(api.planBlocks.listMine, { dayStart: todayStart })
+  const countdown = planCountdown(todayPlanBlocks ?? [], now)
   // The room is live from Convex; its per-second clock lives in the rail itself.
   const { inRoom, count: roomCount } = useLiveRoom()
   const { rows: leaderboardRows } = useLeaderboard(now)
@@ -92,7 +97,7 @@ export function FocusView() {
             isOnline={tracking.isOnline}
             isManual={tracking.isManual}
             onStopManual={tracking.stopManual}
-            elapsedMs={workSessionElapsedMs}
+            countdown={countdown}
             nowTask={todayNow.task}
             onToggleNowTask={todayNow.complete}
           />

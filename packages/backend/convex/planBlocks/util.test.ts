@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { countPlanTasks, planBlockDraftProposal, planPhase } from './util'
+import {
+  countPlanTasks,
+  countdownTone,
+  planBlockDraftProposal,
+  planCountdown,
+  planPhase,
+} from './util'
 
 const MIN = 60 * 1000
 const H = 60 * MIN
@@ -95,5 +101,84 @@ describe('planBlockDraftProposal', () => {
       startAt: 10 * H + 15 * MIN,
       endAt: 12 * H + 15 * MIN,
     })
+  })
+})
+
+describe('planCountdown', () => {
+  const LATER_START = 16 * H
+  const LATER_END = 17 * H
+
+  it('counts down to the end of the block that covers now', () => {
+    expect(planCountdown([{ plannedStart: START, plannedEnd: END }], START + 12 * MIN)).toEqual({
+      kind: 'live',
+      startsAt: START,
+      endsAt: END,
+      leftMs: 48 * MIN,
+      drained: 0.2,
+      tone: 'normal',
+    })
+  })
+
+  it('counts up to the next block when nothing covers now', () => {
+    expect(
+      planCountdown(
+        [
+          { plannedStart: START, plannedEnd: END },
+          { plannedStart: LATER_START, plannedEnd: LATER_END },
+        ],
+        END + 10 * MIN
+      )
+    ).toEqual({ kind: 'upcoming', startsAt: LATER_START, untilMs: LATER_START - (END + 10 * MIN) })
+  })
+
+  it('says nothing when the Day has no block left', () => {
+    expect(planCountdown([], START)).toEqual({ kind: 'none' })
+    expect(planCountdown([{ plannedStart: START, plannedEnd: END }], END)).toEqual({ kind: 'none' })
+  })
+
+  it('gives the end instant to the next block, so touching blocks never both read live', () => {
+    expect(
+      planCountdown(
+        [
+          { plannedStart: START, plannedEnd: END },
+          { plannedStart: END, plannedEnd: LATER_END },
+        ],
+        END
+      )
+    ).toEqual({
+      kind: 'live',
+      startsAt: END,
+      endsAt: LATER_END,
+      leftMs: LATER_END - END,
+      drained: 0,
+      tone: 'normal',
+    })
+  })
+
+  it('takes the earliest upcoming block whatever order the Day arrives in', () => {
+    expect(
+      planCountdown(
+        [
+          { plannedStart: LATER_START, plannedEnd: LATER_END },
+          { plannedStart: END, plannedEnd: END + H },
+        ],
+        START - H
+      )
+    ).toEqual({ kind: 'upcoming', startsAt: END, untilMs: END - (START - H) })
+  })
+})
+
+describe('countdownTone', () => {
+  const HOUR = 60 * MIN
+
+  it('goes low in the last ten minutes of a long block', () => {
+    expect(countdownTone(11 * MIN, HOUR)).toBe('normal')
+    expect(countdownTone(10 * MIN, HOUR)).toBe('low')
+    expect(countdownTone(0, HOUR)).toBe('low')
+  })
+
+  it('scales the lead to a short block instead of going low for most of it', () => {
+    expect(countdownTone(4 * MIN, 12 * MIN)).toBe('normal')
+    expect(countdownTone(3 * MIN, 12 * MIN)).toBe('low')
   })
 })

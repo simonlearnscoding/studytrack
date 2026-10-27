@@ -76,6 +76,9 @@ function Tokens() {
           <span className="inline-flex items-center rounded-full bg-gold/15 px-2.5 py-1 text-label text-gold">
             Longest
           </span>
+          <span className="inline-flex items-center rounded-full bg-bronze/15 px-2.5 py-1 text-label text-bronze">
+            Almost over
+          </span>
         </div>
         <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-6">
           <span className="h-10 w-10 rounded-full bg-primary shadow-glow" />

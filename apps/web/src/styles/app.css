@@ -46,6 +46,7 @@
   --primary-foreground: #0b0e14; /* near-black, NOT white */
   --primary-tint: #112a27; /* emerald @ 14% over bg — chips, NOW badges */
   --gold: #f3cf6b; /* "longest work session" badge only */
+  --bronze: #c88b4a; /* countdown ring when the block is nearly over */
 
   --destructive: #f87171; /* red-400 (reads soft on dark) */
   --destructive-foreground: #e9edf3; /* foreground */
@@ -83,6 +84,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-tint: var(--primary-tint);
   --color-gold: var(--gold);
+  --color-bronze: var(--bronze);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
