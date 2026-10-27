@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countPlanTasks, planPhase } from './util'
+import { countPlanTasks, planCountdown, planPhase } from './util'
 
 const H = 60 * 60 * 1000
 const START = 14 * H
@@ -38,5 +38,68 @@ describe('countPlanTasks', () => {
       doneUnknownTime: 1,
       open: 0,
     })
+  })
+})
+
+describe('planCountdown', () => {
+  const MIN = 60 * 1000
+  const LATER_START = 16 * H
+  const LATER_END = 17 * H
+
+  it('counts down to the end of the block that covers now', () => {
+    expect(planCountdown([{ plannedStart: START, plannedEnd: END }], START + 12 * MIN)).toEqual({
+      kind: 'live',
+      startsAt: START,
+      endsAt: END,
+      leftMs: 48 * MIN,
+      drained: 0.2,
+    })
+  })
+
+  it('counts up to the next block when nothing covers now', () => {
+    expect(
+      planCountdown(
+        [
+          { plannedStart: START, plannedEnd: END },
+          { plannedStart: LATER_START, plannedEnd: LATER_END },
+        ],
+        END + 10 * MIN
+      )
+    ).toEqual({ kind: 'upcoming', startsAt: LATER_START, untilMs: LATER_START - (END + 10 * MIN) })
+  })
+
+  it('says nothing when the Day has no block left', () => {
+    expect(planCountdown([], START)).toEqual({ kind: 'none' })
+    expect(planCountdown([{ plannedStart: START, plannedEnd: END }], END)).toEqual({ kind: 'none' })
+  })
+
+  it('gives the end instant to the next block, so touching blocks never both read live', () => {
+    expect(
+      planCountdown(
+        [
+          { plannedStart: START, plannedEnd: END },
+          { plannedStart: END, plannedEnd: LATER_END },
+        ],
+        END
+      )
+    ).toEqual({
+      kind: 'live',
+      startsAt: END,
+      endsAt: LATER_END,
+      leftMs: LATER_END - END,
+      drained: 0,
+    })
+  })
+
+  it('takes the earliest upcoming block whatever order the Day arrives in', () => {
+    expect(
+      planCountdown(
+        [
+          { plannedStart: LATER_START, plannedEnd: LATER_END },
+          { plannedStart: END, plannedEnd: END + H },
+        ],
+        START - H
+      )
+    ).toEqual({ kind: 'upcoming', startsAt: END, untilMs: END - (START - H) })
   })
 })
