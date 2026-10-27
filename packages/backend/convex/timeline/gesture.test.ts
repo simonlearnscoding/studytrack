@@ -148,8 +148,8 @@ describe('resolvePlanBlockEdit — move', () => {
     ).toEqual([10 * 60 + 15, 11 * 60 + 15])
   })
 
-  it('stops at the previous plan’s end', () => {
-    const withPrevious = [...blocks, plan('previous', 9 * 60, 9 * 60 + 30)]
+  it('stops flush at the previous plan’s end instead of covering it', () => {
+    const withPrevious = [...blocks, plan('previous', 8 * 60 + 30, 9 * 60 + 30)]
     expect(
       minutes(
         edit({
@@ -157,13 +157,28 @@ describe('resolvePlanBlockEdit — move', () => {
           planBlockId: 'a',
           edge: 'move',
           grabMin: 10 * 60 + 30,
-          pointerMin: 8 * 60,
+          pointerMin: 9 * 60 + 15,
         })
       )
     ).toEqual([9 * 60 + 30, 10 * 60 + 30])
   })
 
-  it('stops at the next plan’s start', () => {
+  it('stops flush at the next plan’s start instead of covering it', () => {
+    const withNext = [...blocks, plan('next', 12 * 60, 13 * 60)]
+    expect(
+      minutes(
+        edit({
+          blocks: withNext,
+          planBlockId: 'a',
+          edge: 'move',
+          grabMin: 10 * 60 + 30,
+          pointerMin: 11 * 60 + 45,
+        })
+      )
+    ).toEqual([11 * 60, 12 * 60])
+  })
+
+  it('hops forwards over the next plan once the drag passes it', () => {
     const withNext = [...blocks, plan('next', 12 * 60, 13 * 60)]
     expect(
       minutes(
@@ -175,7 +190,42 @@ describe('resolvePlanBlockEdit — move', () => {
           pointerMin: 13 * 60,
         })
       )
-    ).toEqual([11 * 60, 12 * 60])
+    ).toEqual([13 * 60, 14 * 60])
+  })
+
+  it('hops backwards over the previous plan once the drag passes it', () => {
+    const withPrevious = [...blocks, plan('previous', 9 * 60, 9 * 60 + 30)]
+    expect(
+      minutes(
+        edit({
+          blocks: withPrevious,
+          planBlockId: 'a',
+          edge: 'move',
+          grabMin: 10 * 60 + 30,
+          pointerMin: 8 * 60,
+        })
+      )
+    ).toEqual([8 * 60, 9 * 60])
+  })
+
+  it('skips a gap too narrow for the block', () => {
+    // 13:00–13:30 is 30 minutes wide; the block is an hour.
+    const crowded = [
+      ...blocks,
+      plan('next', 11 * 60 + 30, 13 * 60),
+      plan('after', 13 * 60 + 30, 15 * 60),
+    ]
+    expect(
+      minutes(
+        edit({
+          blocks: crowded,
+          planBlockId: 'a',
+          edge: 'move',
+          grabMin: 10 * 60 + 30,
+          pointerMin: 13 * 60 + 30,
+        })
+      )
+    ).toEqual([15 * 60, 16 * 60])
   })
 
   it('has no geometry when the past wall is past the last legal left', () => {

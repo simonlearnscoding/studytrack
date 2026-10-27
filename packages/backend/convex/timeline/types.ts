@@ -85,9 +85,10 @@ export type TimelinePlanBlockVM = {
 }
 
 // A planBlock's visible window on the axis, used by the drag gesture as a wall:
-// a new planBlock may not start inside it or be dragged across it. `title` rides
-// along so a gesture can send it back unchanged on the update mutation, and
-// `locked` keeps a started block out of the gesture layer entirely.
+// a new planBlock may not start inside it, and a moved one never covers it — a
+// move may pass over it into a free gap beyond. `title` rides along so a gesture
+// can send it back unchanged on the update mutation, and `locked` keeps a
+// started block out of the gesture layer entirely.
 export type TimelinePlanBlockWallVM = {
   id: Id<'planBlock'>
   title: string | null

@@ -77,9 +77,12 @@ export function resolvePlanBlockDraft({
 }
 
 // Move or resize one existing plan. `edge` says which part the gesture holds.
-// The walls are the past floor and the neighbouring plans (the gesture's own
-// block excluded). Null when the gesture has no legal geometry: the block is
-// gone or has no width, or the walls have crossed.
+// Both gestures are walled by the past floor and by the plans around the block
+// (the gesture's own excluded), so a plan never covers another one. A move may
+// still pass over a neighbouring plan into a free gap beyond it; a resize stops
+// at the wall, since an edge cannot hop over a block it would swallow. Null when
+// the gesture has no legal geometry: the block is gone or has no width, no free
+// gap fits it, or the resize walls have crossed.
 export function resolvePlanBlockEdit({
   segments,
   axisWidthPx,
@@ -105,17 +108,15 @@ export function resolvePlanBlockEdit({
   if (width <= 0) return null
 
   const floorPx = planFloorPx(segments, nowPx)
-  const { previousEndPx, nextStartPx } = neighbourWalls(blocks, block, axisWidthPx)
 
   if (edge === 'move') {
     if (grabPx == null) return null
-    const minLeftPx = Math.max(floorPx, previousEndPx)
-    const maxLeftPx = Math.min(axisWidthPx - width, nextStartPx - width)
-    if (maxLeftPx < minLeftPx) return null
-    const snapped = snapPx(segments, block.startPx + (pointerPx - grabPx), 0)
-    const leftPx = Math.max(minLeftPx, Math.min(snapped, maxLeftPx))
-    return spanAt(segments, leftPx, width)
+    const desiredPx = snapPx(segments, block.startPx + (pointerPx - grabPx), 0)
+    const leftPx = nearestFreeLeftPx(blocks, block, width, floorPx, axisWidthPx, desiredPx)
+    return leftPx === null ? null : spanAt(segments, leftPx, width)
   }
+
+  const { previousEndPx, nextStartPx } = neighbourWalls(blocks, block, axisWidthPx)
 
   // Resizing keeps at least one snap step of plan: the moving edge may not
   // cross the fixed one.
@@ -162,7 +163,8 @@ function snapStepPx(segments: TimelineSegment[], px: number): number {
 
 // The pixel walls a block's neighbours put on it: the nearest end of a plan
 // before it, and the nearest start of a plan after it. Defaults are the axis
-// ends, so a lone plan is free across the whole track.
+// ends, so a lone plan is free across the whole track. A move does not use these
+// — it may pass a neighbour; a resize, which cannot, does.
 function neighbourWalls(
   blocks: TimelinePlanBlockWallVM[],
   block: TimelinePlanBlockWallVM,
@@ -177,6 +179,51 @@ function neighbourWalls(
       .filter((other) => other.startPx >= block.endPx)
       .reduce((nearest, other) => Math.min(nearest, other.startPx), axisWidthPx),
   }
+}
+
+// Where a block of this width may start without covering another plan: one
+// range of left pixels per free gap, in axis order, clamped to the past floor
+// and the axis end. A gap narrower than the block contributes no range, so a
+// plan that fits nowhere has nowhere to go.
+function freeLeftRanges(
+  blocks: TimelinePlanBlockWallVM[],
+  block: TimelinePlanBlockWallVM,
+  widthPx: number,
+  floorPx: number,
+  axisWidthPx: number
+): { fromPx: number; toPx: number }[] {
+  const ranges: { fromPx: number; toPx: number }[] = []
+  let gapStartPx = Math.max(floorPx, 0)
+  const walls = blocks
+    .filter((other) => other.id !== block.id)
+    .sort((left, right) => left.startPx - right.startPx)
+  for (const wall of walls) {
+    ranges.push({ fromPx: gapStartPx, toPx: wall.startPx - widthPx })
+    gapStartPx = Math.max(gapStartPx, wall.endPx)
+  }
+  ranges.push({ fromPx: gapStartPx, toPx: axisWidthPx - widthPx })
+  return ranges.filter((range) => range.toPx >= range.fromPx)
+}
+
+// The legal left nearest where the pointer asked for. A drag therefore hops over
+// a neighbouring plan once it has travelled past that plan's middle — the block
+// reorders instead of piling up against the neighbour's edge — and lands flush
+// inside the gap it can actually fit.
+function nearestFreeLeftPx(
+  blocks: TimelinePlanBlockWallVM[],
+  block: TimelinePlanBlockWallVM,
+  widthPx: number,
+  floorPx: number,
+  axisWidthPx: number,
+  desiredPx: number
+): number | null {
+  let nearest: { leftPx: number; distancePx: number } | null = null
+  for (const range of freeLeftRanges(blocks, block, widthPx, floorPx, axisWidthPx)) {
+    const leftPx = Math.max(range.fromPx, Math.min(desiredPx, range.toPx))
+    const distancePx = Math.abs(leftPx - desiredPx)
+    if (nearest === null || distancePx < nearest.distancePx) nearest = { leftPx, distancePx }
+  }
+  return nearest?.leftPx ?? null
 }
 
 // A pixel span → a whole-minute span, or null when either end is hidden in a
