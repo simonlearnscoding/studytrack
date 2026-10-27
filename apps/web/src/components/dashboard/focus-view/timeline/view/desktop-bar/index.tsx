@@ -10,7 +10,7 @@ import { BandLayer } from '../axis/night-band'
 import { RowTrack, type PlanBlockOverride, type WorkSessionClick } from '../lanes/row-track'
 import type { AxisSurface } from '../../types'
 import { useMirrorScroll } from '../../hooks/use-mirror-scroll'
-import { blockSpanText, planBlockChipText, planBlockSpanText } from './plan-block-label-text'
+import { blockSpanText, planBlockSpanText } from './plan-block-label-text'
 import { CursorTimeLabel, PlanBlockSpanLabel } from './plan-block-labels'
 import { isPlannableSpan, usePlanBlockGestures } from './use-plan-block-gestures'
 import type { PlanBlockClick, PlanBlockDraft, PlanBlockDrag, PlanBlockUpdate } from './types'
@@ -151,10 +151,10 @@ export function PinnedDesktopBar({
   const hoverSpanText = hoveredGeometry
     ? blockSpanText(axis.segments, hoveredGeometry.leftPx, hoveredGeometry.widthPx)
     : null
-  const hoverLabel =
-    hoveredGeometry && hoverSpanText ? planBlockChipText(hoveredBlock?.title, hoverSpanText) : null
+  // The lane already prints the block's title, so the hover chip adds only what
+  // the block cannot say at a glance: its exact start and end.
+  const hoverLabel = hoverSpanText
   const hoverLabelLeftPx = hoveredGeometry?.leftPx ?? 0
-  const hoverLabelMaxWidthPx = hoveredGeometry ? Math.max(48, hoveredGeometry.widthPx) : undefined
 
   // The time a click or drag at the pointer would start on: the same floor and
   // quarter-hour snap the planning gestures use. Nothing to read in the past,
@@ -287,13 +287,7 @@ export function PinnedDesktopBar({
                 </>
               )}
               {editLabel && <PlanBlockSpanLabel leftPx={editLabelLeftPx} label={editLabel} />}
-              {hoverLabel && (
-                <PlanBlockSpanLabel
-                  leftPx={hoverLabelLeftPx}
-                  label={hoverLabel}
-                  maxWidthPx={hoverLabelMaxWidthPx}
-                />
-              )}
+              {hoverLabel && <PlanBlockSpanLabel leftPx={hoverLabelLeftPx} label={hoverLabel} />}
               {cursorLabel && <CursorTimeLabel leftPx={cursorLabelLeftPx} label={cursorLabel} />}
             </div>
           </div>
