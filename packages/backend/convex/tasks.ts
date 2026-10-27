@@ -1,17 +1,17 @@
 import { mutation, query } from './_generated/server'
 import {
-  clearActive as clearActiveTask,
-  createTask,
-  getActive as readActive,
-  getNow as readNow,
-  listMine as readMine,
-  removeTask,
+  clearActiveTask,
+  createDayTask,
+  deleteTask,
+  getActiveTask,
+  getNowCandidates,
+  listMyDayTasks,
+  moveOwnedTaskToDay,
   renameTask,
-  reorderTasks,
-  rescheduleTask,
+  replaceDayTaskOrder,
   searchOpenTasks,
-  setActive as setActiveTask,
-  toggleTask,
+  setActiveTask,
+  toggleTaskDone,
 } from './tasks/service'
 import {
   clearActiveArgs,
@@ -28,15 +28,14 @@ import {
 
 // Thin entry: wire args, delegate. Auth and db work live in ./tasks/service; the
 // arg validators and the view type live in ./tasks/types.
-// TODO: list mine what?? rename?
 export const listMine = query({
   args: listMineArgs.fields,
-  handler: async (ctx, args) => readMine(ctx, args.dayStart),
+  handler: async (ctx, args) => listMyDayTasks(ctx, args.dayStart),
 })
 
 export const getNow = query({
   args: listMineArgs.fields,
-  handler: async (ctx, args) => readNow(ctx, args.dayStart),
+  handler: async (ctx, args) => getNowCandidates(ctx, args.dayStart),
 })
 
 // The plan popover's title search over the caller's Open Tasks, across Days.
@@ -48,14 +47,14 @@ export const search = query({
 export const create = mutation({
   args: createTaskArgs.fields,
   handler: async (ctx, args) => {
-    await createTask(ctx, args.title, args.plannedAt, args.placement)
+    await createDayTask(ctx, args.title, args.plannedAt, args.placement)
   },
 })
 
 export const toggle = mutation({
   args: toggleTaskArgs.fields,
   handler: async (ctx, args) => {
-    await toggleTask(ctx, args.taskId, args.focusDayStart)
+    await toggleTaskDone(ctx, args.taskId, args.focusDayStart)
   },
 })
 
@@ -69,27 +68,27 @@ export const rename = mutation({
 export const remove = mutation({
   args: removeTaskArgs.fields,
   handler: async (ctx, args) => {
-    await removeTask(ctx, args.taskId)
+    await deleteTask(ctx, args.taskId)
   },
 })
 
 export const reorder = mutation({
   args: reorderTasksArgs.fields,
   handler: async (ctx, args) => {
-    await reorderTasks(ctx, args.dayStart, args.orderedTaskIds)
+    await replaceDayTaskOrder(ctx, args.dayStart, args.orderedTaskIds)
   },
 })
 
 export const reschedule = mutation({
   args: rescheduleTaskArgs.fields,
   handler: async (ctx, args) => {
-    await rescheduleTask(ctx, args.taskId, args.plannedAt)
+    await moveOwnedTaskToDay(ctx, args.taskId, args.plannedAt)
   },
 })
 
 export const getActive = query({
   args: {},
-  handler: async (ctx) => readActive(ctx),
+  handler: async (ctx) => getActiveTask(ctx),
 })
 
 export const setActive = mutation({

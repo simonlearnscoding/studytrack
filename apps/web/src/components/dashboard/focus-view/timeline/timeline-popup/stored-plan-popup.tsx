@@ -84,6 +84,7 @@ export function StoredPlanPopup({
       setLocalError(message)
       return
     }
+    if (values.startMin === null || values.endMin === null) return
     onUpdate?.(values)
   }
 

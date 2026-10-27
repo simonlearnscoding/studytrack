@@ -1,15 +1,12 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
-import { createTaskForDay, moveTaskToDay, reorderTasks } from '../tasks/service'
+import { insertTaskInDayQueue, moveTaskToDay, replaceDayTaskOrder } from '../tasks/service'
 import { byQueueOrder } from '../tasks/util'
 import { getMe } from '../users/service'
 import { DASHBOARD_TIME_ZONE, nextDayStart, startOfDay } from '../workSessions/util'
 import type { PlanBlockDetail, PlanBlockTask } from './types'
-
-// The planning grid: the drag snaps to quarters, so the backend only accepts
-// marks on the same grain.
-export const PLAN_GRAIN_MS = 15 * 60 * 1000
+import { PLAN_BLOCK_GRAIN_MS, planFloor } from './util'
 
 // Bounded reads: a member's planBlocks for one Day sit far below this.
 const MAX_PLANS_PER_MEMBER_DAY = 200
@@ -71,7 +68,7 @@ export async function createPlanBlock(
   plannedEnd: number,
   taskIds: Id<'task'>[] = [],
   newTaskTitles: string[] = []
-): Promise<void> {
+): Promise<Id<'planBlock'>> {
   const user = await requireUser(ctx)
   const planTitle = normalizeTitle(title)
   const now = await getClockNow(ctx)
@@ -91,9 +88,11 @@ export async function createPlanBlock(
 
   for (const taskId of new Set(taskIds)) await assignTask(ctx, planBlockId, taskId)
   for (const taskTitle of newTaskTitles) {
-    const taskId = await createTaskForDay(ctx, user, taskTitle, dayStart, 'end')
+    const taskId = await insertTaskInDayQueue(ctx, user, taskTitle, dayStart, 'end')
     await assignTask(ctx, planBlockId, taskId)
   }
+
+  return planBlockId
 }
 
 // Rename an owned planBlock and, while it has not started, move its window. The
@@ -171,7 +170,7 @@ export async function assignTask(
   }
 
   if (orderedTaskIds !== undefined) {
-    await reorderTasks(ctx, plan.dayStart, orderedTaskIds)
+    await replaceDayTaskOrder(ctx, plan.dayStart, orderedTaskIds)
   }
 }
 
@@ -187,7 +186,7 @@ export async function assignNewTask(
   const now = await getClockNow(ctx)
   if (plan.plannedEnd <= now) throw new Error('That plan has ended.')
 
-  const taskId = await createTaskForDay(ctx, user, title, plan.dayStart, 'end')
+  const taskId = await insertTaskInDayQueue(ctx, user, title, plan.dayStart, 'end')
   await assignTask(ctx, planBlockId, taskId)
 }
 
@@ -211,7 +210,7 @@ export async function unassignTask(
   if (assignment) await ctx.db.delete(assignment._id)
 
   if (orderedTaskIds !== undefined) {
-    await reorderTasks(ctx, plan.dayStart, orderedTaskIds)
+    await replaceDayTaskOrder(ctx, plan.dayStart, orderedTaskIds)
   }
 }
 
@@ -238,12 +237,6 @@ export async function removePlanBlock(
   await ctx.db.delete(plan._id)
 }
 
-// The first grain at or after `now`, inside the planBlock's Day. A planBlock
-// never starts in the past; one for a future Day may start at its midnight.
-export function planFloor(dayStart: number, now: number): number {
-  return dayStart + Math.max(0, Math.ceil((now - dayStart) / PLAN_GRAIN_MS)) * PLAN_GRAIN_MS
-}
-
 // The window rules every write shares: inside one Day, positive, on the 15-minute
 // grid, and never starting in the past.
 function assertValidWindow(
@@ -261,8 +254,8 @@ function assertValidWindow(
     throw new Error('A plan block must stay inside its Day.')
   }
   if (
-    (plannedStart - dayStart) % PLAN_GRAIN_MS !== 0 ||
-    (plannedEnd - dayStart) % PLAN_GRAIN_MS !== 0
+    (plannedStart - dayStart) % PLAN_BLOCK_GRAIN_MS !== 0 ||
+    (plannedEnd - dayStart) % PLAN_BLOCK_GRAIN_MS !== 0
   ) {
     throw new Error('A plan block must sit on a 15-minute mark.')
   }

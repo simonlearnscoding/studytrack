@@ -56,6 +56,7 @@ export type DayTaskQueueActions = {
   reorderTasks: (orderedTaskIds: TaskId[]) => void
   assignTaskToPlan: (id: TaskId, planBlockId: Id<'planBlock'>, orderedTaskIds: TaskId[]) => void
   unassignTaskFromPlan: (id: TaskId, planBlockId: Id<'planBlock'>, orderedTaskIds: TaskId[]) => void
+  assignNewTask: (planBlockId: Id<'planBlock'>, title: string) => Promise<void>
   scheduleTaskForToday: (id: TaskId) => void
 }
 

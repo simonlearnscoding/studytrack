@@ -6,8 +6,8 @@ export const PLAN_GRAIN_MIN = 15
 
 export type PlanBlockFormValues = {
   title: string
-  startMin: number
-  endMin: number
+  startMin: number | null
+  endMin: number | null
 }
 
 // What the draft popover collected for the atomic create: existing Tasks to move
@@ -43,6 +43,7 @@ export function planBlockFormError({
   isWindowEditable: boolean
 }): string | null {
   if (!isWindowEditable) return null
+  if (values.startMin === null || values.endMin === null) return 'Choose a start and end time.'
   if (values.startMin < 0 || values.endMin > DAY_MINUTES) return 'Keep the plan inside its day.'
   if (values.endMin <= values.startMin) return 'The end must be after the start.'
   if (values.startMin % PLAN_GRAIN_MIN !== 0 || values.endMin % PLAN_GRAIN_MIN !== 0) {
@@ -54,4 +55,14 @@ export function planBlockFormError({
 
 export function planFloorMinute(nowMin: number): number {
   return Math.ceil(Math.max(0, nowMin) / PLAN_GRAIN_MIN) * PLAN_GRAIN_MIN
+}
+
+// The absolute window a complete form describes, or null while either endpoint
+// is still blank.
+export function planBlockWindow(values: PlanBlockFormValues, dayStart: number) {
+  if (values.startMin === null || values.endMin === null) return null
+  return {
+    startAt: dayStart + values.startMin * 60_000,
+    endAt: dayStart + values.endMin * 60_000,
+  }
 }

@@ -3,6 +3,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { Task } from './types'
 import {
   buildNowCandidates,
+  byCompletionOrder,
   byPosition,
   byQueueOrder,
   insertionIndex,
@@ -96,6 +97,38 @@ describe('byQueueOrder', () => {
   it('keeps manual order inside each group', () => {
     const rows = [row('open-b', 1, 1), row('open-a', 2, 0), row('done-b', 3, 1, true)]
     expect(rows.sort(byQueueOrder).map((item) => item._id)).toEqual(['open-a', 'open-b', 'done-b'])
+  })
+})
+
+function completedTask(id: string, completedAt: number | null): Task {
+  return { ...task(id, true), completedAt }
+}
+
+describe('byCompletionOrder', () => {
+  it('puts the earliest completion first', () => {
+    const rows = [
+      completedTask('latest', 30),
+      completedTask('earlier', 10),
+      completedTask('middle', 20),
+    ]
+    expect(rows.sort(byCompletionOrder).map((item) => item.id)).toEqual([
+      'earlier',
+      'middle',
+      'latest',
+    ])
+  })
+
+  it('puts a retrospective completion without an instant last', () => {
+    const rows = [completedTask('untimed', null), completedTask('timed', 10)]
+    expect(rows.sort(byCompletionOrder).map((item) => item.id)).toEqual(['timed', 'untimed'])
+  })
+
+  it('keeps queue order among untimed completions', () => {
+    const rows = [completedTask('first-untimed', null), completedTask('second-untimed', null)]
+    expect(rows.sort(byCompletionOrder).map((item) => item.id)).toEqual([
+      'first-untimed',
+      'second-untimed',
+    ])
   })
 })
 

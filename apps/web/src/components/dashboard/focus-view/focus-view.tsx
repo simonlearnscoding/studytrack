@@ -113,6 +113,8 @@ export function FocusView() {
           <div className="border-t" />
           <TaskPane
             queue={taskQueue}
+            dayStart={dayStart}
+            now={now}
             dayLabel={dayLabel}
             nowTaskId={todayNow.task?.id ?? null}
             isEmbedded

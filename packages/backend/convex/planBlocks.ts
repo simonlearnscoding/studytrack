@@ -56,7 +56,7 @@ export const assignNew = mutation({
 export const create = mutation({
   args: createPlanBlockArgs.fields,
   handler: async (ctx, args) => {
-    await createPlanBlock(
+    return await createPlanBlock(
       ctx,
       args.dayStart,
       args.title,

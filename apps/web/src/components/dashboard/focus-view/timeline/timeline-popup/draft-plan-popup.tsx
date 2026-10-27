@@ -6,19 +6,20 @@ import { PendingPlanTasks, type PendingPlanTask } from './pending-plan-tasks'
 import { PlanBlockFields } from './plan-block-fields'
 import {
   planBlockFormError,
+  planBlockWindow,
   type PlanBlockFormValues,
   type PlanTaskSelection,
 } from './plan-block-form'
 import { PlanTaskSearch } from './plan-task-search'
-import type { DraftPlanBlockPopupData } from './types'
 import { PopupWindow } from './window-line'
 
 // Nothing is stored while the draft is open: Create is the only writer, and
 // Cancel (or dismissing the popover) leaves no planBlock, Task or assignment
-// behind. The gesture's window pre-fills the fields, but both endpoints can be
-// corrected here. Picked tasks and typed titles stay pending until Create.
+// behind. A lane gesture pre-fills the window; a draft from the task pane may
+// open blank when its proposal would collide. Picked tasks and typed titles stay
+// pending until Create.
 export function DraftPlanBlockPopup({
-  plan,
+  initialWindow,
   dayStart,
   now,
   dayTasks,
@@ -27,7 +28,7 @@ export function DraftPlanBlockPopup({
   isCreating,
   createError,
 }: {
-  plan: DraftPlanBlockPopupData
+  initialWindow: { startAt: number; endAt: number } | null
   dayStart: number
   now: number
   dayTasks: Task[] | undefined
@@ -38,8 +39,8 @@ export function DraftPlanBlockPopup({
 }) {
   const [values, setValues] = useState<PlanBlockFormValues>({
     title: '',
-    startMin: toMinute(plan.startAt, dayStart),
-    endMin: toMinute(plan.endAt, dayStart),
+    startMin: initialWindow === null ? null : toMinute(initialWindow.startAt, dayStart),
+    endMin: initialWindow === null ? null : toMinute(initialWindow.endAt, dayStart),
   })
   const [pending, setPending] = useState<PendingPlanTask[]>([])
   const [localError, setLocalError] = useState<string | null>(null)
@@ -103,15 +104,17 @@ export function DraftPlanBlockPopup({
     })
   }
 
+  const window = planBlockWindow(values, dayStart)
+
   return (
     <>
       <div className="text-caption text-muted-foreground">
         <p className="text-body font-semibold text-foreground">New plan block</p>
-        <PopupWindow
-          startAt={dayStart + values.startMin * 60_000}
-          endAt={dayStart + values.endMin * 60_000}
-          dayStart={dayStart}
-        />
+        {window ? (
+          <PopupWindow startAt={window.startAt} endAt={window.endAt} dayStart={dayStart} />
+        ) : (
+          <p className="mt-1">Pick a start and end time.</p>
+        )}
       </div>
 
       <PlanBlockFields

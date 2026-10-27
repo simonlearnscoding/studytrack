@@ -3,6 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { cn } from '~/lib/utils'
 import { planGroupDropId } from './dnd/task-pane-collision'
 import { TaskItem } from './item/task-item'
+import { PlanBlockComposer } from './plan-block-composer'
 import { TaskGroup } from './task-group'
 import type { DayTaskQueueActions, PlanGroup, TaskId } from './task-types'
 
@@ -13,6 +14,7 @@ export function PlanGroupSection({
   group,
   isExpanded,
   onToggle,
+  isFresh,
   nowTaskId,
   isViewingToday,
   actions,
@@ -20,6 +22,7 @@ export function PlanGroupSection({
   group: PlanGroup
   isExpanded: boolean
   onToggle: () => void
+  isFresh?: boolean
   nowTaskId: TaskId | null
   isViewingToday: boolean
   actions: DayTaskQueueActions
@@ -35,7 +38,7 @@ export function PlanGroupSection({
       ref={setNodeRef}
       className={cn(
         'rounded-xl transition-colors duration-150',
-        isOver && 'bg-primary/[0.045] ring-1 ring-primary/20'
+        (isOver || isFresh) && 'bg-primary/[0.045] ring-1 ring-primary/20'
       )}
     >
       <TaskGroup
@@ -45,6 +48,9 @@ export function PlanGroupSection({
         progress={{ done: group.doneCount, total: group.totalCount }}
         isExpanded={isExpanded}
         onToggle={onToggle}
+        footer={
+          <PlanBlockComposer onAdd={(title) => actions.assignNewTask(group.planBlockId, title)} />
+        }
       >
         {group.openTasks.length === 0 ? (
           <li className="text-caption px-2 py-3">Drop a task here to plan it.</li>

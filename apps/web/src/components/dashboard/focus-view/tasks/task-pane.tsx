@@ -12,12 +12,13 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import type { TaskPlacement } from '@studytrack/backend/convex/tasks/types'
 import { Plus } from 'lucide-react'
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { TaskComposerHint } from '~/components/dashboard/focus-view/tasks/task-composer-hint'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { useDoneFold } from '~/preferences/use-done-fold'
 import { MainQueueSection } from './main-queue-section'
+import { PlanBlockButton } from './plan-block-button'
 import { PlanGroupSection } from './plan-group-section'
 import { handleComposerKeyDown, useTaskComposerHotkey } from './hooks/use-task-composer-hotkey'
 import { DoneTaskItem } from './item/task-item'
@@ -35,11 +36,15 @@ const screenReaderInstructions = {
 
 export function TaskPane({
   queue,
+  dayStart,
+  now,
   dayLabel,
   nowTaskId,
   isEmbedded = false,
 }: {
   queue: DayTaskQueue
+  dayStart: number
+  now: number
   dayLabel: string
   nowTaskId: TaskId | null
   isEmbedded?: boolean
@@ -48,6 +53,7 @@ export function TaskPane({
   const [title, setTitle] = useState('')
   const [draggingId, setDraggingId] = useState<TaskId | null>(null)
   const [foldedPlanGroups, setFoldedPlanGroups] = useState<Set<string>>(new Set())
+  const [highlightedPlanBlockId, setHighlightedPlanBlockId] = useState<string | null>(null)
   const [isDoneFolded, setDoneFolded] = useDoneFold()
   const inputRef = useRef<HTMLInputElement>(null)
   useTaskComposerHotkey(inputRef)
@@ -55,6 +61,12 @@ export function TaskPane({
   const openTaskCount = state.openTasks.length
   const livePlanGroup = state.livePlanGroup
   const planGroups = [...(livePlanGroup ? [livePlanGroup] : []), ...state.upcomingPlanGroups]
+
+  useEffect(() => {
+    if (highlightedPlanBlockId === null) return
+    const timer = setTimeout(() => setHighlightedPlanBlockId(null), 2000)
+    return () => clearTimeout(timer)
+  }, [highlightedPlanBlockId])
   const draggingTask = state.openTasks.find((task) => task.id === draggingId)
   const isDraggingPlanTask = draggingTask?.plan != null
 
@@ -189,6 +201,17 @@ export function TaskPane({
         </div>
       </form>
 
+      {state.isViewingToday ? (
+        <PlanBlockButton
+          dayStart={dayStart}
+          now={now}
+          isLoading={state.status === 'loading'}
+          planBlocks={planGroups}
+          dayTasks={state.status === 'ready' ? state.openTasks : undefined}
+          onCreated={setHighlightedPlanBlockId}
+        />
+      ) : null}
+
       {/* contract: checkbox = complete · pencil = rename · trash = delete */}
       <DndContext
         sensors={sensors}
@@ -212,6 +235,7 @@ export function TaskPane({
                   group={livePlanGroup}
                   isExpanded={!foldedPlanGroups.has(livePlanGroup.planBlockId)}
                   onToggle={() => togglePlanGroup(livePlanGroup.planBlockId)}
+                  isFresh={highlightedPlanBlockId === livePlanGroup.planBlockId}
                   nowTaskId={nowTaskId}
                   isViewingToday={state.isViewingToday}
                   actions={actions}
@@ -232,6 +256,7 @@ export function TaskPane({
                   group={group}
                   isExpanded={!foldedPlanGroups.has(group.planBlockId)}
                   onToggle={() => togglePlanGroup(group.planBlockId)}
+                  isFresh={highlightedPlanBlockId === group.planBlockId}
                   nowTaskId={nowTaskId}
                   isViewingToday={state.isViewingToday}
                   actions={actions}

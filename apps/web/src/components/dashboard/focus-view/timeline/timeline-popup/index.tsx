@@ -53,7 +53,7 @@ export function TimelinePopupContent({
   if (data.kind === 'draft') {
     return (
       <DraftPlanBlockPopup
-        plan={data}
+        initialWindow={{ startAt: data.startAt, endAt: data.endAt }}
         dayStart={dayStart}
         now={now}
         dayTasks={planDayTasks}

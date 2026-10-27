@@ -486,6 +486,47 @@ describe('planBlocks.assignNew', () => {
     expect(day.map((task) => task.title)).toEqual(['Write notes'])
   })
 
+  it('lands the task last in the block and out of the main queue', async () => {
+    const t = makeTest()
+    const userId = await seedUser(t, ADA, 'Ada')
+    await seedTask(t, userId, { title: 'Unplanned' })
+    const planBlockId = await seedPlan(t, userId)
+
+    await t.withIdentity(ADA).mutation(api.planBlocks.assignNew, {
+      planBlockId,
+      title: 'First',
+    })
+    await t.withIdentity(ADA).mutation(api.planBlocks.assignNew, {
+      planBlockId,
+      title: 'Second',
+    })
+
+    const detail = await t.withIdentity(ADA).query(api.planBlocks.getWithTasks, { planBlockId })
+    expect(detail?.tasks.map((task) => task.title)).toEqual(['First', 'Second'])
+
+    const day = await t.withIdentity(ADA).query(api.tasks.listMine, { dayStart: DAY })
+    expect(day.map((task) => task.title)).toEqual(['Unplanned', 'First', 'Second'])
+    expect(day[0].plan).toBeNull()
+    expect(day.slice(1).map((task) => task.plan?.planBlockId)).toEqual([planBlockId, planBlockId])
+  })
+
+  it("refuses another member's block without writing a task or assignment", async () => {
+    const t = makeTest()
+    await seedUser(t, ADA, 'Ada')
+    const bobId = await seedUser(t, BOB, 'Bob')
+    const bobPlan = await seedPlan(t, bobId)
+
+    await expect(
+      t.withIdentity(ADA).mutation(api.planBlocks.assignNew, {
+        planBlockId: bobPlan,
+        title: 'Not mine',
+      })
+    ).rejects.toThrow(/Plan block not found/)
+
+    expect(await t.run(async (ctx) => await ctx.db.query('task').collect())).toEqual([])
+    expect(await assignmentsOf(t)).toEqual([])
+  })
+
   it('writes neither the task nor the assignment when the block has ended', async () => {
     const t = makeTest()
     const userId = await seedUser(t, ADA, 'Ada')

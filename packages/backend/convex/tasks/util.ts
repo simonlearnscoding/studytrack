@@ -39,6 +39,17 @@ export function byQueueOrder(a: Doc<'task'>, b: Doc<'task'>): number {
   return byPosition(a, b)
 }
 
+// The Done group reads as a log: the first task ticked that Day sits on top and
+// the newest sinks to the bottom. A retrospective tick carries no instant
+// (ADR-0010), so it cannot be placed in time and keeps its queue order below the
+// timed ones.
+export function byCompletionOrder(a: Task, b: Task): number {
+  if (a.completedAt === b.completedAt) return 0
+  if (a.completedAt === null) return 1
+  if (b.completedAt === null) return -1
+  return a.completedAt - b.completedAt
+}
+
 // The window a task's current plan contributes to Now. `TaskPlan` carries the
 // title too, but Now only needs the block's identity and bounds.
 export type TaskPlanWindow = Pick<TaskPlan, 'planBlockId' | 'plannedStart' | 'plannedEnd'>

@@ -67,9 +67,10 @@ describe('planBlocks.create', () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
 
-    await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
+    const planBlockId = await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
 
     const [row] = await rowsOf(t)
+    expect(planBlockId).toBe(row._id)
     expect(row).toMatchObject({
       dayStart: DAY,
       title: 'Deep work',

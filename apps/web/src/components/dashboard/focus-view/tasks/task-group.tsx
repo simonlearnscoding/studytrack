@@ -8,7 +8,8 @@ import { cn } from '~/lib/utils'
  * collapsed body is unmounted so its rows leave the tab order. Only the caret
  * animates, and it respects reduced motion. Done and the Day's plan groups share
  * this heading; a plan uses `detail` for its window and `progress` for its
- * done/total count.
+ * done/total count. `footer` sits under the body, outside the list, so a plan
+ * group can add a row without nesting a button in the heading's toggle.
  */
 export function TaskGroup({
   label,
@@ -18,6 +19,7 @@ export function TaskGroup({
   isExpanded,
   onToggle,
   trailing,
+  footer,
   children,
 }: {
   label: string
@@ -27,6 +29,7 @@ export function TaskGroup({
   isExpanded: boolean
   onToggle: () => void
   trailing?: ReactNode
+  footer?: ReactNode
   children: ReactNode
 }) {
   const countText = progress ? `${progress.done}/${progress.total}` : String(count)
@@ -60,6 +63,7 @@ export function TaskGroup({
         {trailing ? <span className="ml-auto">{trailing}</span> : null}
       </button>
       {isExpanded ? <ul className="space-y-0.5 pt-1">{children}</ul> : null}
+      {isExpanded ? footer : null}
     </div>
   )
 }

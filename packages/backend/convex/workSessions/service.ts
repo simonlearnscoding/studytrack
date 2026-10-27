@@ -7,7 +7,7 @@ import type {
   WorkSessionTaskSource,
 } from './types'
 import { hasViewer } from '../auth/service'
-import { taskPlansForDay } from '../tasks/service'
+import { readDayTaskPlans } from '../tasks/service'
 import { buildNowCandidates } from '../tasks/util'
 import { EMPTY_NOW_CANDIDATES } from '../tasks/types'
 import { attachTasksToWorkSessions, DASHBOARD_TIME_ZONE, nextDayStart } from './util'
@@ -254,7 +254,7 @@ async function attachDayTasks(
           )
           .order('desc')
           .take(MAX_TASKS_PER_MEMBER),
-        taskPlansForDay(ctx, userId, dayStart),
+        readDayTaskPlans(ctx, userId, dayStart),
       ])
 
       // A task planned and finished today arrives from both reads; keep one row.

@@ -21,6 +21,7 @@ import { useAutoExpansion } from './hooks/use-night-band-auto-expansion'
 import { useElementWidth } from '~/hooks/use-element-width'
 import { useExpansionPreference } from './hooks/use-night-band-preference'
 import { useTimeline } from './hooks/use-timeline'
+import { planBlockWindow } from './timeline-popup/plan-block-form'
 import {
   TimelinePopupContent,
   type PlanBlockFormValues,
@@ -28,6 +29,7 @@ import {
   type TimelinePopupData,
 } from './timeline-popup'
 import { TimelineSkeleton } from './timeline-skeleton'
+import { planBlockWriteMessage } from './timeline-popup/plan-block-write-message'
 import { useMetric } from '~/preferences/use-metric'
 
 // The width the track assumes before it has measured itself — the fixed-scale
@@ -152,13 +154,15 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
 
   const createDraftPlanBlock = (values: PlanBlockFormValues, tasks: PlanTaskSelection) => {
     if (popup?.data.kind !== 'draft') return
+    const window = planBlockWindow(values, dayStart)
+    if (!window) return
     setIsCreating(true)
     setCreateError(null)
     void createPlanBlock({
       dayStart,
       title: values.title,
-      plannedStart: dayStart + values.startMin * 60_000,
-      plannedEnd: dayStart + values.endMin * 60_000,
+      plannedStart: window.startAt,
+      plannedEnd: window.endAt,
       taskIds: tasks.taskIds,
       newTaskTitles: tasks.newTaskTitles,
     })
@@ -172,13 +176,15 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
 
   const updatePopupPlanBlock = (values: PlanBlockFormValues) => {
     if (popup?.data.kind !== 'planBlock') return
+    const window = planBlockWindow(values, dayStart)
+    if (!window) return
     setIsUpdating(true)
     setUpdateError(null)
     void updatePlanBlock({
       planBlockId: popup.data.planBlockId,
       title: values.title,
-      plannedStart: dayStart + values.startMin * 60_000,
-      plannedEnd: dayStart + values.endMin * 60_000,
+      plannedStart: window.startAt,
+      plannedEnd: window.endAt,
     })
       .then(closePopup)
       .catch((error) => {
@@ -357,17 +363,4 @@ function planBlockMissed(
         (partial.endedAt ?? Number.POSITIVE_INFINITY) > startAt
     )
   )
-}
-
-// The refusals a write can still hit after the popover opened: the clock crossed
-// the start, a live read brought in an overlapping plan, or the block started
-// while the fields were open. Mirrors the backend's messages without leaking them.
-function planBlockWriteMessage(error: unknown, fallback: string): string {
-  const message = error instanceof Error ? error.message : ''
-  if (message.includes('overlaps')) return 'That time is already planned.'
-  if (message.includes('past')) return 'That time is in the past.'
-  if (message.includes('started')) return 'This plan has started; only its title can change.'
-  if (message.includes('15-minute')) return 'Times sit on 15-minute marks.'
-  if (message.includes('inside its Day')) return 'Keep the plan inside its day.'
-  return fallback
 }

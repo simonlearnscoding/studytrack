@@ -1,6 +1,7 @@
 import { api } from '@studytrack/backend/convex/_generated/api'
 import type { Id } from '@studytrack/backend/convex/_generated/dataModel'
 import type { DayTask, TaskPlacement } from '@studytrack/backend/convex/tasks/types'
+import { byCompletionOrder } from '@studytrack/backend/convex/tasks/util'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '@studytrack/backend/convex/workSessions/util'
 import { useMutation, useQuery } from 'convex/react'
 import { buildPlanSections, planBlocksFromTasks, planWindowLabel } from '../plan-groups'
@@ -44,6 +45,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       optimisticTaskOrder(localStore, args.dayStart, args.orderedTaskIds)
     }
   )
+  const assignNewStoredTask = useMutation(api.planBlocks.assignNew)
   const assignStoredTask = useMutation(api.planBlocks.assign).withOptimisticUpdate(
     (localStore, args) => {
       const block = remotePlanBlocks?.find((entry) => entry._id === args.planBlockId)
@@ -73,7 +75,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
 
   const tasks = visibleTasks?.map((task) => toQueueTask(task, dayStart, clockNow)) ?? []
   const openTasks = tasks.filter((task) => !task.done)
-  const doneTasks = tasks.filter((task) => task.done)
+  const doneTasks = tasks.filter((task) => task.done).sort(byCompletionOrder)
   const sections = buildPlanSections(
     openTasks,
     doneTasks,
@@ -116,6 +118,13 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
     void unassignStoredTask({ planBlockId, taskId: id, orderedTaskIds }).catch(logTaskError)
   }
 
+  // Unlike every other queue action, this one returns its promise so the
+  // composer can show the backend's refusal under the field. The live read lands
+  // the new row; there is no optimistic write.
+  const assignNewTask = async (planBlockId: Id<'planBlock'>, title: string) => {
+    await assignNewStoredTask({ planBlockId, title })
+  }
+
   const scheduleTaskForToday = (id: TaskId) => {
     void rescheduleStoredTask({ taskId: id, plannedAt: todayStart }).catch(logTaskError)
   }
@@ -139,6 +148,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       reorderTasks,
       assignTaskToPlan,
       unassignTaskFromPlan,
+      assignNewTask,
       scheduleTaskForToday,
     },
   }

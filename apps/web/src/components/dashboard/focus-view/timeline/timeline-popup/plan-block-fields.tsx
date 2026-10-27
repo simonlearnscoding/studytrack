@@ -19,11 +19,15 @@ export function PlanBlockFields({
   error?: string | null
   autoFocusTitle?: boolean
 }) {
-  const totalMin = values.endMin - values.startMin
+  const totalMin =
+    values.startMin !== null && values.endMin !== null ? values.endMin - values.startMin : null
 
-  const setStart = (startMin: number) => onChange({ ...values, startMin })
-  const setEnd = (endMin: number) => onChange({ ...values, endMin })
-  const setTotal = (minutes: number) => onChange({ ...values, endMin: values.startMin + minutes })
+  const setStart = (startMin: number | null) => onChange({ ...values, startMin })
+  const setEnd = (endMin: number | null) => onChange({ ...values, endMin })
+  const setTotal = (minutes: number) => {
+    if (values.startMin === null) return
+    onChange({ ...values, endMin: values.startMin + minutes })
+  }
 
   return (
     <div className="mt-2 flex flex-col gap-2">
@@ -49,8 +53,8 @@ export function PlanBlockFields({
 
       <Field label="Total (min)">
         <NumberField
-          value={totalMin > 0 ? totalMin : ''}
-          disabled={!isWindowEditable}
+          value={totalMin !== null && totalMin > 0 ? totalMin : ''}
+          disabled={!isWindowEditable || values.startMin === null}
           onCommit={setTotal}
         />
       </Field>
@@ -77,21 +81,31 @@ function ClockField({
   disabled,
   onCommit,
 }: {
-  value: number
+  value: number | null
   disabled: boolean
-  onCommit: (minute: number) => void
+  onCommit: (minute: number | null) => void
 }) {
   const [draft, setDraft] = useState<string | null>(null)
-  const text = draft ?? formatClock(value)
+  const text = draft ?? (value === null ? '' : formatClock(value))
 
   const commit = () => {
-    const minute = draft == null ? null : parseClockText(draft)
+    const raw = draft
     setDraft(null)
+    if (raw === null) return
+    if (raw.trim() === '') {
+      onCommit(null)
+      return
+    }
+    const minute = parseClockText(raw)
     if (minute != null) onCommit(minute)
   }
 
   const change = (next: string) => {
     setDraft(next)
+    if (next.trim() === '') {
+      onCommit(null)
+      return
+    }
     const minute = parseClockText(next)
     if (minute != null) onCommit(minute)
   }
@@ -99,7 +113,7 @@ function ClockField({
   return (
     <Input
       value={text}
-      onFocus={() => setDraft(formatClock(value))}
+      onFocus={() => setDraft(value === null ? '' : formatClock(value))}
       onChange={(event) => change(event.target.value)}
       onBlur={commit}
       onKeyDown={(event) => {
