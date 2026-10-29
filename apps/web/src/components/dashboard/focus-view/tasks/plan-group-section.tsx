@@ -17,6 +17,8 @@ export function PlanGroupSection({
   isFresh,
   nowTaskId,
   isViewingToday,
+  todayStart,
+  rescheduleTask,
   actions,
 }: {
   group: PlanGroup
@@ -25,6 +27,8 @@ export function PlanGroupSection({
   isFresh?: boolean
   nowTaskId: TaskId | null
   isViewingToday: boolean
+  todayStart: number
+  rescheduleTask: (id: TaskId, plannedAt: number) => void
   actions: DayTaskQueueActions
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -66,6 +70,10 @@ export function PlanGroupSection({
                 onTick={() => actions.toggleTaskDone(task.id)}
                 onRename={(title) => actions.renameTask(task.id, title)}
                 onRemove={() => actions.removeTask(task.id)}
+                reschedule={{
+                  todayStart,
+                  onReschedule: (plannedAt) => rescheduleTask(task.id, plannedAt),
+                }}
               />
             ))}
           </SortableContext>

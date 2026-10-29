@@ -8,9 +8,10 @@ import { Input } from '~/components/ui/input'
 import { useDoneFold } from '~/preferences/use-done-fold'
 import { handleComposerKeyDown, useTaskComposerHotkey } from '../hooks/use-task-composer-hotkey'
 import { cn } from '~/lib/utils'
+import { RescheduleButton } from '../reschedule/reschedule-button'
 import { TaskAction } from '../task-action'
 import { TaskGroup } from '../task-group'
-import type { TaskId } from '../task-types'
+import type { TaskId, TaskReschedule } from '../task-types'
 import type { DockTask } from './types'
 
 // The expandable half of the dock: a bottom sheet holding the full task list,
@@ -25,11 +26,13 @@ export function TaskSheet({
   doneTasks,
   nowId,
   dayLabel,
+  todayStart,
   onClose,
   onAdd,
   onTick,
   onRename,
   onRemove,
+  onReschedule,
   onToggleTracking,
 }: {
   open: boolean
@@ -40,11 +43,13 @@ export function TaskSheet({
   doneTasks: DockTask[]
   nowId: TaskId | null
   dayLabel: string
+  todayStart: number
   onClose: () => void
   onAdd: (title: string, placement: TaskPlacement) => void
   onTick: (id: TaskId) => void
   onRename: (id: TaskId, title: string) => void
   onRemove: (id: TaskId) => void
+  onReschedule: (id: TaskId, plannedAt: number) => void
   onToggleTracking: () => void
 }) {
   const [title, setTitle] = useState('')
@@ -110,6 +115,10 @@ export function TaskSheet({
                     key={task.id}
                     task={task}
                     isNow={task.id === nowId}
+                    reschedule={{
+                      todayStart,
+                      onReschedule: (plannedAt) => onReschedule(task.id, plannedAt),
+                    }}
                     onTick={() => onTick(task.id)}
                     onRename={(title) => onRename(task.id, title)}
                     onRemove={() => onRemove(task.id)}
@@ -189,12 +198,14 @@ export function TaskSheet({
 function SheetRow({
   task,
   isNow,
+  reschedule,
   onTick,
   onRename,
   onRemove,
 }: {
   task: DockTask
   isNow: boolean
+  reschedule?: TaskReschedule
   onTick: () => void
   onRename: (title: string) => void
   onRemove: () => void
@@ -276,6 +287,13 @@ function SheetRow({
           <TaskAction label="Rename task" onClick={startEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
+          {reschedule ? (
+            <RescheduleButton
+              taskDayStart={task.plannedAt}
+              todayStart={reschedule.todayStart}
+              onReschedule={reschedule.onReschedule}
+            />
+          ) : null}
           <TaskAction label="Delete task" onClick={onRemove} danger>
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>

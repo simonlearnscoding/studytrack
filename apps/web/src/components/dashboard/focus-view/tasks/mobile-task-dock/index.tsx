@@ -70,11 +70,13 @@ export function MobileTaskDock({
         doneTasks={state.doneTasks}
         nowId={state.isViewingToday ? (nowTask?.id ?? null) : null}
         dayLabel={dayLabel}
+        todayStart={state.todayStart}
         onClose={() => setOpen(false)}
         onAdd={actions.addTask}
         onTick={actions.toggleTaskDone}
         onRename={actions.renameTask}
         onRemove={actions.removeTask}
+        onReschedule={actions.rescheduleTask}
         onToggleTracking={toggleManual}
       />
     </>

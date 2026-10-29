@@ -238,6 +238,8 @@ export function TaskPane({
                   isFresh={highlightedPlanBlockId === livePlanGroup.planBlockId}
                   nowTaskId={nowTaskId}
                   isViewingToday={state.isViewingToday}
+                  todayStart={state.todayStart}
+                  rescheduleTask={actions.rescheduleTask}
                   actions={actions}
                 />
               ) : null}
@@ -247,6 +249,8 @@ export function TaskPane({
                 nowTaskId={nowTaskId}
                 isViewingToday={state.isViewingToday}
                 isDraggingPlanTask={isDraggingPlanTask}
+                todayStart={state.todayStart}
+                rescheduleTask={actions.rescheduleTask}
                 actions={actions}
               />
 
@@ -259,6 +263,8 @@ export function TaskPane({
                   isFresh={highlightedPlanBlockId === group.planBlockId}
                   nowTaskId={nowTaskId}
                   isViewingToday={state.isViewingToday}
+                  todayStart={state.todayStart}
+                  rescheduleTask={actions.rescheduleTask}
                   actions={actions}
                 />
               ))}

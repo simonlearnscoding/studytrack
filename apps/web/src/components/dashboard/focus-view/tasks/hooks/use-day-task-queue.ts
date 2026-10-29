@@ -7,7 +7,11 @@ import { useMutation, useQuery } from 'convex/react'
 import { buildPlanSections, planBlocksFromTasks, planWindowLabel } from '../plan-groups'
 import { useCachedTasks } from './use-cached-tasks'
 import { logTaskError } from './log-task-error'
-import { optimisticTaskOrder, optimisticTaskPlan } from './optimistic-tasks'
+import {
+  optimisticTaskOrder,
+  optimisticTaskPlan,
+  optimisticTaskReschedule,
+} from './optimistic-tasks'
 import type { DayTaskQueue, QueueTask, TaskId } from '../task-types'
 import type { TaskPlan } from '@studytrack/backend/convex/tasks/types'
 
@@ -39,7 +43,11 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
   const toggleTask = useMutation(api.tasks.toggle)
   const renameStoredTask = useMutation(api.tasks.rename)
   const removeStoredTask = useMutation(api.tasks.remove)
-  const rescheduleStoredTask = useMutation(api.tasks.reschedule)
+  const rescheduleStoredTask = useMutation(api.tasks.reschedule).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticTaskReschedule(localStore, dayStart, args.taskId, args.plannedAt)
+    }
+  )
   const reorderStoredTasks = useMutation(api.tasks.reorder).withOptimisticUpdate(
     (localStore, args) => {
       optimisticTaskOrder(localStore, args.dayStart, args.orderedTaskIds)
@@ -125,8 +133,12 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
     await assignNewStoredTask({ planBlockId, title })
   }
 
+  const rescheduleTask = (id: TaskId, plannedAt: number) => {
+    void rescheduleStoredTask({ taskId: id, plannedAt }).catch(logTaskError)
+  }
+
   const scheduleTaskForToday = (id: TaskId) => {
-    void rescheduleStoredTask({ taskId: id, plannedAt: todayStart }).catch(logTaskError)
+    rescheduleTask(id, todayStart)
   }
 
   return {
@@ -137,6 +149,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       unassignedTasks: sections.unassignedTasks,
       livePlanGroup: sections.livePlanGroup,
       upcomingPlanGroups: sections.upcomingPlanGroups,
+      todayStart,
       canScheduleForToday,
       isViewingToday: dayStart === todayStart,
     },
@@ -149,6 +162,7 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
       assignTaskToPlan,
       unassignTaskFromPlan,
       assignNewTask,
+      rescheduleTask,
       scheduleTaskForToday,
     },
   }

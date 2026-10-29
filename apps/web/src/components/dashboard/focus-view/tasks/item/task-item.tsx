@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState } from 'react'
 import { cn } from '~/lib/utils'
-import type { QueueTask } from '../task-types'
+import type { QueueTask, TaskReschedule } from '../task-types'
 import { TaskRow } from './task-row'
 
 type TaskItemProps = {
@@ -12,6 +12,7 @@ type TaskItemProps = {
   onTick: () => void
   onRename: (title: string) => void
   onRemove: () => void
+  reschedule?: TaskReschedule
   showPlanChip?: boolean
 }
 
@@ -25,6 +26,7 @@ export function TaskItem({
   onTick,
   onRename,
   onRemove,
+  reschedule,
   showPlanChip,
   data,
 }: TaskItemProps & { data: TaskDragData }) {
@@ -64,6 +66,7 @@ export function TaskItem({
         {...editor}
         onTick={onTick}
         onRemove={onRemove}
+        reschedule={reschedule}
       />
     </li>
   )
