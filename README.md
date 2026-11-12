@@ -2,6 +2,8 @@
 
 A Discord study-tracker starter: track time spent in study voice channels, see it live.
 
+[Open in Coder](http://127.0.0.1:3000/templates/cv-26/workspace?param.repo=https://github.com/simonlearnscoding/studytrack.git)
+
 ## Stack
 
 - **TanStack Start** (React 19, Vite, file routes, SSR) — `apps/web`
