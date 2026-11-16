@@ -1,5 +1,6 @@
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { formatClock } from '@studytrack/backend/convex/timeline/util'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Input } from '~/components/ui/input'
 import { parseClockText, type PlanBlockFormValues } from './plan-block-form'
 
@@ -11,12 +12,26 @@ export function PlanBlockFields({
   onChange,
   error,
   autoFocusTitle,
+  onSubmit,
 }: {
   values: PlanBlockFormValues
   onChange: (values: PlanBlockFormValues) => void
   error?: string | null
   autoFocusTitle?: boolean
+  onSubmit?: () => void
 }) {
+  const titleRef = useRef<HTMLInputElement>(null)
+
+  // Enter in the title means "done": the window is already set by then, so the
+  // title is the last thing typed before the block can be committed. Scoped to
+  // the title, so Enter in the clock fields keeps blurring and the task search
+  // keeps picking a result.
+  useHotkey('Enter', () => onSubmit?.(), {
+    target: titleRef,
+    enabled: onSubmit !== undefined,
+    ignoreInputs: false,
+  })
+
   const totalMin =
     values.startMin !== null && values.endMin !== null ? values.endMin - values.startMin : null
 
@@ -31,6 +46,7 @@ export function PlanBlockFields({
     <div className="mt-2 flex flex-col gap-2">
       <Field label="Title (optional)">
         <Input
+          ref={titleRef}
           autoFocus={autoFocusTitle}
           value={values.title}
           onChange={(event) => onChange({ ...values, title: event.target.value })}

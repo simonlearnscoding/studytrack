@@ -104,6 +104,13 @@ export function DraftPlanBlockPopup({
     })
   }
 
+  // Enter in the title reads as "done": the title is the last thing typed once the
+  // window is already in place, so submitting it should not need a trip to Create.
+  const submitFromTitle = () => {
+    if (isCreating) return
+    create()
+  }
+
   const window = planBlockWindow(values, dayStart)
 
   return (
@@ -117,7 +124,13 @@ export function DraftPlanBlockPopup({
         )}
       </div>
 
-      <PlanBlockFields values={values} onChange={changeValues} error={error} autoFocusTitle />
+      <PlanBlockFields
+        values={values}
+        onChange={changeValues}
+        error={error}
+        autoFocusTitle
+        onSubmit={submitFromTitle}
+      />
 
       <PlanTaskSearch
         dayTasks={dayTasks}

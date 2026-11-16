@@ -75,6 +75,12 @@ export function StoredPlanPopup({
     onUpdate?.(values)
   }
 
+  // Enter in the title commits an edited plan the same way Create does on a draft.
+  const submitFromTitle = () => {
+    if (!isDirty || isUpdating) return
+    save()
+  }
+
   return (
     <>
       <div className="text-xs text-muted-foreground">
@@ -87,7 +93,12 @@ export function StoredPlanPopup({
       </div>
 
       {isOwner ? (
-        <PlanBlockFields values={values} onChange={changeValues} error={error} />
+        <PlanBlockFields
+          values={values}
+          onChange={changeValues}
+          error={error}
+          onSubmit={submitFromTitle}
+        />
       ) : (
         <p className="mt-2 text-sm font-semibold text-foreground">
           {data.title ?? 'Untitled plan'}
