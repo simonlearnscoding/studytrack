@@ -56,7 +56,6 @@ const edit = (over: {
     edge: over.edge,
     pointerPx: px(over.pointerMin),
     grabPx: over.grabMin == null ? undefined : px(over.grabMin),
-    nowPx,
   })
 
 const minutes = (span: PlanBlockSpan | null) => (span ? [span.startMin, span.endMin] : null)
@@ -204,7 +203,7 @@ describe('resolvePlanBlockEdit — move', () => {
           pointerMin: 8 * 60,
         })
       )
-    ).toEqual([8 * 60, 9 * 60])
+    ).toEqual([7 * 60 + 30, 8 * 60 + 30])
   })
 
   it('skips a gap too narrow for the block', () => {
@@ -227,18 +226,20 @@ describe('resolvePlanBlockEdit — move', () => {
     ).toEqual([15 * 60, 16 * 60])
   })
 
-  it('has no geometry when the past wall is past the last legal left', () => {
-    const late = resolvePlanBlockEdit({
-      segments,
-      axisWidthPx,
-      blocks: [plan('late', 23 * 60, 24 * 60)],
-      planBlockId: 'late' as Id<'planBlock'>,
-      edge: 'move',
-      pointerPx: px(23 * 60 + 30),
-      grabPx: px(23 * 60 + 30),
-      nowPx: px(23 * 60 + 30),
-    })
-    expect(late).toBeNull()
+  it('moves into the past and stays on the quarter-hour grid', () => {
+    // 10:00 grabbed, dropped at 06:37 → the block lands on 06:30…07:30 even
+    // though `now` is 08:00.
+    expect(
+      minutes(
+        edit({
+          blocks,
+          planBlockId: 'a',
+          edge: 'move',
+          grabMin: 10 * 60,
+          pointerMin: 6 * 60 + 37,
+        })
+      )
+    ).toEqual([6 * 60 + 30, 7 * 60 + 30])
   })
 })
 
@@ -258,17 +259,11 @@ describe('resolvePlanBlockEdit — resize', () => {
     ).toEqual([9 * 60 + 30, 11 * 60])
   })
 
-  it('stops the start edge at now’s quarter-hour', () => {
-    const span = resolvePlanBlockEdit({
-      segments,
-      axisWidthPx,
-      blocks,
-      planBlockId: 'a' as Id<'planBlock'>,
-      edge: 'start',
-      pointerPx: px(8 * 60),
-      nowPx: px(10 * 60 + 15),
-    })
-    expect(minutes(span)).toEqual([10 * 60 + 15, 11 * 60])
+  it('extends the start edge into the past', () => {
+    expect(minutes(edit({ blocks, planBlockId: 'a', edge: 'start', pointerMin: 9 * 60 }))).toEqual([
+      9 * 60,
+      11 * 60,
+    ])
   })
 
   it('stops the end edge at the next plan', () => {

@@ -22,7 +22,6 @@ type MoveGesture = {
   planBlockId: TimelinePlanBlockWallVM['id']
   grabPx: number
   blocks: TimelinePlanBlockWallVM[]
-  nowPx: number
   span: PlanBlockSpan
   moved: boolean
 }
@@ -32,7 +31,6 @@ type ResizeGesture = {
   planBlockId: TimelinePlanBlockWallVM['id']
   edge: 'start' | 'end'
   blocks: TimelinePlanBlockWallVM[]
-  nowPx: number
   span: PlanBlockSpan
 }
 

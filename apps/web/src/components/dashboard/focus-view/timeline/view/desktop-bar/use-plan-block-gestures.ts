@@ -79,8 +79,8 @@ export function usePlanBlockGestures({
   } | null>(null)
 
   // The plan gesture in flight: which plan, which part, and the geometry the
-  // pure seam last resolved. `blocks` and `nowPx` are the snapshot the walls
-  // are computed from.
+  // pure seam last resolved. `blocks` is the snapshot the walls are computed
+  // from.
   const [edit, setEdit] = useState<PlanBlockGesture | null>(null)
 
   // Committed geometry held on screen until the live read catches up, so a
@@ -205,12 +205,11 @@ export function usePlanBlockGestures({
       edge: 'move',
       pointerPx: grabPx,
       grabPx,
-      nowPx: now,
     })
     if (!span) return
     setPending(null)
     event.currentTarget.setPointerCapture(event.pointerId)
-    setEdit({ kind: 'move', planBlockId: block.id, grabPx, blocks, nowPx: now, span, moved: false })
+    setEdit({ kind: 'move', planBlockId: block.id, grabPx, blocks, span, moved: false })
   }
 
   const onMoveMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
@@ -224,7 +223,6 @@ export function usePlanBlockGestures({
       edge: 'move',
       pointerPx,
       grabPx: edit.grabPx,
-      nowPx: edit.nowPx,
     })
     if (!span) return
     const moved = edit.moved || Math.abs(pointerPx - edit.grabPx) >= DRAG_PX_THRESHOLD
@@ -262,7 +260,7 @@ export function usePlanBlockGestures({
   }
 
   // Start dragging one edge of an existing plan. The wall on the far side is
-  // the neighbouring plan (or the axis end); the near wall is the past floor.
+  // the neighbouring plan (or the axis end).
   const startResize = (
     event: ReactPointerEvent<HTMLSpanElement>,
     block: TimelinePlanBlockWallVM,
@@ -278,12 +276,11 @@ export function usePlanBlockGestures({
       planBlockId: block.id,
       edge,
       pointerPx: lanePx(event),
-      nowPx: now,
     })
     if (!span) return
     setPending(null)
     event.currentTarget.setPointerCapture(event.pointerId)
-    setEdit({ kind: 'resize', planBlockId: block.id, edge, blocks, nowPx: now, span })
+    setEdit({ kind: 'resize', planBlockId: block.id, edge, blocks, span })
   }
 
   const onResizeMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
@@ -295,7 +292,6 @@ export function usePlanBlockGestures({
       planBlockId: edit.planBlockId,
       edge: edit.edge,
       pointerPx: lanePx(event),
-      nowPx: edit.nowPx,
     })
     if (!span) return
     if (span.leftPx === edit.span.leftPx && span.widthPx === edit.span.widthPx) return

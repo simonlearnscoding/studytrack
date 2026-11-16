@@ -276,18 +276,14 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
             onPlanBlockDoubleClick={isPast ? undefined : openPlanBlockDraft}
             onPlanBlockClick={openPlanBlock}
             onWorkSessionClick={openWorkSession}
-            onPlanBlockUpdate={
-              isPast
-                ? undefined
-                : (update) => {
-                    void updatePlanBlock({
-                      planBlockId: update.planBlockId,
-                      ...(update.title == null ? {} : { title: update.title }),
-                      plannedStart: dayStart + update.startMin * 60_000,
-                      plannedEnd: dayStart + update.endMin * 60_000,
-                    }).catch((error) => console.error('[studytrack] plan update failed', error))
-                  }
-            }
+            onPlanBlockUpdate={(update) => {
+              void updatePlanBlock({
+                planBlockId: update.planBlockId,
+                ...(update.title == null ? {} : { title: update.title }),
+                plannedStart: dayStart + update.startMin * 60_000,
+                plannedEnd: dayStart + update.endMin * 60_000,
+              }).catch((error) => console.error('[studytrack] plan update failed', error))
+            }}
           />
         </div>
         {!ready && <TimelineSkeleton className="col-start-1 row-start-1" />}

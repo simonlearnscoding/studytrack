@@ -25,18 +25,20 @@ sessions, and how it differs on mobile. Explicitly later.
 - **Cross-day planning is not this surface.** Dragging tasks between days
   belongs to the Plan-mode day-columns idea parked in [[Roadmap]]; the room
   timeline must not deform for it.
-- **A Planned session never starts in the past** (2026-10-18). This is an
-  invariant of the planning domain, not a rule about one gesture: every way a
-  plan can be created — the desktop drag now, tap-to-plan and drag-a-task later,
-  moving an existing block after that — enforces it. The floor is the first
-  15-minute mark **at or after** now, so a plan never contains a past minute;
-  the drag preview refuses to snap further back (it parks on the floor rather
-  than sliding into the past, as a soft block), and a drag that _begins_ before
-  now creates nothing at all. The floor is captured at pointer-down so a ticking
-  clock cannot drift it mid-gesture. Backfill — recording study that already
-  happened with no Discord evidence — is deliberately **not** this gesture: it
-  is a claim about the past and belongs with Manual, under different evidence
-  rules.
+- **A Planned session is never _created_ in the past** (2026-11-16, replacing
+  the 2026-10-18 rule that covered every gesture). Only creating is floored:
+  the desktop drag, tap-to-plan and drag-a-task all refuse a start before the
+  first 15-minute mark at or after now, the preview parks on the floor rather
+  than sliding into the past, and a drag that _begins_ before now creates
+  nothing at all. The floor is captured at pointer-down so a ticking clock
+  cannot drift it mid-gesture. **Editing an existing block is not floored**: a
+  plan is an intention, not a record ([[0015-a-plan-is-a-link-not-a-record]]),
+  so a body-drag or an edge-drag may put it in time that has passed — the
+  "I actually did this at 9" rearrangement — and the mutation accepts it.
+  Walls that stay: the 15-minute grid, the neighbouring plans, the Day's own
+  ends. Backfill — recording study that already happened with no Discord
+  evidence — is still deliberately **not** this gesture: it is a claim about
+  the past and belongs with Manual, under different evidence rules.
 - **The term is _Planned session_** (2026-10-18). `plan` is the verb; the dashed
   block is a Planned session. It is **not** a Session: no voice evidence, no
   partials, so none of the Session rules (the 30-minute rejoin, Pause) apply.
@@ -57,9 +59,10 @@ sessions, and how it differs on mobile. Explicitly later.
 - **Edge-drag resizes, body-drag moves** (2026-10-20). Hovering an edge of your
   own plan changes the cursor to a horizontal resize arrow; dragging that edge
   moves the start or end on the 15-minute grid. Dragging the body translates the
-  whole block with its duration frozen. Both gestures follow the same walls:
-  no start in the past, no overlap, no crossing midnight. The block itself moves
-  optimistically — there is no separate "before" outline.
+  whole block with its duration frozen. Both gestures follow the same walls: no
+  overlap, no crossing midnight, and no clock — a block may be put in the past.
+  The block itself moves optimistically — there is no separate "before"
+  outline.
 - **Clicking a block opens one shared popover** (2026-10-20). A planned block and
   a real session — yours or anyone's — both open the same read-only popover,
   anchored to the clicked block: member, time window, duration, and the

@@ -37,13 +37,14 @@ export type { PlanBlockClick, PlanBlockDraft, PlanBlockDrag, PlanBlockUpdate } f
 // scroller — the bar itself is a picture, not a scroll box). A drag across your
 // lane is a *planning* gesture (LD-6), not a pan: it previews a dashed span
 // live and opens the draft popover on release. A double-click on empty future
-// lane does the same with a two-hour window. Planning is future-only — the
+// lane does the same with a two-hour window. Creating is future-only — the
 // preview refuses to snap back past now's quarter-hour, and a drag or
-// double-click that begins before now plans nothing. Mobile plans by tap
-// instead — see the pinned mobile lane.
+// double-click that begins before now plans nothing. Moving or resizing an
+// existing block has no clock wall: it may be put where it should have been.
+// Mobile plans by tap instead — see the pinned mobile lane.
 //
-// The gesture geometry itself — the quarter-hour grid, the past wall, the plan
-// neighbours, the start/end caps — lives in the timeline pure seam
+// The gesture geometry itself — the quarter-hour grid, the create floor, the
+// plan neighbours, the start/end caps — lives in the timeline pure seam
 // (`resolvePlanBlockStart`, `resolvePlanBlockDraft`, `resolvePlanBlockEdit`). The hook owns the
 // pointer state; this component owns the pixels.
 export function PinnedDesktopBar({
