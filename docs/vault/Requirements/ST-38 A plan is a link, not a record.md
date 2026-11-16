@@ -1,6 +1,6 @@
 ---
 id: ST-38
-status: todo
+status: in-review
 type: requirement
 priority: B
 area: requirements
@@ -58,21 +58,21 @@ ST-31, ST-33 and ST-35.
 
 ## Acceptance criteria
 
-- [ ] A Task planned in a block stores one `planBlockId`; planning it elsewhere
+- [x] A Task planned in a block stores one `planBlockId`; planning it elsewhere
       moves it, and unplanning clears the field.
-- [ ] Deleting a block clears the field on its tasks and leaves every task on its
+- [x] Deleting a block clears the field on its tasks and leaves every task on its
       Day at its old position.
-- [ ] A started block can be dragged and resized on the timeline, with no
+- [x] A started block can be dragged and resized on the timeline, with no
       refusal cursor, tooltip or mutation error.
-- [ ] A started or ended block can be deleted from its popover.
-- [ ] A task can be added to, removed from or moved out of a block at any phase,
+- [x] A started or ended block can be deleted from its popover.
+- [x] A task can be added to, removed from or moved out of a block at any phase,
       from the pane and from the timeline popover.
-- [ ] The popover has no "done inside / done outside" summary and no read-only
+- [x] The popover has no "done inside / done outside" summary and no read-only
       window state.
-- [ ] Rescheduling a planned Task to another Day clears its plan; the target Day's
+- [x] Rescheduling a planned Task to another Day clears its plan; the target Day's
       queue appends it at the bottom.
-- [ ] The Day's task read is still two queries, not one per row.
-- [ ] The backfill copies every current assignment into `task.planBlockId` and is
+- [x] The Day's task read is still two queries, not one per row.
+- [x] The backfill copies every current assignment into `task.planBlockId` and is
       safe to run twice.
 
 ## Decisions
@@ -94,3 +94,24 @@ ST-31, ST-33 and ST-35.
 - [[ST-33 Plan block task assignment]]
 - [[ST-35 Plan groups in the task view]]
 - [[ST-37 Add a task inside a plan group]]
+
+## Done
+
+`task.planBlockId` (indexed by block) replaces the `planAssignment` table, and the
+Day read joins the task rows to that Day's blocks, so Now and the row chip still
+come from one query pair. `assign`, `unassign`, `assignNew` and `remove` write and
+clear the field; `remove` unplans every task it held in the same transaction, and
+`moveTaskToDay` clears it because the block stays behind. `planBlocks.update` and
+`planBlocks.remove` no longer look at the clock at all, so the timeline lost its
+`locked` flag, the refused-press branch, the `cursor-not-allowed` treatment and
+the tooltip, and the popover lost its read-only window state, its started-block
+note and its past-block summary. The `missed` badge and `countPlanTasks` went with
+the record. The two-step deploy (ship the field and backfill, run the backfill,
+then drop the table) is in ADR-0015.
+
+## Deploy order
+
+1. Deploy this branch's first commit, which still carries `planAssignment` and
+   `migrations.backfillTaskPlanBlockId`.
+2. `npx convex run migrations:backfillTaskPlanBlockId`.
+3. Deploy the commit that drops the table and the migration.

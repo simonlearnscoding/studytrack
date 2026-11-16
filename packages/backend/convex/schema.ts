@@ -129,23 +129,6 @@ export default defineSchema({
     .index('by_userId_dayStart', ['userId', 'dayStart'])
     .index('by_dayStart', ['dayStart']),
 
-  // A Task's placement inside one planBlock (ADR-0012). One row per Task and
-  // block; `userId` and `dayStart` are the block's, denormalised so a Day read is
-  // one indexed query. The block's Day never moves (ST-31); attaching a Task that
-  // sits on another Day moves the Task to the block's Day first. A Task has at
-  // most one assignment to a block that has not ended; rows for ended blocks stay
-  // as the record. No position and no state: order belongs to the task queue,
-  // state to the block's window.
-  planAssignment: defineTable({
-    userId: v.id('users'),
-    taskId: v.id('task'),
-    planBlockId: v.id('planBlock'),
-    dayStart: v.number(),
-  })
-    .index('by_userId_dayStart', ['userId', 'dayStart'])
-    .index('by_taskId', ['taskId'])
-    .index('by_planBlockId', ['planBlockId']),
-
   // A development deployment's fake clock: one row holding the offset from real
   // time. Production never reads it (see devClock/), so this table is inert there.
   devClock: defineTable({

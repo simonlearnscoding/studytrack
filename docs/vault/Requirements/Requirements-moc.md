@@ -52,4 +52,4 @@ projection of the Day queue.
 - [[ST-34 Plan a block with tasks]] (ST-34): done · debounced search and atomic create-and-attach
 - [[ST-35 Plan groups in the task view]] (ST-35): done · plan blocks as foldable groups in the task pane
 - [[ST-37 Add a task inside a plan group]] (ST-37): todo · #ready-for-agent · an inline composer at the foot of each expanded plan group
-- [[ST-38 A plan is a link, not a record]] (ST-38): todo · #ready-for-agent · one `planBlockId` field instead of the assignment table, and no frozen or archived blocks
+- [[ST-38 A plan is a link, not a record]] (ST-38): in-review · one `planBlockId` field instead of the assignment table, and no frozen or archived blocks
