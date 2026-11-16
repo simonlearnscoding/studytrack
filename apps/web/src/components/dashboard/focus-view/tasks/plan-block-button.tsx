@@ -82,7 +82,7 @@ export function PlanBlockButton({
   }
 
   return (
-    <div className="mb-4">
+    <div className="mt-3">
       <Popover open={open} onOpenChange={openChange}>
         <PopoverTrigger asChild>
           <Button

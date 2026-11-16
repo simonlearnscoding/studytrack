@@ -63,17 +63,6 @@ export function TaskPane({
       {/* composer */}
       <TaskComposerForm onAdd={actions.addTask} />
 
-      {state.isViewingToday ? (
-        <PlanBlockButton
-          dayStart={dayStart}
-          now={now}
-          isLoading={state.status === 'loading'}
-          planBlocks={planGroups}
-          dayTasks={state.status === 'ready' ? state.openTasks : undefined}
-          onCreated={setHighlightedPlanBlockId}
-        />
-      ) : null}
-
       {/* contract: checkbox = complete · pencil = rename · trash = delete */}
       <DndContext
         sensors={sensors}
@@ -101,6 +90,17 @@ export function TaskPane({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {state.isViewingToday ? (
+        <PlanBlockButton
+          dayStart={dayStart}
+          now={now}
+          isLoading={state.status === 'loading'}
+          planBlocks={planGroups}
+          dayTasks={state.status === 'ready' ? state.openTasks : undefined}
+          onCreated={setHighlightedPlanBlockId}
+        />
+      ) : null}
     </section>
   )
 }
