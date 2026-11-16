@@ -28,7 +28,6 @@ function plan(id: string, startMin: number, endMin: number): TimelinePlanBlockWa
     title: null,
     startPx: px(startMin),
     endPx: px(endMin),
-    locked: false,
   }
 }
 

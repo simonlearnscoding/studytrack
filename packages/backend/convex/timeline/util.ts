@@ -192,12 +192,6 @@ function toRow(
   for (const plan of member.planBlocks) {
     const plannedStartMin = toMinute(plan.startAt, dayStart)
     const plannedEndMin = toMinute(plan.endAt, dayStart)
-    const missed =
-      plan.endAt <= now && !planHasEvidence(member.workSessions, plan.startAt, plan.endAt)
-    // A started block is history: the popup may rename it, but its window can no
-    // longer move. The view uses this to refuse the drag instead of snapping it
-    // back after the mutation refuses it.
-    const locked = plan.startAt <= now
     forEachVisibleSpan(
       window.segments,
       plannedStartMin,
@@ -210,8 +204,6 @@ function toRow(
           endMin: plannedEndMin,
           leftPx,
           widthPx,
-          missed,
-          locked,
         }),
       () => {}
     )
@@ -223,7 +215,7 @@ function toRow(
     const endPx = minuteToPx(window.segments, plannedEndMin)
     if (startPx === null && endPx !== null) startPx = window.segments[0].widthPx
     if (startPx !== null && endPx !== null && endPx > startPx) {
-      planBlockWalls.push({ id: plan.id, title: plan.title, startPx, endPx, locked })
+      planBlockWalls.push({ id: plan.id, title: plan.title, startPx, endPx })
     }
   }
 
@@ -304,23 +296,6 @@ function toRow(
     dots: dots.sort((a, b) => a.leftPx - b.leftPx),
     hiddenCount,
   }
-}
-
-// A planBlock counts as kept when some non-break voice time overlaps its window.
-// Only an ended window needs this: before it ends the block is simply upcoming.
-function planHasEvidence(
-  workSessions: DashboardMember['workSessions'],
-  startAt: number,
-  endAt: number
-): boolean {
-  return workSessions.some((workSession) =>
-    workSession.partials.some(
-      (partial) =>
-        partial.mode !== 'break' &&
-        partial.startedAt < endAt &&
-        (partial.endedAt ?? Number.POSITIVE_INFINITY) > startAt
-    )
-  )
 }
 
 // Walk a minute span across the axis, emitting one bar piece per visible

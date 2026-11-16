@@ -8,7 +8,6 @@ import { buildNowCandidates, byQueueOrder, insertionIndex, planOrder } from './u
 
 const MAX_DAY_TASKS = 200
 const MAX_DAY_PLANS = 200
-const MAX_ASSIGNMENTS_PER_TASK = 200
 const MAX_SEARCH_RESULTS = 20
 const DEFAULT_SEARCH_RESULTS = 8
 
@@ -23,7 +22,7 @@ export async function listMyDayTasks(ctx: QueryCtx, dayStart: number): Promise<D
   if (!user) return []
 
   const dayTaskRows = await readDayTaskRows(ctx, user._id, dayStart)
-  const plansByTaskId = await readDayTaskPlans(ctx, user._id, dayStart)
+  const plansByTaskId = await readDayTaskPlans(ctx, user._id, dayStart, dayTaskRows)
   return dayTaskRows.map((taskRow) => ({
     ...toTaskView(taskRow),
     plan: plansByTaskId.get(taskRow._id) ?? null,
@@ -135,10 +134,9 @@ export async function replaceDayTaskOrder(
   }
 }
 
-// Move one owned task to another Day, at the bottom of that Day's queue. A live
-// plan cannot follow it: the block belongs to the old Day, so the unended
-// assignment is dropped. Assignments to blocks that have ended stay as the
-// record. Both Days' live queries update by themselves.
+// Move one owned task to another Day, at the bottom of that Day's queue. The plan
+// cannot follow it: the block belongs to the old Day, so the link is cleared
+// (ADR-0015). Both Days' live queries update by themselves.
 export async function moveOwnedTaskToDay(
   ctx: MutationCtx,
   taskId: Id<'task'>,
@@ -154,8 +152,9 @@ export async function moveOwnedTaskToDay(
 }
 
 // The move shared by the task row's reschedule and the plan picker's cross-Day
-// pick: the task lands at the bottom of the target Day, and only ended-block
-// assignments survive as the record of what was intended.
+// pick: the task lands at the bottom of the target Day. The block it was planned
+// in belongs to the old Day, so the plan is cleared — a block never outlives the
+// task's stay on its Day (ADR-0015).
 export async function moveTaskToDay(
   ctx: MutationCtx,
   user: Doc<'users'>,
@@ -164,12 +163,13 @@ export async function moveTaskToDay(
 ): Promise<void> {
   if (taskRow.plannedAt === plannedAt) return
 
-  const nowInstant = await getClockNow(ctx)
-  await dropUnendedAssignments(ctx, taskRow._id, nowInstant)
-
   const targetDayTaskRows = await readDayTaskRows(ctx, user._id, plannedAt)
   const appendedPosition = await resolveAppendPosition(ctx, targetDayTaskRows)
-  await ctx.db.patch(taskRow._id, { plannedAt, position: appendedPosition })
+  await ctx.db.patch(taskRow._id, {
+    plannedAt,
+    position: appendedPosition,
+    planBlockId: undefined,
+  })
 }
 
 // Flip a task between Open and Done. A live completion — the box ticked while the
@@ -217,20 +217,12 @@ export async function renameTask(
 }
 
 // Hard-delete the caller's task, Open or Done, and drop the active pointer when it
-// pointed at this task. Its plan assignments go with it: a hard-deleted task has
-// no title left to show, so it cannot be a past block's record. Ownership is
-// checked, so another member's task never leaks its existence.
+// pointed at this task. The plan goes with the row: a block only ever held a link
+// to it (ADR-0015). Ownership is checked, so another member's task never leaks its
+// existence.
 export async function deleteTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
   const user = await requireUser(ctx)
   const ownedTask = await requireOwnedTask(ctx, user, taskId)
-
-  const taskPlanAssignments = await ctx.db
-    .query('planAssignment')
-    .withIndex('by_taskId', (q) => q.eq('taskId', taskId))
-    .take(MAX_ASSIGNMENTS_PER_TASK)
-  for (const planAssignment of taskPlanAssignments) {
-    await ctx.db.delete(planAssignment._id)
-  }
 
   await ctx.db.delete(ownedTask._id)
   await clearActiveTaskIfMatches(ctx, user, taskId)
@@ -264,10 +256,8 @@ export async function getNowCandidates(
   const user = await getMe(ctx)
   if (!user) return null
 
-  const [dayTaskRows, plansByTaskId] = await Promise.all([
-    readDayTaskRows(ctx, user._id, dayStart),
-    readDayTaskPlans(ctx, user._id, dayStart),
-  ])
+  const dayTaskRows = await readDayTaskRows(ctx, user._id, dayStart)
+  const plansByTaskId = await readDayTaskPlans(ctx, user._id, dayStart, dayTaskRows)
   return buildNowCandidates(dayTaskRows, plansByTaskId)
 }
 
@@ -299,22 +289,18 @@ async function readDayTaskRows(
   return newestTaskRows.sort(byQueueOrder)
 }
 
-// The newest assignment per task for the Day. A task can only gain a newer one
-// after its previous block ended, so the newest row is the task's current plan;
-// the ticking view checks the window to decide whether it is still current. Two
-// reads cover the whole Day — never one query per row. Shared with the dashboard
-// reads so Now and the row chip cannot disagree about which block is current.
+// Each task's plan for the Day, keyed by task. The task rows carry the link, so
+// one read of the Day's planBlocks covers the whole list — never one query per
+// row. Shared with the dashboard reads so Now and the row chip cannot disagree
+// about which block a task sits in.
 export async function readDayTaskPlans(
   ctx: QueryCtx,
   userId: Id<'users'>,
-  dayStart: number
+  dayStart: number,
+  dayTaskRows: Doc<'task'>[]
 ): Promise<Map<Id<'task'>, TaskPlan>> {
-  const planAssignments = await ctx.db
-    .query('planAssignment')
-    .withIndex('by_userId_dayStart', (q) => q.eq('userId', userId).eq('dayStart', dayStart))
-    .order('desc')
-    .take(MAX_DAY_PLANS)
-  if (planAssignments.length === 0) return new Map()
+  const plannedTaskRows = dayTaskRows.filter((taskRow) => taskRow.planBlockId !== undefined)
+  if (plannedTaskRows.length === 0) return new Map()
 
   const dayPlanBlocks = await ctx.db
     .query('planBlock')
@@ -323,11 +309,10 @@ export async function readDayTaskPlans(
   const planBlocksById = new Map(dayPlanBlocks.map((planBlock) => [planBlock._id, planBlock]))
 
   const plansByTaskId = new Map<Id<'task'>, TaskPlan>()
-  for (const planAssignment of planAssignments) {
-    if (plansByTaskId.has(planAssignment.taskId)) continue
-    const planBlock = planBlocksById.get(planAssignment.planBlockId)
+  for (const taskRow of plannedTaskRows) {
+    const planBlock = planBlocksById.get(taskRow.planBlockId!)
     if (!planBlock) continue
-    plansByTaskId.set(planAssignment.taskId, {
+    plansByTaskId.set(taskRow._id, {
       planBlockId: planBlock._id,
       title: planBlock.title ?? null,
       plannedStart: planBlock.plannedStart,
@@ -335,25 +320,6 @@ export async function readDayTaskPlans(
     })
   }
   return plansByTaskId
-}
-
-// Drop the assignments that cannot survive a Day move. A block that has ended is
-// the record of what was planned, so its row stays.
-async function dropUnendedAssignments(
-  ctx: MutationCtx,
-  taskId: Id<'task'>,
-  nowInstant: number
-): Promise<void> {
-  const taskPlanAssignments = await ctx.db
-    .query('planAssignment')
-    .withIndex('by_taskId', (q) => q.eq('taskId', taskId))
-    .take(MAX_ASSIGNMENTS_PER_TASK)
-  for (const planAssignment of taskPlanAssignments) {
-    const planBlock = await ctx.db.get(planAssignment.planBlockId)
-    if (!planBlock || planBlock.plannedEnd > nowInstant) {
-      await ctx.db.delete(planAssignment._id)
-    }
-  }
 }
 
 // Where a new task goes. Null while the Day still holds tasks without a position:

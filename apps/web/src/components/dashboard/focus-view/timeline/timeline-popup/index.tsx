@@ -72,7 +72,6 @@ export function TimelinePopupContent({
         detail={planDetail}
         dayStart={dayStart}
         dayTasks={planDayTasks}
-        now={now}
         onUpdate={onUpdate}
         onRemove={onRemove}
         onAssignTask={onAssignTask ?? noop}

@@ -32,24 +32,23 @@ export function parseClockText(text: string): number | null {
 
 // Mirror of the backend's window rules, so a bad draft fails at the field
 // instead of after a round trip. Overlap is the one rule the client cannot see
-// without the live read; the mutation still answers it inline.
+// without the live read; the mutation still answers it inline. A new block may
+// not start in the past, while an existing one may be moved anywhere in its Day
+// (ADR-0015), so the caller supplies the earliest allowed start.
 export function planBlockFormError({
   values,
-  nowMin,
-  isWindowEditable,
+  earliestStartMin,
 }: {
   values: PlanBlockFormValues
-  nowMin: number
-  isWindowEditable: boolean
+  earliestStartMin: number
 }): string | null {
-  if (!isWindowEditable) return null
   if (values.startMin === null || values.endMin === null) return 'Choose a start and end time.'
   if (values.startMin < 0 || values.endMin > DAY_MINUTES) return 'Keep the plan inside its day.'
   if (values.endMin <= values.startMin) return 'The end must be after the start.'
   if (values.startMin % PLAN_GRAIN_MIN !== 0 || values.endMin % PLAN_GRAIN_MIN !== 0) {
     return 'Times sit on 15-minute marks.'
   }
-  if (values.startMin < planFloorMinute(nowMin)) return 'That time is in the past.'
+  if (values.startMin < earliestStartMin) return 'That time is in the past.'
   return null
 }
 

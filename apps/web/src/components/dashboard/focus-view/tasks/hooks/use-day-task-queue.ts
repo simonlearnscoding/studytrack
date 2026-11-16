@@ -169,8 +169,8 @@ export function useDayTaskQueue(dayStart: number, clockNow: number): DayTaskQueu
 }
 
 // The row shows a plan only while its window is still open. The read is
-// clock-free, so the newest assignment may already have ended; the ticking
-// queue decides, which also makes the chip disappear when the block ends.
+// clock-free, so the linked block may already have ended; the ticking queue
+// decides, which also makes the chip disappear when the block ends.
 function toQueueTask(task: DayTask, dayStart: number, clockNow: number): QueueTask {
   const plan = task.plan && task.plan.plannedEnd > clockNow ? task.plan : null
   return {

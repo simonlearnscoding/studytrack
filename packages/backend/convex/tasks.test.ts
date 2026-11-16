@@ -17,7 +17,7 @@ const YESTERDAY = DAY - 24 * 60 * 60 * 1000
 const TOMORROW = DAY + 24 * 60 * 60 * 1000
 // The real today. A completion earns an instant only when its Focus day is this.
 const TODAY = startOfDay(Date.now(), DASHBOARD_TIME_ZONE)
-// A Day that has not started yet, for an assignment whose block has not ended.
+// A Day that has not started yet, for a task whose block has not ended.
 const UPCOMING_DAY = startOfDay(Date.now() + 24 * 60 * 60 * 1000, DASHBOARD_TIME_ZONE)
 
 function makeTest() {
@@ -348,7 +348,7 @@ describe('tasks.reschedule', () => {
     expect(tasks.map((task) => task.title)).toEqual(['Legacy one', 'Legacy two', 'Movable'])
   })
 
-  it('drops an unended plan assignment when the task moves to another Day', async () => {
+  it('clears the task plan when it moves to another Day', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await create(t, ADA, 'Planned', UPCOMING_DAY)
@@ -363,18 +363,13 @@ describe('tasks.reschedule', () => {
         plannedStart: UPCOMING_DAY + 14 * 60 * 60 * 1000,
         plannedEnd: UPCOMING_DAY + 15 * 60 * 60 * 1000,
       })
-      await ctx.db.insert('planAssignment', {
-        userId: task.userId,
-        taskId,
-        planBlockId,
-        dayStart: UPCOMING_DAY,
-      })
+      await ctx.db.patch(taskId, { planBlockId })
     })
 
     await t.withIdentity(ADA).mutation(api.tasks.reschedule, { taskId, plannedAt: DAY })
 
-    const assignments = await t.run(async (ctx) => await ctx.db.query('planAssignment').collect())
-    expect(assignments).toEqual([])
+    const moved = await t.run(async (ctx) => await ctx.db.get(taskId))
+    expect(moved?.planBlockId).toBeUndefined()
   })
 
   it('is a no-op when the task is already on that Day', async () => {

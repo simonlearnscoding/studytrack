@@ -18,10 +18,10 @@ export const createPlanBlockArgs = v.object({
 })
 export type CreatePlanBlockArgs = Infer<typeof createPlanBlockArgs>
 
-// Rename one of the caller's planBlocks and, while it has not started, move its
-// window. The Day comes from the stored row, never from the caller, so a
-// planBlock cannot be moved across Days. A supplied title is trimmed; a blank one
-// clears the name, while omitting it (a drag) keeps the stored title.
+// Rename one of the caller's planBlocks and move its window, at any phase. The
+// Day comes from the stored row, never from the caller, so a planBlock cannot be
+// moved across Days. A supplied title is trimmed; a blank one clears the name,
+// while omitting it (a drag) keeps the stored title.
 export const updatePlanBlockArgs = v.object({
   planBlockId: v.id('planBlock'),
   title: v.optional(v.string()),
@@ -41,11 +41,10 @@ export type RemovePlanBlockArgs = Infer<typeof removePlanBlockArgs>
 export const planBlockDetailArgs = v.object({ planBlockId: v.id('planBlock') })
 
 // Attach an owned, Open task to an owned block. Picking a task that sits on
-// another Day moves it to the block's Day; the write enforces the
-// one-unended-assignment rule and refuses an ended block. `orderedTaskIds` is the
-// task pane's drop position: when supplied, the assignment and the Day's new
-// queue order land in one transaction, so a failed reorder cannot leave a task
-// assigned but in the wrong place.
+// another Day moves it to the block's Day; the link replaces any earlier plan.
+// `orderedTaskIds` is the task pane's drop position: when supplied, the link and
+// the Day's new queue order land in one transaction, so a failed reorder cannot
+// leave a task planned but in the wrong place.
 export const planTaskArgs = v.object({
   planBlockId: v.id('planBlock'),
   taskId: v.id('task'),
@@ -88,13 +87,4 @@ export type PlanBlockTask = {
 export type PlanBlockDetail = PlanBlock & {
   isOwner: boolean
   tasks: PlanBlockTask[]
-}
-
-// A past block's outcome, split by what is actually known: an inside/outside
-// instant, or a Done task with no instant at all.
-export type PlanTaskStats = {
-  doneInside: number
-  doneOutside: number
-  doneUnknownTime: number
-  open: number
 }

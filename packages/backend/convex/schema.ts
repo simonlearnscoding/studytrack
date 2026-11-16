@@ -90,7 +90,9 @@ export default defineSchema({
   // titles, the active task and the up-next suggestion all show in the room.
   // Only the owner writes it. `plannedAt` is the Europe/Zurich Day the task is
   // planned for (always a day start, never a time). `completedAt` is set when the
-  // task is marked done and cleared when it is reopened.
+  // task is marked done and cleared when it is reopened. `planBlockId` is the one
+  // block the task is planned in, if any: planning it again replaces the link,
+  // unplanning clears it, and no earlier block is remembered (ADR-0015).
   task: defineTable({
     userId: v.id('users'),
     title: v.string(),
@@ -98,10 +100,12 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     plannedAt: v.number(),
     position: v.optional(v.number()),
+    planBlockId: v.optional(v.id('planBlock')),
   })
     .index('by_userId', ['userId'])
     .index('by_userId_plannedAt', ['userId', 'plannedAt'])
     .index('by_userId_completedAt', ['userId', 'completedAt'])
+    .index('by_planBlockId', ['planBlockId'])
     .searchIndex('search_title', {
       searchField: 'title',
       filterFields: ['userId', 'done'],

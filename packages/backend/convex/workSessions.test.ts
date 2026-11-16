@@ -588,13 +588,6 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
         plannedAt: DAY_START,
         position: 0,
       })
-      const liveTaskId = await ctx.db.insert('task', {
-        userId,
-        title: 'Live plan',
-        done: false,
-        plannedAt: DAY_START,
-        position: 1,
-      })
       const planBlockId = await ctx.db.insert('planBlock', {
         userId,
         dayStart: DAY_START,
@@ -602,11 +595,13 @@ describe('workSessions.getTodaysActivitiesForDashboard', () => {
         plannedStart: NOW - 30 * M,
         plannedEnd: NOW + 30 * M,
       })
-      await ctx.db.insert('planAssignment', {
+      await ctx.db.insert('task', {
         userId,
-        taskId: liveTaskId,
+        title: 'Live plan',
+        done: false,
+        plannedAt: DAY_START,
+        position: 1,
         planBlockId,
-        dayStart: DAY_START,
       })
       const workSessionId = await ctx.db.insert('workSession', {
         discordId: 'discord-1',
