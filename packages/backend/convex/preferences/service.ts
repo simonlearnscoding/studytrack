@@ -1,6 +1,6 @@
-import type { Doc, Id } from '../_generated/dataModel'
+import type { Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import { getMe } from '../users/service'
+import { getMe, requireMe } from '../users/service'
 import type { LeaderboardPeriod, Metric, Preference } from './types'
 
 const DEFAULT_PREFERENCE: Preference = {
@@ -26,7 +26,7 @@ export async function getMine(ctx: QueryCtx): Promise<Preference> {
 // One row per member, created on the first write. Each setting has its own
 // mutation, so changing the metric can never clear another Preference.
 export async function setMetric(ctx: MutationCtx, metric: Metric): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const stored = await find(ctx, user._id)
   if (stored) await ctx.db.patch(stored._id, { metric })
   else await ctx.db.insert('preference', { userId: user._id, metric })
@@ -38,7 +38,7 @@ export async function setLeaderboardPeriod(
   ctx: MutationCtx,
   period: LeaderboardPeriod
 ): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const stored = await find(ctx, user._id)
   if (stored) await ctx.db.patch(stored._id, { leaderboardPeriod: period })
   else
@@ -52,7 +52,7 @@ export async function setLeaderboardPeriod(
 // Fold or unfold the Done group for every Day. Patches only this column, so the
 // metric survives; a missing row is created on the first write.
 export async function setDoneFolded(ctx: MutationCtx, folded: boolean): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const stored = await find(ctx, user._id)
   if (stored) await ctx.db.patch(stored._id, { isDoneFolded: folded })
   else
@@ -68,10 +68,4 @@ async function find(ctx: QueryCtx, userId: Id<'users'>) {
     .query('preference')
     .withIndex('by_userId', (q) => q.eq('userId', userId))
     .unique()
-}
-
-async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
-  const user = await getMe(ctx)
-  if (!user) throw new Error('Not authenticated')
-  return user
 }

@@ -1,6 +1,6 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import { getMe } from '../users/service'
+import { getMe, requireMe } from '../users/service'
 import type { TrackingStatus } from './types'
 import { decideManualStart } from './util'
 
@@ -21,7 +21,7 @@ export async function getMine(ctx: QueryCtx): Promise<TrackingStatus | null> {
 // while a Discord voice workSession (or an existing manual one) is active — Discord
 // is the trusted witness and manual is only a fallback (ADR-0001).
 export async function startManual(ctx: MutationCtx): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const workSession = await findActiveWorkSession(ctx, user)
   const action = decideManualStart(
     workSession ? await activePartialMode(ctx, workSession._id) : null
@@ -50,7 +50,7 @@ export async function startManual(ctx: MutationCtx): Promise<void> {
 // Stop the member's manual tracking. A no-op when nothing is running, and it
 // never touches a Discord workSession — those are closed by the voice strategies.
 export async function stopManual(ctx: MutationCtx): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const workSession = await findActiveWorkSession(ctx, user)
   if (!workSession) return
   if ((await activePartialMode(ctx, workSession._id)) !== 'manual') return
@@ -64,12 +64,6 @@ export async function stopManual(ctx: MutationCtx): Promise<void> {
     })
   }
   await ctx.db.patch(workSession._id, { status: 'ended', endedAt: now })
-}
-
-async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
-  const user = await getMe(ctx)
-  if (!user) throw new Error('Not authenticated')
-  return user
 }
 
 // The member's one active workSession, found by user row first (manual workSessions may

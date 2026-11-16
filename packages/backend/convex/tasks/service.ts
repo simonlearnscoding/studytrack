@@ -2,7 +2,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { getClockNow } from '../devClock/service'
 import { DASHBOARD_TIME_ZONE, startOfDay } from '../workSessions/util'
-import { getMe } from '../users/service'
+import { getMe, requireMe } from '../users/service'
 import type { ActiveTask, DayTask, NowCandidates, Task, TaskPlacement, TaskPlan } from './types'
 import { buildNowCandidates, byQueueOrder, insertionIndex, planOrder } from './util'
 
@@ -60,7 +60,7 @@ export async function createDayTask(
   plannedAt: number,
   placement: TaskPlacement = 'end'
 ): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   await insertTaskInDayQueue(ctx, user, title, plannedAt, placement)
 }
 
@@ -120,7 +120,7 @@ export async function replaceDayTaskOrder(
   dayStart: number,
   orderedTaskIds: Id<'task'>[]
 ): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   if (new Set(orderedTaskIds).size !== orderedTaskIds.length) {
     throw new Error('A task cannot appear twice in the new order.')
   }
@@ -142,7 +142,7 @@ export async function moveOwnedTaskToDay(
   taskId: Id<'task'>,
   plannedAt: number
 ): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   if (startOfDay(plannedAt, DASHBOARD_TIME_ZONE) !== plannedAt) {
     throw new Error('A task is planned for a Day, not a time.')
   }
@@ -181,7 +181,7 @@ export async function toggleTaskDone(
   taskId: Id<'task'>,
   focusDayStart: number
 ): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const ownedTask = await requireOwnedTask(ctx, user, taskId)
   if (startOfDay(focusDayStart, DASHBOARD_TIME_ZONE) !== focusDayStart) {
     throw new Error('The Focus day must be a Day start.')
@@ -208,7 +208,7 @@ export async function renameTask(
   taskId: Id<'task'>,
   title: string
 ): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const correctedTitle = title.trim()
   if (!correctedTitle) throw new Error('A task needs a title.')
   const ownedTask = await requireOwnedTask(ctx, user, taskId)
@@ -221,7 +221,7 @@ export async function renameTask(
 // to it (ADR-0015). Ownership is checked, so another member's task never leaks its
 // existence.
 export async function deleteTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const ownedTask = await requireOwnedTask(ctx, user, taskId)
 
   await ctx.db.delete(ownedTask._id)
@@ -231,7 +231,7 @@ export async function deleteTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<
 // Point the caller's NOW at an owned, Open task. Setting the task that is already
 // active keeps its original `activeSince`.
 export async function setActiveTask(ctx: MutationCtx, taskId: Id<'task'>): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   const ownedTask = await requireOwnedTask(ctx, user, taskId)
   if (ownedTask.done) throw new Error('Only an open task can be active.')
 
@@ -242,7 +242,7 @@ export async function setActiveTask(ctx: MutationCtx, taskId: Id<'task'>): Promi
 
 // Explicitly clear the active pointer. Idempotent.
 export async function clearActiveTask(ctx: MutationCtx): Promise<void> {
-  const user = await requireUser(ctx)
+  const user = await requireMe(ctx)
   await clearActiveTaskPointer(ctx, user._id)
 }
 
@@ -350,14 +350,8 @@ async function resolveAppendPosition(
   return dayTaskRows.length
 }
 
-async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
-  const user = await getMe(ctx)
-  if (!user) throw new Error('Not authenticated')
-  return user
-}
-
 // Same error for missing or someone else's task: never leak that it exists.
-async function requireOwnedTask(
+export async function requireOwnedTask(
   ctx: MutationCtx,
   user: Doc<'users'>,
   taskId: Id<'task'>

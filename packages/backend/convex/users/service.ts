@@ -1,5 +1,5 @@
 import { isDevBypass } from '../auth/service'
-import type { Id } from '../_generated/dataModel'
+import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { UpsertFromClerkArgs } from './types'
 
@@ -17,6 +17,14 @@ export async function getMe(ctx: QueryCtx) {
   // sign-in. Prod sets neither variable, so this branch never runs there.
   if (isDevBypass()) return await devImpersonated(ctx)
   return null
+}
+
+// The signed-in member, or a thrown error. Writes always need one; reads that
+// tolerate a signed-out caller keep using getMe and return null/[].
+export async function requireMe(ctx: QueryCtx | MutationCtx): Promise<Doc<'users'>> {
+  const user = await getMe(ctx)
+  if (!user) throw new Error('Not authenticated')
+  return user
 }
 
 async function devImpersonated(ctx: QueryCtx) {
