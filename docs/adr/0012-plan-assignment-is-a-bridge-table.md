@@ -1,3 +1,7 @@
+> **Superseded by ADR-0015 (2026-11-16):** a Task's plan is one optional field on
+> the Task. The record this table protects, and the multi-block future it leaves
+> room for, are both gone.
+
 # A plan assignment is a bridge table
 
 A Task can be planned into a plan block. Over time the Task may be planned into

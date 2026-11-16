@@ -1,3 +1,6 @@
+> **Amended by ADR-0015 (2026-11-16):** the move still happens; it now clears the
+> Task's plan outright instead of deciding which assignment rows survive.
+
 # Planning into a block moves the Task to that Day
 
 A plan block is a window on one Day, and a Task is planned for one Day. Picking a

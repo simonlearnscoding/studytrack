@@ -85,3 +85,6 @@ one popover body (`plan-block-fields.tsx`) shared by the draft and the stored
 block. Total is derived from the endpoints; editing it moves the end. A started
 block locks the window, keeps the title editable and offers no Remove, and
 `planBlocks.test.ts` covers each refusal plus the legacy title-less row.
+
+Superseded in part by [[ST-38 A plan is a link, not a record]]: no block is frozen
+any more — a started block can move, resize and be deleted.
