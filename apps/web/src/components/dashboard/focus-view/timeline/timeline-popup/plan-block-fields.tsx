@@ -9,13 +9,11 @@ import { parseClockText, type PlanBlockFormValues } from './plan-block-form'
 export function PlanBlockFields({
   values,
   onChange,
-  isWindowEditable,
   error,
   autoFocusTitle,
 }: {
   values: PlanBlockFormValues
   onChange: (values: PlanBlockFormValues) => void
-  isWindowEditable: boolean
   error?: string | null
   autoFocusTitle?: boolean
 }) {
@@ -44,17 +42,17 @@ export function PlanBlockFields({
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Start">
-          <ClockField value={values.startMin} disabled={!isWindowEditable} onCommit={setStart} />
+          <ClockField value={values.startMin} onCommit={setStart} />
         </Field>
         <Field label="End">
-          <ClockField value={values.endMin} disabled={!isWindowEditable} onCommit={setEnd} />
+          <ClockField value={values.endMin} onCommit={setEnd} />
         </Field>
       </div>
 
       <Field label="Total (min)">
         <NumberField
           value={totalMin !== null && totalMin > 0 ? totalMin : ''}
-          disabled={!isWindowEditable || values.startMin === null}
+          disabled={values.startMin === null}
           onCommit={setTotal}
         />
       </Field>
@@ -78,11 +76,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 // not being edited, so a total edit updates the end immediately.
 function ClockField({
   value,
-  disabled,
   onCommit,
 }: {
   value: number | null
-  disabled: boolean
   onCommit: (minute: number | null) => void
 }) {
   const [draft, setDraft] = useState<string | null>(null)
@@ -119,7 +115,6 @@ function ClockField({
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur()
       }}
-      disabled={disabled}
       inputMode="numeric"
       placeholder="HH:MM"
       className="h-8 font-mono"

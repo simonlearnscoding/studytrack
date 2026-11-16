@@ -55,7 +55,7 @@ export type TaskReschedule = {
 
 // Every command the queue exposes, named for the domain intent rather than the
 // Convex mutation behind it. The plan writes carry the post-drop queue order so
-// the assignment and the position land atomically.
+// the plan and the position land atomically.
 export type DayTaskQueueActions = {
   addTask: (title: string, placement?: TaskPlacement) => void
   renameTask: (id: TaskId, title: string) => void

@@ -22,7 +22,6 @@ export type StoredPlanBlockPopupData = PopupBase & {
   kind: 'planBlock'
   planBlockId: Id<'planBlock'>
   title: string | null
-  missed: boolean
   isOwner: boolean
 }
 

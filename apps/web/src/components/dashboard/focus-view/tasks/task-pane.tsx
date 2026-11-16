@@ -249,6 +249,7 @@ export function TaskPane({
                 nowTaskId={nowTaskId}
                 isViewingToday={state.isViewingToday}
                 isDraggingPlanTask={isDraggingPlanTask}
+                hasPlanGroups={planGroups.length > 0}
                 todayStart={state.todayStart}
                 rescheduleTask={actions.rescheduleTask}
                 actions={actions}

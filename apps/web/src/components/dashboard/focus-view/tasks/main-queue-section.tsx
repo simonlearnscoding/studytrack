@@ -7,12 +7,15 @@ import type { DayTaskQueueActions, QueueTask, TaskId } from './task-types'
 
 // The unassigned queue keeps its plain list (no heading). While a plan task is
 // dragged, the whole section is also the unassign target, so an empty queue
-// still has somewhere to drop it.
+// still has somewhere to drop it. The empty queue holds one row's height in both
+// states, so the drop hint replaces the idle copy instead of pushing the
+// sections below it down.
 export function MainQueueSection({
   tasks,
   nowTaskId,
   isViewingToday,
   isDraggingPlanTask,
+  hasPlanGroups,
   todayStart,
   rescheduleTask,
   actions,
@@ -21,6 +24,7 @@ export function MainQueueSection({
   nowTaskId: TaskId | null
   isViewingToday: boolean
   isDraggingPlanTask: boolean
+  hasPlanGroups: boolean
   todayStart: number
   rescheduleTask: (id: TaskId, plannedAt: number) => void
   actions: DayTaskQueueActions
@@ -31,12 +35,17 @@ export function MainQueueSection({
     disabled: !isDraggingPlanTask,
   })
   const ids = tasks.map((task) => task.id)
+  const isUnassignTarget = tasks.length === 0 && hasPlanGroups
+  const emptyQueueCopy = isDraggingPlanTask
+    ? 'Drop here to remove it from the plan.'
+    : 'No unplanned tasks.'
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
         'rounded-xl transition-colors duration-150',
+        isUnassignTarget && 'flex min-h-10 items-center',
         isOver && 'bg-primary/[0.045] ring-1 ring-primary/20'
       )}
     >
@@ -60,8 +69,8 @@ export function MainQueueSection({
             ))}
           </ul>
         </SortableContext>
-      ) : isDraggingPlanTask ? (
-        <p className="text-caption px-2 py-3">Drop here to remove it from the plan.</p>
+      ) : isUnassignTarget ? (
+        <p className="text-caption px-2">{emptyQueueCopy}</p>
       ) : null}
     </div>
   )

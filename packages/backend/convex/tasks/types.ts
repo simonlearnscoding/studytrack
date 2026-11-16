@@ -69,9 +69,9 @@ export type TaskPlan = {
   plannedEnd: number
 }
 
-// A Day-row task, plus its most recent plan. The row is read without a clock, so
-// `plan` may point at a block that has already ended; the ticking view decides
-// whether it is still current (a task has at most one unended assignment).
+// A Day-row task, plus the block it is planned in. The row is read without a
+// clock, so `plan` may point at a block that has already ended; the ticking view
+// decides whether it is still current.
 export type DayTask = Task & {
   plan: TaskPlan | null
 }

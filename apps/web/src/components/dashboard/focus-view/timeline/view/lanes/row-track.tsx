@@ -85,11 +85,7 @@ export function RowTrack({
             key={`plan-${i}`}
             role={onPlanBlockClick ? 'button' : undefined}
             tabIndex={onPlanBlockClick ? 0 : undefined}
-            aria-label={
-              onPlanBlockClick
-                ? `Open ${plan.title ?? (plan.missed ? 'missed plan block' : 'plan block')}`
-                : undefined
-            }
+            aria-label={onPlanBlockClick ? `Open ${plan.title ?? 'plan block'}` : undefined}
             onClick={
               onPlanBlockClick
                 ? (event) => {
@@ -109,14 +105,10 @@ export function RowTrack({
                   }
                 : undefined
             }
-            title={
-              plan.locked
-                ? 'This plan has started, so its time is locked.'
-                : (plan.title ?? (plan.missed ? 'Missed plan block' : 'Plan block'))
-            }
-            className={`absolute top-0 bottom-0 border border-dashed outline-none focus-visible:ring-2 focus-visible:ring-primary/20 ${
-              plan.missed ? 'border-white/15 bg-white/[0.02]' : 'border-primary/55 bg-primary/10'
-            } ${onPlanBlockClick ? 'cursor-pointer' : plan.locked ? 'cursor-not-allowed' : ''}`}
+            title={plan.title ?? 'Plan block'}
+            className={`absolute top-0 bottom-0 border border-dashed border-primary/55 bg-primary/10 outline-none focus-visible:ring-2 focus-visible:ring-primary/20 ${
+              onPlanBlockClick ? 'cursor-pointer' : ''
+            }`}
             style={{ left: live.leftPx, width: live.widthPx }}
           >
             {row.you && isFirstPiece && plan.title && (

@@ -85,3 +85,7 @@ is a real button on both breakpoints.
 
 Follow-up: the richer create-and-attach path lives in
 [[ST-34 Plan a block with tasks]].
+
+Superseded in part by [[ST-38 A plan is a link, not a record]]: the assignment is
+now one field on the Task, and taking a task out of a block is allowed at any
+phase.

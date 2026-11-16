@@ -48,7 +48,7 @@ export function dropTargetOf(over: OverLike | null): DropTarget | null {
 // section is a projection, so the new full order is built by moving the active
 // task into the target section and leaving every other section's order intact.
 // Same-section drops only reorder; crossing a section boundary also writes the
-// plan assignment, in the same mutation.
+// plan link, in the same mutation.
 export function dropActionFor(
   activeTask: QueueTask,
   over: OverLike | null,

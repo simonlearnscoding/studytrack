@@ -343,8 +343,6 @@ describe('toTimelineRows', () => {
         endMin: 17 * 60,
         leftPx: CORE_LEFT + 10 * PX_PER_HOUR,
         widthPx: PX_PER_HOUR,
-        missed: false,
-        locked: false,
       },
     ])
     expect(rows[0].planBlockWalls).toEqual([
@@ -353,7 +351,6 @@ describe('toTimelineRows', () => {
         title: 'Reading',
         startPx: CORE_LEFT + 10 * PX_PER_HOUR,
         endPx: CORE_LEFT + 11 * PX_PER_HOUR,
-        locked: false,
       },
     ])
   })
@@ -373,38 +370,14 @@ describe('toTimelineRows', () => {
         title: 'Reading',
         startPx: CORE_LEFT + 7 * PX_PER_HOUR,
         endPx: CORE_LEFT + 8 * PX_PER_HOUR,
-        locked: true,
       },
       {
         id: 'p2',
         title: null,
         startPx: CORE_LEFT + 10 * PX_PER_HOUR,
         endPx: CORE_LEFT + 11 * PX_PER_HOUR,
-        locked: false,
       },
     ])
-  })
-
-  it('marks a plan that ended without voice evidence as missed', () => {
-    const planned = {
-      ...member(0, 'Me', []),
-      planBlocks: [
-        { id: 'p1' as Id<'planBlock'>, title: 'Reading', startAt: at(13 * 60), endAt: at(14 * 60) },
-      ],
-    }
-    const rows = toTimelineRows([planned], input())
-    expect(rows[0].planBlocks[0].missed).toBe(true)
-  })
-
-  it('does not mark a missed plan as such when voice overlapped it', () => {
-    const planned = {
-      ...member(0, 'Me', [workSession([partial('camera', 13 * 60, 14 * 60)])]),
-      planBlocks: [
-        { id: 'p1' as Id<'planBlock'>, title: 'Reading', startAt: at(13 * 60), endAt: at(14 * 60) },
-      ],
-    }
-    const rows = toTimelineRows([planned], input())
-    expect(rows[0].planBlocks[0].missed).toBe(false)
   })
 
   it('counts a workSession (not each partial) hidden in a band', () => {

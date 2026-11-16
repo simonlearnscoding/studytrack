@@ -17,14 +17,14 @@ is an intention, not evidence: it has no voice partials and never becomes a
 workSession. Several may sit on one Day as long as they touch at most at an edge.
 _Avoid_: Plan, planned session, calendar entry
 
-**Plan assignment**:
-A Task's placement inside one planBlock. A Task has at most one assignment to a
-planBlock that has not ended; assignments to planBlocks that have ended stay as
-the record of what was intended. Attaching a Task that was planned for another
-Day moves it to the block's Day, so "in this plan" and "planned for that Day"
-never disagree. Whether an assignment is upcoming, live or past is read from its
-planBlock's window, never stored on the assignment.
-_Avoid_: Planned task, task link, plan item
+**Plan**:
+The planBlock a Task is meant to happen in. One optional field on the Task, at
+most one block, and no memory of earlier ones: planning a Task elsewhere replaces
+it, unplanning clears it, and deleting the block clears it on every Task it held.
+Attaching a Task that was planned for another Day moves it to the block's Day, so
+"in this plan" and "planned for that Day" never disagree. Whether a Task's plan is
+upcoming, live or past is read from the block's window, never stored.
+_Avoid_: Plan assignment, planned task, task link, plan item
 
 **Partial**:
 A stretch of time during which one member's voice state in a study channel is

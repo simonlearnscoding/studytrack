@@ -1,5 +1,4 @@
 import type { PlanBlockDetail, PlanBlockTask } from '@studytrack/backend/convex/planBlocks/types'
-import { planPhase } from '@studytrack/backend/convex/planBlocks/util'
 import type { DayTask } from '@studytrack/backend/convex/tasks/types'
 import { toMinute } from '@studytrack/backend/convex/timeline/util'
 import { useState } from 'react'
@@ -11,17 +10,15 @@ import { PlanTaskSearch } from './plan-task-search'
 import type { StoredPlanBlockPopupData } from './types'
 import { PopupWindow } from './window-line'
 
-// A stored planBlock. The name is always editable; the window only before the
-// block starts. Save writes both together so the title and window can never
-// disagree, and a refused write leaves the popover open with the reason. The task
-// list is live from its own read; assignment is owner-only and never offered for
-// a past block.
+// A stored planBlock. The name and the window are editable at any phase (ADR-0015).
+// Save writes both together so the title and window can never disagree, and a
+// refused write leaves the popover open with the reason. The task list is live
+// from its own read; adding and removing tasks are owner-only.
 export function StoredPlanPopup({
   data,
   detail,
   dayStart,
   dayTasks,
-  now,
   onUpdate,
   onRemove,
   onAssignTask,
@@ -35,7 +32,6 @@ export function StoredPlanPopup({
   dayStart: number
   detail: PlanBlockDetail | null | undefined
   dayTasks: DayTask[] | undefined
-  now: number
   onUpdate?: (values: PlanBlockFormValues) => void
   onRemove?: () => void
   onAssignTask: (taskId: PlanBlockTask['id']) => void
@@ -55,12 +51,7 @@ export function StoredPlanPopup({
   const [confirmingRemove, setConfirmingRemove] = useState(false)
 
   const endAt = data.endAt ?? data.startAt
-  const phase = planPhase(data.startAt, endAt, now)
-  const hasStarted = phase !== 'upcoming'
-  const isPast = phase === 'past'
-  const isWindowEditable = !hasStarted
   const isOwner = data.isOwner
-  const canEditTasks = isOwner && !isPast
   const isDirty =
     values.title !== initialValues.title ||
     values.startMin !== initialValues.startMin ||
@@ -75,11 +66,7 @@ export function StoredPlanPopup({
   }
 
   const save = () => {
-    const message = planBlockFormError({
-      values,
-      nowMin: toMinute(now, dayStart),
-      isWindowEditable,
-    })
+    const message = planBlockFormError({ values, earliestStartMin: 0 })
     if (message) {
       setLocalError(message)
       return
@@ -92,7 +79,7 @@ export function StoredPlanPopup({
     <>
       <div className="text-xs text-muted-foreground">
         <p>
-          {data.missed ? 'Missed' : 'Planned'}
+          Planned
           {data.member ? ` · ${data.member}` : ''}
         </p>
         <p className="mt-1 font-semibold text-foreground">Plan block</p>
@@ -100,23 +87,10 @@ export function StoredPlanPopup({
       </div>
 
       {isOwner ? (
-        <PlanBlockFields
-          values={values}
-          onChange={changeValues}
-          isWindowEditable={isWindowEditable}
-          error={error}
-        />
+        <PlanBlockFields values={values} onChange={changeValues} error={error} />
       ) : (
         <p className="mt-2 text-sm font-semibold text-foreground">
           {data.title ?? 'Untitled plan'}
-        </p>
-      )}
-
-      {hasStarted && (
-        <p className="text-caption text-muted-foreground">
-          {isOwner
-            ? 'This plan has started, so its time is locked. The title can still change.'
-            : 'This plan has started, so its time is locked.'}
         </p>
       )}
 
@@ -133,13 +107,10 @@ export function StoredPlanPopup({
           <PlanTaskList
             tasks={tasks}
             dayStart={dayStart}
-            plannedStart={detail.plannedStart}
-            plannedEnd={detail.plannedEnd}
-            isPast={isPast}
-            canEdit={canEditTasks}
+            canEdit={isOwner}
             onUnassign={onUnassignTask}
           />
-          {canEditTasks && (
+          {isOwner && (
             <PlanTaskSearch
               dayTasks={dayTasks}
               dayStart={dayStart}
@@ -173,7 +144,7 @@ export function StoredPlanPopup({
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2">
-              {!hasStarted && onRemove ? (
+              {onRemove ? (
                 <Button
                   variant="ghost"
                   size="sm"

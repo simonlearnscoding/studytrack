@@ -320,20 +320,21 @@ describe('planBlocks.update', () => {
     ).rejects.toThrow(/Plan block not found/)
   })
 
-  it('refuses a resize that starts in the past', async () => {
+  it('moves a window into the past of its Day', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
     const [row] = await rowsOf(t)
 
-    await expect(
-      t.withIdentity(ADA).mutation(api.planBlocks.update, {
-        planBlockId: row._id,
-        title: 'Deep work',
-        plannedStart: DAY + 11 * H,
-        plannedEnd: END,
-      })
-    ).rejects.toThrow(/past/)
+    await t.withIdentity(ADA).mutation(api.planBlocks.update, {
+      planBlockId: row._id,
+      title: 'Deep work',
+      plannedStart: DAY + 11 * H,
+      plannedEnd: END,
+    })
+
+    const [moved] = await rowsOf(t)
+    expect(moved).toMatchObject({ plannedStart: DAY + 11 * H, plannedEnd: END })
   })
 
   it('refuses a resize off the 15-minute grid', async () => {
@@ -352,7 +353,7 @@ describe('planBlocks.update', () => {
     ).rejects.toThrow(/15-minute/)
   })
 
-  it('allows a rename after the plan starts but refuses a window change', async () => {
+  it('renames and moves a plan that has already started', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
@@ -364,22 +365,15 @@ describe('planBlocks.update', () => {
       planBlockId: row._id,
       title: 'Physics',
       plannedStart: START,
-      plannedEnd: END,
+      plannedEnd: END + 15 * 60_000,
     })
-    const [renamed] = await rowsOf(t)
-    expect(renamed).toMatchObject({ title: 'Physics', plannedStart: START, plannedEnd: END })
-
-    await expect(
-      t.withIdentity(ADA).mutation(api.planBlocks.update, {
-        planBlockId: row._id,
-        title: 'Physics',
-        plannedStart: START,
-        plannedEnd: END + 15 * 60_000,
-      })
-    ).rejects.toThrow(/started/)
 
     const [after] = await rowsOf(t)
-    expect(after).toMatchObject({ title: 'Physics', plannedStart: START, plannedEnd: END })
+    expect(after).toMatchObject({
+      title: 'Physics',
+      plannedStart: START,
+      plannedEnd: END + 15 * 60_000,
+    })
   })
 })
 
@@ -419,7 +413,7 @@ describe('planBlocks.remove', () => {
     expect(await rowsOf(t)).toHaveLength(1)
   })
 
-  it('refuses to delete a plan after it starts', async () => {
+  it('deletes a plan after it starts', async () => {
     const t = makeTest()
     await seedUser(t, ADA, 'Ada')
     await t.withIdentity(ADA).mutation(api.planBlocks.create, plan(ADA))
@@ -427,10 +421,8 @@ describe('planBlocks.remove', () => {
 
     vi.setSystemTime(START + 30 * 60_000)
 
-    await expect(
-      t.withIdentity(ADA).mutation(api.planBlocks.remove, { planBlockId: row._id })
-    ).rejects.toThrow(/started/)
-    expect(await rowsOf(t)).toHaveLength(1)
+    await t.withIdentity(ADA).mutation(api.planBlocks.remove, { planBlockId: row._id })
+    expect(await rowsOf(t)).toEqual([])
   })
 })
 

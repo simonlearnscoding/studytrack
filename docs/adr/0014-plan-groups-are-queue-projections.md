@@ -1,3 +1,6 @@
+> **Amended by ADR-0015 (2026-11-16):** the link is now one optional field on the
+> Task. Every rule here about sections, the clock, Now and Done stands unchanged.
+
 # Plan groups are projections of the Day queue
 
 The task pane shows the Day's not-ended plan blocks as foldable groups without

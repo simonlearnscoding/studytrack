@@ -45,7 +45,7 @@ export const unassign = mutation({
   },
 })
 
-// Create-and-attach: a new Task on the block's Day plus its assignment, one write.
+// Create-and-attach: a new Task on the block's Day plus its link, one write.
 export const assignNew = mutation({
   args: assignNewTaskArgs.fields,
   handler: async (ctx, args) => {

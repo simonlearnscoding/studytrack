@@ -241,12 +241,13 @@ async function attachDayTasks(
       const userId = member.userId
       if (!userId) return member
 
-      const [planned, completed, plans] = await Promise.all([
-        ctx.db
-          .query('task')
-          .withIndex('by_userId_plannedAt', (q) => q.eq('userId', userId).eq('plannedAt', dayStart))
-          .order('desc')
-          .take(MAX_TASKS_PER_MEMBER),
+      // The plan read needs the Day's task rows, because the link lives on them.
+      const planned = await ctx.db
+        .query('task')
+        .withIndex('by_userId_plannedAt', (q) => q.eq('userId', userId).eq('plannedAt', dayStart))
+        .order('desc')
+        .take(MAX_TASKS_PER_MEMBER)
+      const [completed, plans] = await Promise.all([
         ctx.db
           .query('task')
           .withIndex('by_userId_completedAt', (q) =>
@@ -254,7 +255,7 @@ async function attachDayTasks(
           )
           .order('desc')
           .take(MAX_TASKS_PER_MEMBER),
-        readDayTaskPlans(ctx, userId, dayStart),
+        readDayTaskPlans(ctx, userId, dayStart, planned),
       ])
 
       // A task planned and finished today arrives from both reads; keep one row.

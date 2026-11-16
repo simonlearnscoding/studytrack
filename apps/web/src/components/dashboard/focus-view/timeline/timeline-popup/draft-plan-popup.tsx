@@ -7,6 +7,7 @@ import { PlanBlockFields } from './plan-block-fields'
 import {
   planBlockFormError,
   planBlockWindow,
+  planFloorMinute,
   type PlanBlockFormValues,
   type PlanTaskSelection,
 } from './plan-block-form'
@@ -14,7 +15,7 @@ import { PlanTaskSearch } from './plan-task-search'
 import { PopupWindow } from './window-line'
 
 // Nothing is stored while the draft is open: Create is the only writer, and
-// Cancel (or dismissing the popover) leaves no planBlock, Task or assignment
+// Cancel (or dismissing the popover) leaves no planBlock, Task or plan link
 // behind. A lane gesture pre-fills the window; a draft from the task pane may
 // open blank when its proposal would collide. Picked tasks and typed titles stay
 // pending until Create.
@@ -91,8 +92,7 @@ export function DraftPlanBlockPopup({
   const create = () => {
     const message = planBlockFormError({
       values,
-      nowMin: toMinute(now, dayStart),
-      isWindowEditable: true,
+      earliestStartMin: planFloorMinute(toMinute(now, dayStart)),
     })
     if (message) {
       setLocalError(message)
@@ -117,13 +117,7 @@ export function DraftPlanBlockPopup({
         )}
       </div>
 
-      <PlanBlockFields
-        values={values}
-        onChange={changeValues}
-        isWindowEditable
-        error={error}
-        autoFocusTitle
-      />
+      <PlanBlockFields values={values} onChange={changeValues} error={error} autoFocusTitle />
 
       <PlanTaskSearch
         dayTasks={dayTasks}

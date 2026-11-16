@@ -14,8 +14,8 @@ Current Convex schema. Source of truth: `packages/backend/convex/schema.ts`.
 - `session`: `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, status)
 - `sessionPartial`: `by_sessionId` (sessionId, status) · `by_status` (status) · `by_discordId` (discordId, status) · `by_userId` (userId, startedAt) · `by_startedAt` (startedAt)
 - `dailyTotal`: `by_dayStart` (dayStart) · `by_memberKey` (memberKey, dayStart)
-- `task`: `by_userId` (userId) · `by_userId_plannedAt` (userId, plannedAt) · `by_userId_completedAt` (userId, completedAt) · `by_plannedSessionId` (plannedSessionId)
-- `plannedSession`: `by_userId_dayStart` (userId, dayStart) · `by_dayStart` (dayStart)
+- `task`: `by_userId` (userId) · `by_userId_plannedAt` (userId, plannedAt) · `by_userId_completedAt` (userId, completedAt) · `by_planBlockId` (planBlockId)
+- `planBlock`: `by_userId_dayStart` (userId, dayStart) · `by_dayStart` (dayStart)
 
 A **session** is the whole sitting; its **partials** are the stretches of constant
 voice state. A partial's `mode` is one of `voice`, `camera`, `screenShare`,
@@ -132,11 +132,10 @@ privacy flag. Only the owner writes.
 - `plannedAt` is the Europe/Zurich Day the task is planned for — always a day
   start, never a time. `listMine({ dayStart })` reads exactly that Day, oldest
   first by `_creationTime`, so a new task lands at the bottom.
-- `plannedSessionId` is an explicit plan into a real Session, not inferred from
-  time overlap. A Session card shows one deduped entry per task: `planned` and/or
-  its `completedAt` when the task was finished inside that Session. A task
-  planned in one Session and finished in another appears in both, with different
-  state.
+- `planBlockId` is the one plan block the task is planned in (ADR-0015), or
+  absent. Planning the task elsewhere replaces the link, unplanning clears it,
+  deleting the block clears it, and moving the task to another Day clears it:
+  nothing remembers an earlier block.
 - `done`/`completedAt` are the completion state; `completedAt` is cleared on
   reopen. It is also what binds a completion to the Session whose span contains
   it. Reopening removes the task from that Session's finished set.
@@ -152,22 +151,23 @@ privacy flag. Only the owner writes.
 Rename/delete landed in ST-16. Day planning and the active pointer landed in
 ST-27.
 
-## Planned sessions
+## Plan blocks
 
-A **planned session** is not a Session: it has no voice evidence and no
-partials. It is the dashed block on a member's lane, created by dragging across
-their own line.
+A **plan block** is not a Session: it has no voice evidence and no partials. It
+is the dashed block on a member's lane, created by dragging across their own
+line.
 
-- `plannedSession` is one row per block, so a member may have several plans at
-  once. Dragging again **creates** another block instead of moving an existing
-  one. Plans for the same member and Day may touch but never overlap; the
-  mutation refuses an overlap.
+- `planBlock` is one row per block, so a member may have several plans at once.
+  Dragging again **creates** another block instead of moving an existing one.
+  Plans for the same member and Day may touch but never overlap; the mutation
+  refuses an overlap.
 - `dayStart` is the Europe/Zurich Day the plan belongs to; `plannedStart` and
   `plannedEnd` are the instants of the block, both on the 15-minute grid.
-- The mutations refuse a start in the past, a window outside its Day, and an
-  overlap with another plan. One `update` mutation patches a row in place for
-  both edge-resizes and body-moves, ignoring that row in the overlap check. Plans are public (ADR-0007), so
+- Creating refuses a start in the past, a window outside its Day, and an overlap
+  with another plan; editing refuses only the last two, so a block that has
+  started can still move. One `update` mutation patches a row in place for both
+  edge-resizes and body-moves, ignoring that row in the overlap check. Plans are public (ADR-0007), so
   `getTodaysActivitiesForDashboard` attaches them to the member's card (`plans`,
   oldest first) and appends a card for a plan-only member.
-- The timeline draws each plan as a dashed block. A plan whose window has ended
-  with no overlapping non-break voice time renders as **missed**.
+- The timeline draws each plan as a dashed block. A block is never frozen and
+  keeps no record of what it held; its tasks are the tasks that point at it.

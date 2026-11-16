@@ -8,7 +8,6 @@ import {
   toTimelineRows,
 } from '@studytrack/backend/convex/timeline/util'
 import { DAY_MINUTES } from '@studytrack/backend/convex/timeline/types'
-import type { DashboardMember } from '@studytrack/backend/convex/workSessions/types'
 import { useMutation, useQuery } from 'convex/react'
 import { useRef, useState } from 'react'
 import { useMounted } from '~/hooks/use-mounted'
@@ -121,7 +120,6 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
         member: owner?.name ?? owner?.discordId ?? null,
         startAt,
         endAt,
-        missed: owner ? planBlockMissed(owner, startAt, endAt, now) : false,
         isOwner: owner?.userId != null && String(owner.userId) === me,
       },
     })
@@ -343,24 +341,5 @@ export function TimelineSection({ dayStart }: { dayStart: number }) {
         </PopoverContent>
       </Popover>
     </div>
-  )
-}
-
-// A plan is missed once its window has passed without any non-break voice time
-// overlapping it. Mirrors the timeline's own rule.
-function planBlockMissed(
-  member: DashboardMember,
-  startAt: number,
-  endAt: number,
-  now: number
-): boolean {
-  if (endAt > now) return false
-  return !member.workSessions.some((workSession) =>
-    workSession.partials.some(
-      (partial) =>
-        partial.mode !== 'break' &&
-        partial.startedAt < endAt &&
-        (partial.endedAt ?? Number.POSITIVE_INFINITY) > startAt
-    )
   )
 }
