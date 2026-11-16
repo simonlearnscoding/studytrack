@@ -11,6 +11,7 @@ export function PlanGroupList({
   foldedPlanGroupIds,
   onToggleGroup,
   highlightedPlanBlockId,
+  isDraggingPlanTask,
 }: {
   groups: PlanGroup[]
   queue: DayTaskQueue
@@ -18,6 +19,7 @@ export function PlanGroupList({
   foldedPlanGroupIds: Set<string>
   onToggleGroup: (planBlockId: string) => void
   highlightedPlanBlockId: string | null
+  isDraggingPlanTask: boolean
 }) {
   const { state, actions } = queue
 
@@ -35,6 +37,7 @@ export function PlanGroupList({
           todayStart={state.todayStart}
           rescheduleTask={actions.rescheduleTask}
           actions={actions}
+          isDraggingPlanTask={isDraggingPlanTask}
         />
       ))}
     </>

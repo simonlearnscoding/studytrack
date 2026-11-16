@@ -52,6 +52,7 @@ export function TaskPaneBody({
             foldedPlanGroupIds={foldedPlanGroupIds}
             onToggleGroup={togglePlanGroup}
             highlightedPlanBlockId={highlightedPlanBlockId}
+            isDraggingPlanTask={isDraggingPlanTask}
           />
 
           <MainQueueSection
@@ -72,6 +73,7 @@ export function TaskPaneBody({
             foldedPlanGroupIds={foldedPlanGroupIds}
             onToggleGroup={togglePlanGroup}
             highlightedPlanBlockId={highlightedPlanBlockId}
+            isDraggingPlanTask={isDraggingPlanTask}
           />
 
           {state.doneTasks.length > 0 ? (

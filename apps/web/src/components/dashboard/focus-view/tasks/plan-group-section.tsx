@@ -20,6 +20,7 @@ export function PlanGroupSection({
   todayStart,
   rescheduleTask,
   actions,
+  isDraggingPlanTask,
 }: {
   group: PlanGroup
   isExpanded: boolean
@@ -30,6 +31,7 @@ export function PlanGroupSection({
   todayStart: number
   rescheduleTask: (id: TaskId, plannedAt: number) => void
   actions: DayTaskQueueActions
+  isDraggingPlanTask: boolean
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: planGroupDropId(group.planBlockId),
@@ -57,7 +59,11 @@ export function PlanGroupSection({
         }
       >
         {group.openTasks.length === 0 ? (
-          <li className="text-caption px-2 py-3">Drop a task here to plan it.</li>
+          // The hint keeps its row whether or not a drag is running, so starting
+          // a drag never moves the sections below the pointer.
+          <li className={cn('text-caption px-2 py-3', !isDraggingPlanTask && 'invisible')}>
+            Drop a task here to plan it.
+          </li>
         ) : (
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
             {group.openTasks.map((task) => (
