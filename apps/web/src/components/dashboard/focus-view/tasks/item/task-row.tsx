@@ -79,23 +79,21 @@ export function TaskRow({
               </span>
             )}
           </p>
-          {(isNow || (showPlanChip && task.planLabel)) && (
-            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              {isNow && (
-                <span className="text-primary text-label flex items-center gap-1.5">
-                  <span className="bg-primary size-1 rounded-full" aria-hidden />
-                  Now
-                </span>
-              )}
-              {showPlanChip && task.planLabel && (
-                <span className="text-subtle-foreground flex min-w-0 items-center gap-1 text-caption">
-                  <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
-                  <span className="truncate">{task.planLabel}</span>
-                </span>
-              )}
+          {showPlanChip && task.planLabel && (
+            <span className="text-subtle-foreground flex min-w-0 items-center gap-1 text-caption">
+              <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate">{task.planLabel}</span>
             </span>
           )}
         </div>
+      )}
+
+      {isNow && !editing && !overlay && (
+        // Fades out under the hover actions, which share this corner of the row.
+        <span className="text-primary text-label ml-auto flex shrink-0 items-center gap-1.5 transition-opacity duration-150 group-hover:opacity-0">
+          <span className="bg-primary size-1 rounded-full" aria-hidden />
+          Now
+        </span>
       )}
 
       {!editing && (

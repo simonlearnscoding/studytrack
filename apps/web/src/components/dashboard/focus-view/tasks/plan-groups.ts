@@ -57,7 +57,18 @@ export function planBlocksFromTasks(tasks: QueueTask[]): DayPlanBlock[] {
 export function planWindowLabel(plannedStart: number, plannedEnd: number, dayStart: number) {
   const start = formatClock(toMinute(plannedStart, dayStart))
   const end = formatClock(toMinute(plannedEnd, dayStart))
-  return `${start}–${end}`
+  return `${start} – ${end}`
+}
+
+// A plan's length at card size: whole hours drop the minutes ("2h"), because the
+// window beside it already carries the exact ends.
+export function planLengthLabel(plannedStart: number, plannedEnd: number): string {
+  const totalMinutes = Math.max(0, Math.round((plannedEnd - plannedStart) / 60_000))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${minutes}m`
+  if (minutes === 0) return `${hours}h`
+  return `${hours}h ${minutes}m`
 }
 
 function toPlanGroup(

@@ -45,7 +45,7 @@ export function PlanBlockComposer({ onAdd }: { onAdd: (title: string) => Promise
     <div>
       <form
         onSubmit={submit}
-        className="mt-1 flex items-center gap-1.5 border-t border-white/[0.06] px-1 pt-1.5 pb-1"
+        className="flex items-center gap-1 rounded-lg bg-white/[0.04] p-1 transition-colors duration-150 focus-within:bg-white/[0.06]"
       >
         <Button
           type="submit"
@@ -74,7 +74,7 @@ export function PlanBlockComposer({ onAdd }: { onAdd: (title: string) => Promise
               }
             )
           }
-          placeholder="Add a task to this block…"
+          placeholder="Add or create task in this block…"
           aria-label="Add a task to this block"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
@@ -83,7 +83,7 @@ export function PlanBlockComposer({ onAdd }: { onAdd: (title: string) => Promise
         />
       </form>
       {error ? (
-        <p id={errorId} role="alert" className="text-caption px-2 pb-1 text-destructive">
+        <p id={errorId} role="alert" className="text-caption px-2 pt-1 text-destructive">
           {error}
         </p>
       ) : null}

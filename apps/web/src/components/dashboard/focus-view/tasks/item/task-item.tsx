@@ -52,7 +52,7 @@ export function TaskItem({
         !editing && 'cursor-grab select-none active:cursor-grabbing',
         isDragging && 'cursor-grabbing opacity-40',
         isNow
-          ? 'bg-primary/[0.045] hover:bg-primary/[0.07] before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary'
+          ? 'bg-primary-tint hover:bg-primary/15 before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary'
           : 'hover:bg-white/[0.035]',
         'focus-visible:ring-2 focus-visible:ring-primary/20',
         isOver && !isDragging && 'bg-primary/[0.045] ring-1 ring-primary/20'
