@@ -1,4 +1,11 @@
 import type { Doc, Id } from '../_generated/dataModel'
+import {
+  dayOfMonth,
+  nextDayStart,
+  nextMonthStart,
+  nextWeekStart,
+  startOfWeek,
+} from '../workSessions/util'
 import type {
   NowCandidates,
   NowPlanCandidate,
@@ -131,4 +138,63 @@ export function planOrder(tasks: Doc<'task'>[], orderedIds: Id<'task'>[]): Doc<'
   }
   const sent = new Set(orderedIds)
   return [...ordered, ...tasks.filter((task) => !sent.has(task._id))]
+}
+
+// The reschedule popover's three one-tap Days, in Todoist's order. "Next week"
+// means the Monday of next week, which is also this board's first day of the
+// week, so it never means today when today is a Monday.
+export type RescheduleQuickPickKind = 'today' | 'tomorrow' | 'next-week'
+
+export type RescheduleQuickPick = {
+  kind: RescheduleQuickPickKind
+  dayStart: number
+}
+
+export function rescheduleQuickPicks(todayStart: number, timeZone: string): RescheduleQuickPick[] {
+  const tomorrowStart = nextDayStart(todayStart, timeZone)
+  const nextMondayStart = nextWeekStart(startOfWeek(todayStart, timeZone), timeZone)
+  return [
+    { kind: 'today', dayStart: todayStart },
+    { kind: 'tomorrow', dayStart: tomorrowStart },
+    { kind: 'next-week', dayStart: nextMondayStart },
+  ]
+}
+
+// One Day in the reschedule popover's month grid. `isTaskDay` is the Day the task
+// is planned for now, which the grid fills in; `inMonth` only dims the leading
+// and trailing Days, every one of them is still a valid target.
+export type RescheduleDayCell = {
+  dayStart: number
+  dayOfMonth: number
+  inMonth: boolean
+  isToday: boolean
+  isTaskDay: boolean
+}
+
+const RESCHEDULE_CELL_COUNT = 42
+
+// A six-week, Monday-first grid for the Month of `monthStart`, with today's and
+// the task's Day flagged. Pure: it reads no clock, DB or store.
+export function buildRescheduleMonth(args: {
+  monthStart: number
+  taskDayStart: number
+  todayStart: number
+  timeZone: string
+}): RescheduleDayCell[] {
+  const { monthStart, taskDayStart, todayStart, timeZone } = args
+  const monthEnd = nextMonthStart(monthStart, timeZone)
+
+  const cells: RescheduleDayCell[] = []
+  let dayStart = startOfWeek(monthStart, timeZone)
+  for (let index = 0; index < RESCHEDULE_CELL_COUNT; index++) {
+    cells.push({
+      dayStart,
+      dayOfMonth: dayOfMonth(dayStart, timeZone),
+      inMonth: dayStart >= monthStart && dayStart < monthEnd,
+      isToday: dayStart === todayStart,
+      isTaskDay: dayStart === taskDayStart,
+    })
+    dayStart = nextDayStart(dayStart, timeZone)
+  }
+  return cells
 }

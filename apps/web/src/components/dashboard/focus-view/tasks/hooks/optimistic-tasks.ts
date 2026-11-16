@@ -42,3 +42,23 @@ export function optimisticTaskOrder(
 
   localStore.setQuery(api.tasks.listMine, { dayStart }, [...orderedTasks, ...unlistedTasks])
 }
+
+// A reschedule drops the row from the Day it is leaving. The Day it lands on is
+// not open in this pane, so only the removal is visible; picking the viewed Day
+// itself leaves the list untouched.
+export function optimisticTaskReschedule(
+  localStore: OptimisticLocalStore,
+  dayStart: number,
+  taskId: TaskId,
+  plannedAt: number
+) {
+  if (plannedAt === dayStart) return
+  const currentTasks = localStore.getQuery(api.tasks.listMine, { dayStart })
+  if (currentTasks === undefined) return
+
+  localStore.setQuery(
+    api.tasks.listMine,
+    { dayStart },
+    currentTasks.filter((task) => task.id !== taskId)
+  )
+}

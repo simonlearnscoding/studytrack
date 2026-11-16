@@ -1,8 +1,9 @@
 import { CalendarClock, Pencil, Trash2 } from 'lucide-react'
 import { Checkbox } from '~/components/ui/checkbox'
 import { cn } from '~/lib/utils'
+import { RescheduleButton } from '../reschedule/reschedule-button'
 import { TaskAction } from '../task-action'
-import type { QueueTask } from '../task-types'
+import type { QueueTask, TaskReschedule } from '../task-types'
 
 export function TaskRow({
   task,
@@ -15,6 +16,7 @@ export function TaskRow({
   onStartEditing,
   onTick,
   onRemove,
+  reschedule,
   overlay = false,
   showPlanChip = true,
 }: {
@@ -28,6 +30,7 @@ export function TaskRow({
   onStartEditing: () => void
   onTick: () => void
   onRemove: () => void
+  reschedule?: TaskReschedule
   overlay?: boolean
   showPlanChip?: boolean
 }) {
@@ -109,6 +112,13 @@ export function TaskRow({
           <TaskAction label="Rename task" onClick={onStartEditing}>
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>
+          {reschedule ? (
+            <RescheduleButton
+              taskDayStart={task.plannedAt}
+              todayStart={reschedule.todayStart}
+              onReschedule={reschedule.onReschedule}
+            />
+          ) : null}
           <TaskAction label="Delete task" onClick={onRemove} danger>
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
           </TaskAction>

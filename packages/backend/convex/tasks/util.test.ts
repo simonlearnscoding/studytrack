@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Doc, Id } from '../_generated/dataModel'
+import { DASHBOARD_TIME_ZONE, startOfDay, startOfMonth } from '../workSessions/util'
 import type { Task } from './types'
 import {
   buildNowCandidates,
+  buildRescheduleMonth,
   byCompletionOrder,
   byPosition,
   byQueueOrder,
@@ -10,6 +12,7 @@ import {
   pickNowCandidate,
   pickUpNext,
   planOrder,
+  rescheduleQuickPicks,
   type TaskPlanWindow,
 } from './util'
 
@@ -234,5 +237,71 @@ describe('pickNowCandidate', () => {
     const rows = [row('ended-plan', 1, 0)]
     const plans = planMap([['ended-plan', 8, 9]])
     expect(nowId(rows, plans, 10)).toBe('ended-plan')
+  })
+})
+
+function day(year: number, month: number, dayOfMonth: number) {
+  return startOfDay(Date.UTC(year, month - 1, dayOfMonth, 12), DASHBOARD_TIME_ZONE)
+}
+
+describe('rescheduleQuickPicks', () => {
+  it('offers today, tomorrow and the Monday of next week', () => {
+    const thursday = day(2026, 10, 29)
+    const picks = rescheduleQuickPicks(thursday, DASHBOARD_TIME_ZONE)
+
+    expect(picks.map((pick) => pick.kind)).toEqual(['today', 'tomorrow', 'next-week'])
+    expect(picks[0].dayStart).toBe(thursday)
+    expect(picks[1].dayStart).toBe(day(2026, 10, 30))
+    expect(picks[2].dayStart).toBe(day(2026, 11, 2))
+  })
+
+  it('moves next week a full week ahead when today is a Monday', () => {
+    const monday = day(2026, 10, 26)
+    const nextMonday = rescheduleQuickPicks(monday, DASHBOARD_TIME_ZONE)[2].dayStart
+
+    expect(nextMonday).toBe(day(2026, 11, 2))
+  })
+})
+
+describe('buildRescheduleMonth', () => {
+  const timeZone = DASHBOARD_TIME_ZONE
+  const monthStart = startOfMonth(day(2026, 3, 15), timeZone)
+  const args = {
+    monthStart,
+    taskDayStart: day(2026, 3, 20),
+    todayStart: day(2026, 3, 10),
+    timeZone,
+  }
+
+  it('builds six Monday-first weeks from the Week holding the 1st', () => {
+    const cells = buildRescheduleMonth(args)
+
+    expect(cells).toHaveLength(42)
+    expect(cells[0].dayOfMonth).toBe(23)
+    expect(cells[0].inMonth).toBe(false)
+    expect(cells.filter((cell) => cell.inMonth)).toHaveLength(31)
+  })
+
+  it('flags today and the task Day exactly once', () => {
+    const cells = buildRescheduleMonth(args)
+
+    expect(cells.filter((cell) => cell.isToday).map((cell) => cell.dayStart)).toEqual([
+      day(2026, 3, 10),
+    ])
+    expect(cells.filter((cell) => cell.isTaskDay).map((cell) => cell.dayStart)).toEqual([
+      day(2026, 3, 20),
+    ])
+  })
+
+  it('walks real calendar Days across the DST change', () => {
+    const cells = buildRescheduleMonth(args)
+
+    for (let index = 1; index < cells.length; index++) {
+      const gap = cells[index].dayStart - cells[index - 1].dayStart
+      expect(gap).toBeGreaterThanOrEqual(23 * 60 * 60 * 1000)
+      expect(gap).toBeLessThanOrEqual(25 * 60 * 60 * 1000)
+    }
+    expect(cells.find((cell) => cell.isToday)?.dayStart).toBe(day(2026, 3, 10))
+    expect(cells.filter((cell) => cell.inMonth).at(-1)?.dayOfMonth).toBe(31)
   })
 })

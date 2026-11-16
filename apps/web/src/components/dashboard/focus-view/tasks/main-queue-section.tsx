@@ -13,12 +13,16 @@ export function MainQueueSection({
   nowTaskId,
   isViewingToday,
   isDraggingPlanTask,
+  todayStart,
+  rescheduleTask,
   actions,
 }: {
   tasks: QueueTask[]
   nowTaskId: TaskId | null
   isViewingToday: boolean
   isDraggingPlanTask: boolean
+  todayStart: number
+  rescheduleTask: (id: TaskId, plannedAt: number) => void
   actions: DayTaskQueueActions
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -48,6 +52,10 @@ export function MainQueueSection({
                 onTick={() => actions.toggleTaskDone(task.id)}
                 onRename={(title) => actions.renameTask(task.id, title)}
                 onRemove={() => actions.removeTask(task.id)}
+                reschedule={{
+                  todayStart,
+                  onReschedule: (plannedAt) => rescheduleTask(task.id, plannedAt),
+                }}
               />
             ))}
           </ul>

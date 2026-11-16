@@ -41,8 +41,16 @@ export type DayTaskQueueState = {
   unassignedTasks: QueueTask[]
   livePlanGroup: PlanGroup | null
   upcomingPlanGroups: PlanGroup[]
+  todayStart: number
   canScheduleForToday: boolean
   isViewingToday: boolean
+}
+
+// The row's reschedule control: the live today, and the action that moves a task
+// to another Day. Done rows cannot be rescheduled, so they never carry it.
+export type TaskReschedule = {
+  todayStart: number
+  onReschedule: (plannedAt: number) => void
 }
 
 // Every command the queue exposes, named for the domain intent rather than the
@@ -57,6 +65,7 @@ export type DayTaskQueueActions = {
   assignTaskToPlan: (id: TaskId, planBlockId: Id<'planBlock'>, orderedTaskIds: TaskId[]) => void
   unassignTaskFromPlan: (id: TaskId, planBlockId: Id<'planBlock'>, orderedTaskIds: TaskId[]) => void
   assignNewTask: (planBlockId: Id<'planBlock'>, title: string) => Promise<void>
+  rescheduleTask: (id: TaskId, plannedAt: number) => void
   scheduleTaskForToday: (id: TaskId) => void
 }
 
