@@ -42,7 +42,7 @@ packages/backend/convex/
 | File                      | Holds                                                                         | Never holds                            |
 | ------------------------- | ----------------------------------------------------------------------------- | -------------------------------------- |
 | `<domain>.ts`             | `query` / `mutation` / `internalMutation` exports: auth, wire args, delegate  | business decisions, DB queries         |
-| `<domain>/service.ts`     | thin: authenticate, resolve state, dispatch to a strategy                     | `v` validators (those are `types.ts`)  |
+| `<domain>/service.ts`     | thin: resolve state, dispatch; a write takes the `user` from its entry        | `v` validators (those are `types.ts`)  |
 | `<domain>/strategies.ts`  | the strategy map + the ctx-taking handlers it dispatches to                   | `v` validators                         |
 | `<domain>/types.ts`       | reused `v.object`/`v.union` args + `type X = Infer<typeof x>` + result unions | tables (those live in `schema.ts`)     |
 | `<domain>/util.ts`        | pure decisions (`getVoiceTransition`) + domain-agnostic helpers               | `ctx`-taking I/O, session/domain rules |
@@ -86,7 +86,7 @@ Any "which case are we in?" question returns a **string-literal union of tags**
 (`'enter' | 'leave' | 'change' | 'none'`). Dispatch through a **strategy map**
 (`Record<VoiceTransition, Strategy>`, one handler per tag) — not an `if`/`else`
 chain. The map and the handlers it dispatches to live together in
-`strategies.ts`; the entry `service.ts` stays a thin authenticator + dispatcher.
+`strategies.ts`; the entry `service.ts` stays thin — it dispatches, and authenticates reads itself.
 Keep the tags scalar; if a case needs data, read it from the argument the caller
 already holds rather than attaching it to the tag. Use string-literal unions,
 never a TS `enum` (`verbatimModuleSyntax` + `isolatedModules` rule out
